@@ -1283,6 +1283,40 @@ button {
   font-size: 20px;
 }
 
+.result-explain-card {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(200, 243, 95, 0.14);
+  border-radius: 12px;
+  background: rgba(200, 243, 95, 0.055);
+}
+
+.result-explain-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.result-explain-card span,
+.result-explain-card li {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.result-explain-card strong {
+  color: var(--lime);
+  font-size: 13px;
+}
+
+.result-explain-card ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 16px;
+}
+
 .match-summary-card {
   display: grid;
   gap: 10px;
@@ -1727,6 +1761,32 @@ button {
 .summary-output {
   display: grid;
   gap: 8px;
+}
+
+.reason-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reason-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.reason-item svg {
+  flex: 0 0 auto;
+  color: var(--lime);
+}
+
+.reason-item span {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .impact-list,

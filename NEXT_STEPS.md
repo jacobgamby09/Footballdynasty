@@ -32,10 +32,11 @@ Senest implementeret:
 - training v3 med obligatorisk weekly session, direkte attribute focus, intensity, XP range og after-training recap
 - core loop fastlagt som Training -> Match -> Training -> Match
 - match engine direction dokumenteret i `MATCH_ENGINE.md`
+- match engine V2 foundation module med opponent profiles, Forward highlight taxonomy, chance quality og explanation tags
 
 Naeste oplagte gameplay-hul:
 
-- match engine V2 structure: opponent profiles, highlight taxonomy, resolution bands og explanation tags
+- match engine V2 resolution bands, explanation UI og batch simulation/debug tools
 - facilities/coaches/home gym som training multipliers, der haever floor og reducerer variance
 - recovery/fatigue model v2, saa haard traening kan give kortsigtet risiko
 - end-of-season checkpoint med contract, role review og transfer interest
@@ -70,16 +71,14 @@ Etabler en stærk Striker V1 vertical slice, hvor UI og gameplay-kernen kan mær
 Current priority:
 
 1. Refactor match engine into clearer setup/generation/resolution helpers.
-2. Add position module architecture for Forward, Winger, Midfielder, Fullback and Centerback. Goalkeeper remains out of scope.
-3. Add opponent profiles with keeper, defense, pressing, defensive line, aerial defense and pace.
-4. Define Striker V1 highlight taxonomy with trigger weights.
-5. Replace binary match resolution with player_score vs opponent_score and outcome bands.
-6. Add chance quality labels and explanation tags to match results.
-7. Make stats affect both highlight frequency and outcome, not only final success.
-8. Add batch simulation/debug script for match balance.
-9. Define how match rating is composed for a striker.
-10. Balance matchweek-loopet: training XP, match XP, fatigue og season length.
-11. Lad scoreline og match context aendre senere timeline-events dynamisk.
+2. Replace binary match resolution with player_score vs opponent_score and outcome bands.
+3. Add explanation UI to match result and post-match report.
+4. Make stats affect both highlight frequency and outcome, not only final success.
+5. Add batch simulation/debug script for match balance.
+6. Define how match rating is composed for a striker.
+7. Expand opponent profile effects into substitutions, score state and sim event types.
+8. Balance matchweek-loopet: training XP, match XP, fatigue og season length.
+9. Lad scoreline og match context aendre senere timeline-events dynamisk.
 
 Legacy backlog:
 

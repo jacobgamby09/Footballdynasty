@@ -9,6 +9,9 @@
 - V2 direction is setup/generation/resolution separation, opponent profiles, striker highlight taxonomy, chance quality, outcome bands, explanation tags and batch simulation for balance.
 - Added position architecture for Forward, Winger, Midfielder, Fullback and Centerback. Goalkeeper is intentionally out of scope for now.
 - Implemented first code-level position module architecture. Player identity, OVR weighting, key attributes, training key markers, tactical focus and manager instructions now read from position modules. Current active module is Forward.
+- Implemented Match Engine V2 foundation module in `src/matchEngine.ts` with opponent profiles, Forward highlight taxonomy, profile-based highlight weighting, chance quality and explanation tags.
+- Pre-match opponent context now exposes defensive line and pressing style from the opponent profile.
+- Match result UI now shows chance quality and readable explanation reasons. Post-match summary includes a Performance Read card based on aggregated explanation tags.
 
 ### Match Flow - Dynamic Substitution Timing
 

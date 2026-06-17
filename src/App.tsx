@@ -48,11 +48,13 @@ import {
 } from "./positionRoles";
 
 type NavKey = "player" | "training" | "club" | "home";
-type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary";
+type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "season-review";
 type Intensity = "Light" | "Balanced" | "Hard";
 type MatchSpeed = 1 | 2 | 4;
 type Venue = "Home" | "Away";
 type ClubView = "overview" | "fixtures" | "table";
+type HomeView = "base" | "support" | "dynasty";
+type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
 
 type Attribute = {
   label: AttributeKey;
@@ -67,6 +69,18 @@ type SeasonStats = {
   goals: number;
   assists: number;
   ratings: number[];
+};
+
+type DynastySeason = {
+  season: number;
+  club: string;
+  leaguePosition: number;
+  record: string;
+  apps: number;
+  starts: number;
+  goals: number;
+  assists: number;
+  averageRating: number;
 };
 
 type Fixture = {
@@ -116,6 +130,34 @@ type SeasonState = {
   results: FixtureResult[];
 };
 
+type Contract = {
+  club: string;
+  label: string;
+  weeklyWage: number;
+  weeksRemaining: number;
+  rolePromise: MatchRole;
+  appearanceBonus: number;
+  goalBonus: number;
+  assistBonus: number;
+  pressureModifier: number;
+};
+
+type ContractOffer = Omit<Contract, "weeksRemaining"> & {
+  title: string;
+  weeks: number;
+  signingBonus: number;
+  summary: string;
+};
+
+type SupportUpgradeDefinition = {
+  id: SupportUpgradeId;
+  name: string;
+  category: string;
+  maxLevel: number;
+  baseCost: number;
+  effect: string;
+};
+
 type GameState = {
   week: number;
   positionGroup: PositionGroup;
@@ -134,6 +176,9 @@ type GameState = {
   attributes: Attribute[];
   seasonStats: SeasonStats;
   season: SeasonState;
+  dynastyHistory: DynastySeason[];
+  contract: Contract;
+  supportUpgrades: Record<SupportUpgradeId, number>;
   lastEvent: string;
   activeMatch?: MatchState;
   lastMatch?: LastMatchSummary;
@@ -309,6 +354,10 @@ type LastMatchSummary = MatchTotals & {
   autoSimulated: number;
   manualHighlights: number;
   cashDelta: number;
+  weeklyWage: number;
+  appearanceBonus: number;
+  goalBonus: number;
+  assistBonus: number;
   prestigeDelta: number;
   moraleDelta: number;
   roleBefore: MatchRole;
@@ -585,6 +634,87 @@ const leagueTeams: LeagueTeam[] = [
   { name: "Odense Prospects", short: "ODE", strength: 59 },
 ];
 
+const initialContract: Contract = {
+  club: "Northbridge FC",
+  label: "Academy terms",
+  weeklyWage: 120,
+  weeksRemaining: 12,
+  rolePromise: "Impact Sub",
+  appearanceBonus: 20,
+  goalBonus: 45,
+  assistBonus: 30,
+  pressureModifier: 0,
+};
+
+const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
+  {
+    id: "boots",
+    name: "Match boots",
+    category: "Gear",
+    maxLevel: 3,
+    baseCost: 180,
+    effect: "Small match execution boost for attacking moments.",
+  },
+  {
+    id: "recovery",
+    name: "Recovery kit",
+    category: "Recovery",
+    maxLevel: 3,
+    baseCost: 160,
+    effect: "Reduces match fatigue and helps you stay available.",
+  },
+  {
+    id: "coach",
+    name: "Personal coach",
+    category: "Training",
+    maxLevel: 3,
+    baseCost: 220,
+    effect: "Raises the floor of weekly training XP.",
+  },
+  {
+    id: "nutrition",
+    name: "Nutrition plan",
+    category: "Recovery",
+    maxLevel: 3,
+    baseCost: 140,
+    effect: "Softens training fatigue from higher intensity sessions.",
+  },
+  {
+    id: "analyst",
+    name: "Video analyst",
+    category: "Match prep",
+    maxLevel: 2,
+    baseCost: 260,
+    effect: "Adds a small selection and match-read bonus.",
+  },
+  {
+    id: "agent",
+    name: "Better agent",
+    category: "Career",
+    maxLevel: 3,
+    baseCost: 300,
+    effect: "Improves contract packages and bonus negotiations.",
+  },
+  {
+    id: "lifestyle",
+    name: "Lifestyle support",
+    category: "Morale",
+    maxLevel: 2,
+    baseCost: 150,
+    effect: "Boosts morale, but high status may add future pressure.",
+  },
+];
+
+const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
+  boots: 0,
+  recovery: 0,
+  coach: 0,
+  nutrition: 0,
+  analyst: 0,
+  agent: 0,
+  lifestyle: 0,
+};
+
 const initialState: GameState = {
   week: 1,
   positionGroup: "Forward",
@@ -614,6 +744,9 @@ const initialState: GameState = {
     fixtures: seasonFixtures,
     results: [],
   },
+  dynastyHistory: [],
+  contract: initialContract,
+  supportUpgrades: initialSupportUpgrades,
   lastEvent: "Pre-season complete. Your first senior fixture is waiting.",
 };
 
@@ -637,6 +770,9 @@ function cloneGameState(state: GameState): GameState {
       fixtures: state.season.fixtures.map((fixture) => ({ ...fixture })),
       results: state.season.results.map((result) => ({ ...result })),
     },
+    dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
+    contract: { ...state.contract },
+    supportUpgrades: { ...state.supportUpgrades },
     activeMatch: undefined,
     lastMatch: state.lastMatch ? cloneLastMatchSummary(state.lastMatch) : undefined,
     lastTraining: state.lastTraining ? cloneTrainingSummary(state.lastTraining) : undefined,
@@ -705,6 +841,9 @@ function normalizeSavedGame(saved: GameState): GameState {
       fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : fallback.season.fixtures,
       results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
     },
+    dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
+    contract: { ...fallback.contract, ...(saved.contract ?? {}) },
+    supportUpgrades: { ...fallback.supportUpgrades, ...(saved.supportUpgrades ?? {}) },
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
     activeMatch: undefined,
     lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
@@ -753,11 +892,17 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved">("saved");
 
   const activeNav =
-    activeScreen === "pre-match" || activeScreen === "match" || activeScreen === "summary" || activeScreen === "training-summary"
+    activeScreen === "pre-match" ||
+    activeScreen === "match" ||
+    activeScreen === "summary" ||
+    activeScreen === "training-summary" ||
+    activeScreen === "week-summary" ||
+    activeScreen === "season-review"
       ? undefined
       : activeScreen;
+  const seasonComplete = isSeasonComplete(game.season);
   const isMatchDay = hasPlayableFixture(game.season);
-  const needsTraining = game.trainingCompletedWeek !== game.week;
+  const needsTraining = game.trainingCompletedWeek !== game.week && !seasonComplete;
   const advanceLabel =
     activeScreen === "pre-match"
       ? "Start Match"
@@ -766,11 +911,19 @@ function App() {
         ? "Finish Match"
         : "In Match"
       : activeScreen === "summary"
-        ? "Continue Career"
+        ? "Week Summary"
       : activeScreen === "training-summary"
         ? "Continue Career"
+      : activeScreen === "week-summary"
+        ? seasonComplete
+          ? "Season Review"
+          : "Next Week"
+      : activeScreen === "season-review"
+        ? "Next Season"
         : activeScreen === "training" && needsTraining
           ? "Start Training"
+        : seasonComplete
+          ? "Season Review"
         : needsTraining
           ? "Training"
         : isMatchDay
@@ -869,6 +1022,11 @@ function App() {
       return;
     }
 
+    if (activeScreen === "week-summary") {
+      closeWeekSummary();
+      return;
+    }
+
     if (activeScreen === "pre-match") {
       if (!game.activeMatch && isMatchDay) {
         setGame((state) => ({ ...state, activeMatch: createMatch(state, getUpcomingMatch(state)) }));
@@ -882,8 +1040,18 @@ function App() {
       return;
     }
 
+    if (activeScreen === "season-review") {
+      startNextSeason();
+      return;
+    }
+
     if (activeScreen === "training" && needsTraining) {
       startTraining();
+      return;
+    }
+
+    if (seasonComplete) {
+      setActiveScreen("season-review");
       return;
     }
 
@@ -1070,11 +1238,24 @@ function App() {
   }
 
   function closeSummary() {
-    setActiveScreen("player");
+    setActiveScreen("week-summary");
+  }
+
+  function closeWeekSummary() {
+    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
   function closeTrainingSummary() {
     setActiveScreen("player");
+  }
+
+  function startNextSeason() {
+    setGame((state) => startNextSeasonState(state));
+    setActiveScreen("player");
+  }
+
+  function buySupportUpgrade(upgradeId: SupportUpgradeId) {
+    setGame((state) => buySupportUpgradeState(state, upgradeId));
   }
 
   function navigate(nav: NavKey) {
@@ -1106,7 +1287,14 @@ function App() {
             />
           )}
           {activeScreen === "club" && <ClubScreen game={game} />}
-          {activeScreen === "home" && <HomeScreen game={game} saveStatus={saveStatus} onResetCareer={resetCareer} />}
+          {activeScreen === "home" && (
+            <HomeScreen
+              game={game}
+              saveStatus={saveStatus}
+              onBuySupportUpgrade={buySupportUpgrade}
+              onResetCareer={resetCareer}
+            />
+          )}
           {activeScreen === "pre-match" && game.activeMatch && <PreMatchScreen match={game.activeMatch} />}
           {activeScreen === "match" && game.activeMatch && (
             <MatchMomentScreen
@@ -1130,6 +1318,8 @@ function App() {
               summary={game.lastTraining}
             />
           )}
+          {activeScreen === "week-summary" && <WeekSummaryScreen game={game} />}
+          {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}
         </div>
 
         <BottomNav
@@ -1168,6 +1358,33 @@ function PlayerScreen({ game }: { game: GameState }) {
 }
 
 function SelectionBriefingCard({ game }: { game: GameState }) {
+  if (isSeasonComplete(game.season)) {
+    const review = getSeasonReview(game);
+
+    return (
+      <section className="card selection-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Selection briefing</span>
+            <h2>Season complete</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <div className="selection-score-hero">
+          <div>
+            <span>Manager score</span>
+            <strong>{review.selection.score}</strong>
+          </div>
+          <div className="selection-score-copy">
+            <b>{review.verdict.title}</b>
+            <ProgressBar value={review.selection.score} />
+            <small>Review the season before moving on</small>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   const upcomingMatch = getUpcomingMatch(game);
   const nextRoleText = upcomingMatch.selection.nextRole
     ? `${upcomingMatch.selection.pointsToNextRole} pts to ${upcomingMatch.selection.nextRole}`
@@ -1212,7 +1429,9 @@ function SelectionBriefingCard({ game }: { game: GameState }) {
 function SeasonContextCard({ game }: { game: GameState }) {
   const record = getSeasonRecord(game.season.results);
   const currentFixture = getCurrentFixture(game.season);
-  const progress = ((game.season.fixtureIndex + 1) / game.season.fixtures.length) * 100;
+  const seasonComplete = isSeasonComplete(game.season);
+  const displayMatch = seasonComplete ? game.season.fixtures.length : game.season.fixtureIndex + 1;
+  const progress = (game.season.results.length / game.season.fixtures.length) * 100;
 
   return (
     <section className="card season-context-card">
@@ -1220,7 +1439,7 @@ function SeasonContextCard({ game }: { game: GameState }) {
         <div>
           <span className="metric-label">Season context</span>
           <h2>
-            Match {game.season.fixtureIndex + 1}/{game.season.fixtures.length}
+            {seasonComplete ? "Season complete" : `Match ${displayMatch}/${game.season.fixtures.length}`}
           </h2>
         </div>
         <BarChart3 size={19} />
@@ -1229,7 +1448,11 @@ function SeasonContextCard({ game }: { game: GameState }) {
       <div className="next-grid">
         <InfoTile label="Record" value={`${record.wins}-${record.draws}-${record.losses}`} tone={record.wins > record.losses ? "good" : undefined} />
         <InfoTile label="Form" value={getRecentFormText(game.season.results)} />
-        <InfoTile label="Next" value={currentFixture.opponentShort} tone={currentFixture.competition.includes("Cup") ? "gold" : undefined} />
+        <InfoTile
+          label={seasonComplete ? "Status" : "Next"}
+          value={seasonComplete ? "Review" : currentFixture.opponentShort}
+          tone={seasonComplete || currentFixture.competition.includes("Cup") ? "gold" : undefined}
+        />
       </div>
     </section>
   );
@@ -1269,7 +1492,7 @@ function Header({ game }: { game: GameState }) {
       </div>
 
       <div className="player-identity">
-        <div className="eyebrow">Week {game.week} - Season 1</div>
+        <div className="eyebrow">Week {game.week} - Season {game.season.season}</div>
         <h1>Jonas Vale</h1>
         <div className="identity-row">
           <span>17 yrs</span>
@@ -1301,10 +1524,17 @@ function ResourcePill({ icon, value }: { icon: ReactNode; value: string }) {
 
 function CareerCard({ game }: { game: GameState }) {
   const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
-  const upcomingMatch = getUpcomingMatch(game);
-  const status = upcomingMatch.selection.role === "Bench" ? "Prospect" : upcomingMatch.selection.role;
-  const nextRoleText = upcomingMatch.selection.nextRole
-    ? `${upcomingMatch.selection.pointsToNextRole} pts to ${upcomingMatch.selection.nextRole}`
+  const seasonComplete = isSeasonComplete(game.season);
+  const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
+  const review = seasonComplete ? getSeasonReview(game) : undefined;
+  const selection = upcomingMatch?.selection ?? review?.selection;
+  const status = seasonComplete
+    ? "Season Review"
+    : upcomingMatch?.selection.role === "Bench"
+      ? "Prospect"
+      : upcomingMatch?.selection.role ?? "Prospect";
+  const nextRoleText = selection?.nextRole
+    ? `${selection.pointsToNextRole} pts to ${selection.nextRole}`
     : "Starter secured";
 
   return (
@@ -1318,9 +1548,9 @@ function CareerCard({ game }: { game: GameState }) {
 
       <div className="career-details">
         <InfoRow label="Squad status" value={status} />
-        <InfoRow label="Expected minutes" value={upcomingMatch.expectedMinutes} />
+        <InfoRow label="Expected minutes" value={upcomingMatch?.expectedMinutes ?? "Off-season"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
-        <ProgressRow label="Selection score" value={upcomingMatch.selection.score} display={`${upcomingMatch.selection.score}/100`} accent="gold" />
+        <ProgressRow label="Selection score" value={selection?.score ?? 0} display={`${selection?.score ?? 0}/100`} accent="gold" />
         <InfoRow label="Next role" value={nextRoleText} />
       </div>
     </section>
@@ -1456,21 +1686,49 @@ function formatSigned(value: number) {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
+function sumXp(xp: Partial<Record<AttributeKey, number>>) {
+  return Object.values(xp).reduce((sum, value) => sum + (value ?? 0), 0);
+}
+
+function getTopXpEntry(xp: Partial<Record<AttributeKey, number>>) {
+  const [attribute, value] = Object.entries(xp)
+    .filter(([, xpValue]) => (xpValue ?? 0) > 0)
+    .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0] ?? [];
+
+  return attribute && value ? { attribute: attribute as AttributeKey, value } : undefined;
+}
+
+function getMoraleLabel(morale: number) {
+  if (morale >= 75) {
+    return "Happy";
+  }
+  if (morale >= 55) {
+    return "Stable";
+  }
+  if (morale >= 40) {
+    return "Low";
+  }
+  return "Frustrated";
+}
+
 function NextActionCard({ game }: { game: GameState }) {
+  const seasonComplete = isSeasonComplete(game.season);
   const isMatchDay = hasPlayableFixture(game.season);
-  const needsTraining = game.trainingCompletedWeek !== game.week;
+  const needsTraining = game.trainingCompletedWeek !== game.week && !seasonComplete;
   const focus = getCurrentTrainingFocuses(game)[0];
   const projection = getTrainingProjection(game);
-  const upcomingMatch = getUpcomingMatch(game);
+  const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
   const focusRange = projection.ranges[focus];
 
   return (
     <section className="card next-card">
       <div className="section-heading">
         <div>
-          <span className="metric-label">{!needsTraining && isMatchDay ? "Match Day" : "Next Action"}</span>
+          <span className="metric-label">{seasonComplete ? "Season complete" : !needsTraining && isMatchDay ? "Match Day" : "Next Action"}</span>
           <h2>
-            {!needsTraining && isMatchDay
+            {seasonComplete
+              ? "Review season"
+              : !needsTraining && isMatchDay && upcomingMatch
               ? formatFixtureTitle(upcomingMatch.venue, upcomingMatch.opponentShort)
               : needsTraining
                 ? "Complete weekly training"
@@ -1481,11 +1739,19 @@ function NextActionCard({ game }: { game: GameState }) {
       </div>
 
       <div className="next-grid">
-        <InfoTile label="Role" value={!needsTraining && isMatchDay ? upcomingMatch.playerRole : "Prospect"} />
-        <InfoTile label="Focus" value={!needsTraining && isMatchDay ? upcomingMatch.tacticalFocus : focus} />
+        <InfoTile label="Role" value={!needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.playerRole : seasonComplete ? "Review" : "Prospect"} />
+        <InfoTile label="Focus" value={!needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.tacticalFocus : seasonComplete ? "Season" : focus} />
         <InfoTile
-          label={needsTraining ? "XP Range" : "Status"}
-          value={needsTraining && focusRange ? `${focusRange.min}-${focusRange.max}` : !needsTraining && isMatchDay ? upcomingMatch.matchImportance : "Trained"}
+          label={needsTraining ? "XP Range" : seasonComplete ? "Reward" : "Status"}
+          value={
+            needsTraining && focusRange
+              ? `${focusRange.min}-${focusRange.max}`
+              : seasonComplete
+                ? `+$${getSeasonReview(game).cashReward}`
+                : !needsTraining && isMatchDay && upcomingMatch
+                  ? upcomingMatch.matchImportance
+                  : "Trained"
+          }
           tone={needsTraining ? "good" : undefined}
         />
       </div>
@@ -1493,7 +1759,9 @@ function NextActionCard({ game }: { game: GameState }) {
       <div className="match-hint">
         <Activity size={16} />
         <span>
-          {!needsTraining && isMatchDay
+          {seasonComplete
+            ? "Season is complete. Review the campaign and start the next one."
+            : !needsTraining && isMatchDay && upcomingMatch
             ? `${upcomingMatch.competition}. ${upcomingMatch.selection.summary}`
             : game.lastEvent}
         </span>
@@ -1637,18 +1905,37 @@ function RelationshipsCard({ game }: { game: GameState }) {
 
 function ContractMarketCard({ game }: { game: GameState }) {
   const marketValue = 18 + Math.round((calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights) - 50) * 2.5) + game.seasonStats.goals * 2;
+  const contract = game.contract;
 
   return (
-    <section className="card split-card">
-      <div>
-        <span className="metric-label">Contract</span>
-        <h2>$120/wk</h2>
-        <p>18 months left</p>
+    <section className="card contract-card">
+      <div className="section-heading">
+        <div>
+          <span className="metric-label">Contract</span>
+          <h2>{contract.label}</h2>
+        </div>
+        <BadgeDollarSign size={19} />
       </div>
-      <div>
-        <span className="metric-label">Market</span>
-        <h2>${marketValue}k</h2>
-        <p>{game.prestige > 20 ? "Regional interest" : "Local interest"}</p>
+      <div className="contract-hero">
+        <div>
+          <span>Weekly wage</span>
+          <strong>${contract.weeklyWage}</strong>
+        </div>
+        <div>
+          <span>Role promise</span>
+          <strong>{contract.rolePromise}</strong>
+        </div>
+      </div>
+      <div className="next-grid">
+        <InfoTile label="Left" value={`${contract.weeksRemaining} wks`} />
+        <InfoTile label="Goal bonus" value={`+$${contract.goalBonus}`} tone="gold" />
+        <InfoTile label="Market" value={`$${marketValue}k`} />
+      </div>
+      <div className="match-hint">
+        <Activity size={16} />
+        <span>
+          {game.prestige > 20 ? "Regional interest is building." : "Local interest. Strong output can improve the next package."}
+        </span>
       </div>
     </section>
   );
@@ -2253,16 +2540,6 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
       </div>
 
       <div className="card">
-        <span className="metric-label">Progress gained</span>
-        <div className="stat-grid">
-          <InfoTile label="Trust" value={`${summary.trustDelta > 0 ? "+" : ""}${summary.trustDelta}`} />
-          <InfoTile label="Fitness" value={`${summary.fitnessDelta}`} tone="warn" />
-          <InfoTile label="Cash" value={`+$${summary.cashDelta}`} tone="good" />
-          <InfoTile label="Prestige" value={`+${summary.prestigeDelta}`} tone="gold" />
-        </div>
-      </div>
-
-      <div className="card">
         <div className="section-heading">
           <div>
             <span className="metric-label">Development XP</span>
@@ -2292,6 +2569,220 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
         </div>
       </div>
 
+    </section>
+  );
+}
+
+function WeekSummaryScreen({ game }: { game: GameState }) {
+  const match = game.lastMatch;
+  const training = game.lastTraining;
+  const record = getSeasonRecord(game.season.results);
+  const seasonComplete = isSeasonComplete(game.season);
+  const nextFixture = seasonComplete ? undefined : getCurrentFixture(game.season);
+  const trainingXp = training ? sumXp(training.xp) : 0;
+  const matchXp = match ? sumXp(match.xp) : 0;
+  const topTraining = training ? getTopXpEntry(training.xp) : undefined;
+  const topMatch = match ? getTopXpEntry(match.xp) : undefined;
+  const weekNumber = training?.week ?? Math.max(1, game.week - 1);
+
+  return (
+    <section className="simple-screen week-summary-screen">
+      <ScreenTitle label={`Week ${weekNumber} complete`} title="Week Summary" />
+
+      <div className="card week-summary-hero">
+        <div>
+          <span className="metric-label">Net cash</span>
+          <h2>+${match?.cashDelta ?? 0}</h2>
+          <p>
+            Wage ${match?.weeklyWage ?? game.contract.weeklyWage}
+            {match ? ` + bonuses $${match.cashDelta - match.weeklyWage}` : ""}
+          </p>
+        </div>
+        <div>
+          <span className="metric-label">Balance</span>
+          <strong>${game.cash}</strong>
+          <small>{game.contract.label}</small>
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Economy</span>
+        <div className="stat-grid">
+          <InfoTile label="Wage" value={`+$${match?.weeklyWage ?? 0}`} tone="good" />
+          <InfoTile label="Appearance" value={`+$${match?.appearanceBonus ?? 0}`} />
+          <InfoTile label="Goals" value={`+$${match?.goalBonus ?? 0}`} tone={(match?.goalBonus ?? 0) > 0 ? "gold" : undefined} />
+          <InfoTile label="Assists" value={`+$${match?.assistBonus ?? 0}`} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Development</span>
+            <h2>{trainingXp + matchXp} XP gained</h2>
+          </div>
+          <Dumbbell size={19} />
+        </div>
+        <div className="next-grid">
+          <InfoTile label="Training XP" value={`+${trainingXp}`} tone={trainingXp > 0 ? "good" : undefined} />
+          <InfoTile label="Match XP" value={`+${matchXp}`} tone={matchXp > 0 ? "good" : undefined} />
+          <InfoTile label="Level-ups" value={`${training?.levelUps.length ?? 0}`} tone={(training?.levelUps.length ?? 0) > 0 ? "gold" : undefined} />
+        </div>
+        <div className="week-note-list">
+          {topTraining && <WeekNote icon={<Dumbbell size={14} />} text={`Training focus: ${topTraining.attribute} +${topTraining.value} XP`} />}
+          {topMatch && <WeekNote icon={<Activity size={14} />} text={`Match development: ${topMatch.attribute} +${topMatch.value} XP`} />}
+          {!topTraining && !topMatch && <WeekNote icon={<Activity size={14} />} text="No major development gains this week." />}
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Career movement</span>
+        <div className="stat-grid">
+          <InfoTile label="Rating" value={match ? match.rating.toFixed(1) : "-"} tone={match && match.rating >= 7 ? "gold" : undefined} />
+          <InfoTile label="Selection" value={match ? `${match.selectionBefore} -> ${match.selectionAfter}` : "-"} tone={match && match.selectionAfter > match.selectionBefore ? "good" : undefined} />
+          <InfoTile label="Trust" value={match ? formatSigned(match.trustDelta) : "0"} />
+          <InfoTile label="Prestige" value={match ? `+${match.prestigeDelta}` : "0"} tone="gold" />
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Condition</span>
+        <div className="stat-grid">
+          <InfoTile label="Fitness" value={`${Math.round(game.fitness)}%`} tone={game.fitness < 58 ? "warn" : game.fitness >= 75 ? "good" : undefined} />
+          <InfoTile label="Training" value={training ? formatSigned(training.fitnessDelta) : "0"} tone={(training?.fitnessDelta ?? 0) < 0 ? "warn" : "good"} />
+          <InfoTile label="Match" value={match ? formatSigned(match.fitnessDelta) : "0"} tone={(match?.fitnessDelta ?? 0) < 0 ? "warn" : "good"} />
+          <InfoTile label="Morale" value={getMoraleLabel(game.morale)} tone={game.morale >= 70 ? "good" : game.morale < 45 ? "warn" : undefined} />
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Season</span>
+        <div className="next-grid">
+          <InfoTile label="Result" value={match ? `${match.teamGoals}-${match.opponentGoals}` : "-"} tone={match && match.teamGoals > match.opponentGoals ? "good" : undefined} />
+          <InfoTile label="Record" value={`${record.wins}-${record.draws}-${record.losses}`} />
+          <InfoTile label={seasonComplete ? "Status" : "Next"} value={seasonComplete ? "Review" : nextFixture?.opponentShort ?? "-"} tone={seasonComplete ? "gold" : undefined} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WeekNote({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="week-note">
+      {icon}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function SeasonReviewScreen({ game }: { game: GameState }) {
+  const review = getSeasonReview(game);
+  const contractOffer = getSeasonContractOffer(game, review);
+  const stats = game.seasonStats;
+  const goals = getSeasonGoals(game.season.results);
+  const goalDifference = goals.for - goals.against;
+
+  return (
+    <section className="simple-screen season-review-screen">
+      <ScreenTitle label={`Season ${game.season.season} complete`} title="Season Review" />
+
+      <div className="card season-review-hero">
+        <div>
+          <span className="metric-label">Northbridge FC</span>
+          <h2>{review.tablePosition}. place</h2>
+          <p>
+            {review.record.wins}-{review.record.draws}-{review.record.losses}, {review.record.points} pts
+          </p>
+        </div>
+        <div className="season-review-badge">
+          <Trophy size={20} />
+          <strong>{review.verdict.grade}</strong>
+          <span>{review.verdict.title}</span>
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Club campaign</span>
+        <div className="stat-grid">
+          <InfoTile label="Played" value={`${game.season.results.length}/${game.season.fixtures.length}`} />
+          <InfoTile label="Goals" value={`${goals.for}-${goals.against}`} tone={goalDifference >= 0 ? "good" : "warn"} />
+          <InfoTile label="GD" value={`${goalDifference > 0 ? "+" : ""}${goalDifference}`} />
+          <InfoTile label="Form" value={getRecentFormText(game.season.results)} tone={review.record.wins >= review.record.losses ? "good" : undefined} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Player season</span>
+            <h2>{stats.apps} appearances</h2>
+          </div>
+          <UserRound size={19} />
+        </div>
+        <div className="stat-grid">
+          <InfoTile label="Starts" value={`${stats.starts}`} />
+          <InfoTile label="Goals" value={`${stats.goals}`} tone={stats.goals > 0 ? "gold" : undefined} />
+          <InfoTile label="Assists" value={`${stats.assists}`} />
+          <InfoTile label="Avg rating" value={review.averageRating.toFixed(1)} tone={review.averageRating >= 6.8 ? "good" : undefined} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Manager verdict</span>
+            <h2>{review.verdict.title}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <p>{review.verdict.copy}</p>
+        <div className="next-grid">
+          <InfoTile label="Role" value={review.selection.role} />
+          <InfoTile label="Selection" value={`${review.selection.score}/100`} tone={review.selection.score >= 55 ? "good" : undefined} />
+          <InfoTile label="Next role" value={review.selection.nextRole ? `${review.selection.pointsToNextRole} pts` : "Secured"} />
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Season rewards</span>
+        <div className="next-grid">
+          <InfoTile label="Cash" value={`+$${review.cashReward}`} tone="good" />
+          <InfoTile label="Prestige" value={`+${review.prestigeReward}`} tone="gold" />
+          <InfoTile label="Interest" value={review.marketInterest} />
+        </div>
+        <div className="match-hint">
+          <Sparkles size={16} />
+          <span>{review.contractOutlook}</span>
+        </div>
+      </div>
+
+      <div className="card contract-offer-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Contract package</span>
+            <h2>{contractOffer.title}</h2>
+          </div>
+          <BadgeDollarSign size={19} />
+        </div>
+        <div className="contract-hero">
+          <div>
+            <span>Weekly wage</span>
+            <strong>${contractOffer.weeklyWage}</strong>
+          </div>
+          <div>
+            <span>Role promise</span>
+            <strong>{contractOffer.rolePromise}</strong>
+          </div>
+        </div>
+        <div className="stat-grid">
+          <InfoTile label="Length" value={`${contractOffer.weeks} wks`} />
+          <InfoTile label="Signing" value={`+$${contractOffer.signingBonus}`} tone="good" />
+          <InfoTile label="Goal" value={`+$${contractOffer.goalBonus}`} tone="gold" />
+          <InfoTile label="Assist" value={`+$${contractOffer.assistBonus}`} />
+        </div>
+        <p>{contractOffer.summary}</p>
+      </div>
     </section>
   );
 }
@@ -2414,8 +2905,9 @@ function TrainingSummaryScreen({
 
 function ClubScreen({ game }: { game: GameState }) {
   const [clubView, setClubView] = useState<ClubView>("overview");
-  const upcomingMatch = getUpcomingMatch(game);
-  const strengthGap = upcomingMatch.teamStrength - upcomingMatch.opponentStrength;
+  const seasonComplete = isSeasonComplete(game.season);
+  const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
+  const strengthGap = upcomingMatch ? upcomingMatch.teamStrength - upcomingMatch.opponentStrength : 0;
   const outlook = strengthGap >= 4 ? "Favorable" : strengthGap <= -4 ? "Difficult" : "Balanced";
   const record = getSeasonRecord(game.season.results);
   const goals = getSeasonGoals(game.season.results);
@@ -2434,7 +2926,7 @@ function ClubScreen({ game }: { game: GameState }) {
       <ScreenTitle label="Club" title="Northbridge FC" />
       <div className="card">
         <InfoRow label="League tier" value="Regional" />
-        <InfoRow label="Squad role" value={upcomingMatch.playerRole} />
+        <InfoRow label="Squad role" value={upcomingMatch?.playerRole ?? "Season Review"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
         <ProgressRow label="Team form" value={getTeamFormScore(game.season.results)} display={getRecentFormText(game.season.results)} accent="neutral" />
       </div>
@@ -2476,56 +2968,60 @@ function ClubScreen({ game }: { game: GameState }) {
       </button>
       <div className="card split-card">
         <div>
-          <span className="metric-label">Next match</span>
-          <h2>{upcomingMatch.opponentShort}</h2>
-          <p>{upcomingMatch.venue} - {upcomingMatch.competition}</p>
+          <span className="metric-label">{seasonComplete ? "Status" : "Next match"}</span>
+          <h2>{upcomingMatch?.opponentShort ?? "Season complete"}</h2>
+          <p>{upcomingMatch ? `${upcomingMatch.venue} - ${upcomingMatch.competition}` : "Review and start next season"}</p>
         </div>
         <div>
           <span className="metric-label">Role</span>
-          <h2>{upcomingMatch.playerRole}</h2>
-          <p>{upcomingMatch.expectedMinutes}</p>
+          <h2>{upcomingMatch?.playerRole ?? "Off-season"}</h2>
+          <p>{upcomingMatch?.expectedMinutes ?? "No match plan"}</p>
         </div>
       </div>
-      <div className="card selection-card">
-        <div className="section-heading">
-          <div>
-            <span className="metric-label">Selection logic</span>
-            <h2>{upcomingMatch.selection.score}/100</h2>
-          </div>
-          <ShieldCheck size={19} />
-        </div>
-        <ProgressBar value={upcomingMatch.selection.score} />
-        <div className="selection-factor-grid">
-          {upcomingMatch.selection.factors.slice(0, 4).map((factor) => (
-            <div className={`selection-factor tone-${factor.tone}`} key={factor.label}>
-              <span>{factor.label}</span>
-              <strong>{factor.value}</strong>
-              <em>
-                {factor.impact > 0 ? "+" : ""}
-                {factor.impact}
-              </em>
+      {upcomingMatch && (
+        <div className="card selection-card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Selection logic</span>
+              <h2>{upcomingMatch.selection.score}/100</h2>
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="card">
-        <div className="section-heading">
-          <div>
-            <span className="metric-label">Match plan</span>
-            <h2>{upcomingMatch.tacticalFocus}</h2>
+            <ShieldCheck size={19} />
           </div>
-          <CalendarDays size={19} />
+          <ProgressBar value={upcomingMatch.selection.score} />
+          <div className="selection-factor-grid">
+            {upcomingMatch.selection.factors.slice(0, 4).map((factor) => (
+              <div className={`selection-factor tone-${factor.tone}`} key={factor.label}>
+                <span>{factor.label}</span>
+                <strong>{factor.value}</strong>
+                <em>
+                  {factor.impact > 0 ? "+" : ""}
+                  {factor.impact}
+                </em>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="next-grid">
-          <InfoTile label="Outlook" value={outlook} tone={outlook === "Favorable" ? "good" : outlook === "Difficult" ? "warn" : undefined} />
-          <InfoTile label="Opp. form" value={upcomingMatch.opponentForm} />
-          <InfoTile label="Service" value={upcomingMatch.serviceLevel} />
+      )}
+      {upcomingMatch && (
+        <div className="card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Match plan</span>
+              <h2>{upcomingMatch.tacticalFocus}</h2>
+            </div>
+            <CalendarDays size={19} />
+          </div>
+          <div className="next-grid">
+            <InfoTile label="Outlook" value={outlook} tone={outlook === "Favorable" ? "good" : outlook === "Difficult" ? "warn" : undefined} />
+            <InfoTile label="Opp. form" value={upcomingMatch.opponentForm} />
+            <InfoTile label="Service" value={upcomingMatch.serviceLevel} />
+          </div>
+          <div className="match-hint">
+            <Activity size={16} />
+            <span>{upcomingMatch.managerInstruction}</span>
+          </div>
         </div>
-        <div className="match-hint">
-          <Activity size={16} />
-          <span>{upcomingMatch.managerInstruction}</span>
-        </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -2673,57 +3169,249 @@ function LeagueTableRowView({ row, compact = false }: { row: LeagueTableRow; com
 function HomeScreen({
   game,
   saveStatus,
+  onBuySupportUpgrade,
   onResetCareer,
 }: {
   game: GameState;
   saveStatus: "saved" | "unsaved";
+  onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
   onResetCareer: () => void;
 }) {
+  const [homeView, setHomeView] = useState<HomeView>("base");
+  const currentSnapshot = createDynastySeasonSnapshot(game);
+  const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
+
   return (
     <section className="simple-screen">
       <ScreenTitle label="Home" title="Private base" />
+
+      <div className="subtab-control" role="tablist" aria-label="Home sections">
+        <button className={homeView === "base" ? "is-active" : ""} type="button" onClick={() => setHomeView("base")}>
+          Base
+        </button>
+        <button className={homeView === "support" ? "is-active" : ""} type="button" onClick={() => setHomeView("support")}>
+          Support
+        </button>
+        <button className={homeView === "dynasty" ? "is-active" : ""} type="button" onClick={() => setHomeView("dynasty")}>
+          Dynasty
+        </button>
+      </div>
+
+      {homeView === "base" ? (
+        <>
+          <div className="card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Facility</span>
+                <h2>Backyard pitch</h2>
+              </div>
+              <Home size={19} />
+            </div>
+            <ProgressRow label="Technical XP" value={10} display="+10%" accent="lime" />
+            <ProgressRow label="Recovery support" value={6} display="+6%" accent="gold" />
+          </div>
+          <div className="card split-card">
+            <div>
+              <span className="metric-label">Legacy</span>
+              <h2>Gen 1</h2>
+              <p>No heir yet</p>
+            </div>
+            <div>
+              <span className="metric-label">Prestige</span>
+              <h2>{game.prestige}</h2>
+              <p>Local name</p>
+            </div>
+          </div>
+          <div className="card save-card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Career save</span>
+                <h2>{saveStatus === "saved" ? "Saved locally" : "Match in progress"}</h2>
+              </div>
+              <ShieldCheck size={19} />
+            </div>
+            <p>
+              {saveStatus === "saved"
+                ? "Career progress is stored on this device."
+                : "Finish the current match to save the latest result."}
+            </p>
+            <button className="danger-action" type="button" onClick={onResetCareer}>
+              New Career
+            </button>
+          </div>
+        </>
+      ) : homeView === "support" ? (
+        <SupportShopView game={game} onBuySupportUpgrade={onBuySupportUpgrade} />
+      ) : (
+        <>
+          <div className="card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Dynasty record</span>
+                <h2>{game.dynastyHistory.length} completed seasons</h2>
+              </div>
+              <Trophy size={19} />
+            </div>
+            <div className="stat-grid">
+              <InfoTile label="Apps" value={`${careerTotals.apps}`} />
+              <InfoTile label="Goals" value={`${careerTotals.goals}`} tone={careerTotals.goals > 0 ? "gold" : undefined} />
+              <InfoTile label="Assists" value={`${careerTotals.assists}`} />
+              <InfoTile label="Avg rating" value={careerTotals.averageRating.toFixed(1)} tone={careerTotals.averageRating >= 6.8 ? "good" : undefined} />
+            </div>
+          </div>
+
+          <div className="card dynasty-card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Season history</span>
+                <h2>Jonas Vale</h2>
+              </div>
+              <BarChart3 size={19} />
+            </div>
+            <div className="dynasty-list">
+              {[...game.dynastyHistory].reverse().map((season) => (
+                <DynastySeasonRow key={season.season} season={season} />
+              ))}
+              <DynastySeasonRow current season={currentSnapshot} />
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function SupportShopView({
+  game,
+  onBuySupportUpgrade,
+}: {
+  game: GameState;
+  onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
+}) {
+  const totalLevels = getSupportUpgradeTotal(game);
+
+  return (
+    <>
       <div className="card">
         <div className="section-heading">
           <div>
-            <span className="metric-label">Facility</span>
-            <h2>Backyard pitch</h2>
+            <span className="metric-label">In-run economy</span>
+            <h2>Player support</h2>
           </div>
-          <Home size={19} />
+          <BadgeDollarSign size={19} />
         </div>
-        <ProgressRow label="Technical XP" value={10} display="+10%" accent="lime" />
-        <ProgressRow label="Recovery support" value={6} display="+6%" accent="gold" />
-      </div>
-      <div className="card split-card">
-        <div>
-          <span className="metric-label">Legacy</span>
-          <h2>Gen 1</h2>
-          <p>No heir yet</p>
+        <div className="next-grid">
+          <InfoTile label="Cash" value={`$${game.cash}`} tone="good" />
+          <InfoTile label="Owned levels" value={`${totalLevels}`} />
+          <InfoTile label="Scope" value="Current run" />
         </div>
-        <div>
-          <span className="metric-label">Prestige</span>
-          <h2>{game.prestige}</h2>
-          <p>Local name</p>
+        <div className="match-hint">
+          <Activity size={16} />
+          <span>Cash upgrades help this player now and do not become permanent dynasty power.</span>
         </div>
       </div>
-      <div className="card save-card">
-        <div className="section-heading">
-          <div>
-            <span className="metric-label">Career save</span>
-            <h2>{saveStatus === "saved" ? "Saved locally" : "Match in progress"}</h2>
-          </div>
-          <ShieldCheck size={19} />
+
+      <div className="support-shop-list">
+        {supportUpgradeDefinitions.map((upgrade) => (
+          <SupportUpgradeCard
+            key={upgrade.id}
+            cash={game.cash}
+            level={game.supportUpgrades[upgrade.id] ?? 0}
+            upgrade={upgrade}
+            onBuy={() => onBuySupportUpgrade(upgrade.id)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SupportUpgradeCard({
+  cash,
+  level,
+  upgrade,
+  onBuy,
+}: {
+  cash: number;
+  level: number;
+  upgrade: SupportUpgradeDefinition;
+  onBuy: () => void;
+}) {
+  const maxed = level >= upgrade.maxLevel;
+  const cost = getSupportUpgradeCost(upgrade, level);
+  const canBuy = !maxed && cash >= cost;
+
+  return (
+    <div className={`card support-upgrade-card ${maxed ? "is-maxed" : ""}`}>
+      <div className="support-upgrade-top">
+        <div>
+          <span className="metric-label">{upgrade.category}</span>
+          <h2>{upgrade.name}</h2>
         </div>
-        <p>
-          {saveStatus === "saved"
-            ? "Career progress is stored on this device."
-            : "Finish the current match to save the latest result."}
-        </p>
-        <button className="danger-action" type="button" onClick={onResetCareer}>
-          New Career
+        <div className="support-level-pill">
+          Lv {level}/{upgrade.maxLevel}
+        </div>
+      </div>
+      <p>{upgrade.effect}</p>
+      <div className="support-upgrade-footer">
+        <span>{maxed ? "Max level reached" : `$${cost}`}</span>
+        <button type="button" disabled={!canBuy} onClick={onBuy}>
+          {maxed ? "Owned" : canBuy ? "Buy" : "Need cash"}
         </button>
       </div>
-    </section>
+    </div>
   );
+}
+
+function DynastySeasonRow({ season, current = false }: { season: DynastySeason; current?: boolean }) {
+  return (
+    <div className={`dynasty-row ${current ? "is-current" : ""}`}>
+      <div className="dynasty-season-main">
+        <span>S{season.season}</span>
+        <div>
+          <strong>{season.club}</strong>
+          <small>{current ? "Current season" : `${season.leaguePosition}. place - ${season.record}`}</small>
+        </div>
+      </div>
+      <div className="dynasty-stats">
+        <span>
+          <small>Apps</small>
+          <b>{season.apps}</b>
+        </span>
+        <span>
+          <small>G</small>
+          <b>{season.goals}</b>
+        </span>
+        <span>
+          <small>A</small>
+          <b>{season.assists}</b>
+        </span>
+        <span>
+          <small>AvR</small>
+          <b>{season.averageRating.toFixed(1)}</b>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function getDynastyTotals(seasons: DynastySeason[]) {
+  const totals = seasons.reduce(
+    (sum, season) => ({
+      apps: sum.apps + season.apps,
+      goals: sum.goals + season.goals,
+      assists: sum.assists + season.assists,
+      ratingWeightedSum: sum.ratingWeightedSum + season.averageRating * season.apps,
+    }),
+    { apps: 0, goals: 0, assists: 0, ratingWeightedSum: 0 },
+  );
+
+  return {
+    apps: totals.apps,
+    goals: totals.goals,
+    assists: totals.assists,
+    averageRating: totals.apps > 0 ? totals.ratingWeightedSum / totals.apps : 6.4,
+  };
 }
 
 function ScreenTitle({ label, title }: { label: string; title: string }) {
@@ -2892,6 +3580,46 @@ function NavButton({
   );
 }
 
+function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgradeId): GameState {
+  const upgrade = supportUpgradeDefinitions.find((item) => item.id === upgradeId);
+  if (!upgrade) {
+    return state;
+  }
+
+  const currentLevel = state.supportUpgrades[upgradeId] ?? 0;
+  if (currentLevel >= upgrade.maxLevel) {
+    return state;
+  }
+
+  const cost = getSupportUpgradeCost(upgrade, currentLevel);
+  if (state.cash < cost) {
+    return state;
+  }
+
+  const nextLevel = currentLevel + 1;
+  return {
+    ...state,
+    cash: state.cash - cost,
+    supportUpgrades: {
+      ...state.supportUpgrades,
+      [upgradeId]: nextLevel,
+    },
+    lastEvent: `${upgrade.name} upgraded to level ${nextLevel}.`,
+  };
+}
+
+function getSupportUpgradeCost(upgrade: SupportUpgradeDefinition, currentLevel: number) {
+  return Math.round(upgrade.baseCost * (1 + currentLevel * 0.72));
+}
+
+function getSupportUpgradeTotal(state: GameState) {
+  return Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0);
+}
+
+function getSupportLevel(state: GameState, upgradeId: SupportUpgradeId) {
+  return state.supportUpgrades[upgradeId] ?? 0;
+}
+
 function applyTrainingWeek(state: GameState): GameState {
   const projection = getTrainingProjection(state);
   const rolledXp = rollTrainingXp(state, projection.ranges, createTrainingSeed(state));
@@ -2986,7 +3714,8 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const totals = summarizeMatchResults(results, simTotals);
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const moraleDelta = totals.rating >= 7 ? 3 : -2;
-  const cashDelta = 120 + totals.goals * 40 + totals.assists * 25;
+  const contractEarnings = getMatchContractEarnings(state.contract, totals, Boolean(match));
+  const cashDelta = contractEarnings.total;
   const prestigeDelta = Math.max(0, Math.round((totals.rating - 6) * 2));
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season));
   const postMatchState = {
@@ -3008,6 +3737,10 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
         results,
         totals,
         cashDelta,
+        weeklyWage: contractEarnings.weeklyWage,
+        appearanceBonus: contractEarnings.appearanceBonus,
+        goalBonus: contractEarnings.goalBonus,
+        assistBonus: contractEarnings.assistBonus,
         prestigeDelta,
         moraleDelta,
         roleBefore,
@@ -3030,6 +3763,7 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     pressure: clamp(state.pressure + totals.goals * 2, 0, 100),
     cash: state.cash + cashDelta,
     prestige: state.prestige + prestigeDelta,
+    contract: advanceContractWeek(state.contract),
     attributes: addAttributeXp(state.attributes, totals.xp),
     seasonStats: {
       apps: state.seasonStats.apps + 1,
@@ -3045,6 +3779,134 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     lastMatch,
     activeMatch: undefined,
   };
+}
+
+function startNextSeasonState(state: GameState): GameState {
+  const review = getSeasonReview(state);
+  const contractOffer = getSeasonContractOffer(state, review);
+  const dynastySeason = createDynastySeasonSnapshot(state, review);
+  const nextWeek = state.week + 1;
+  const nextSeason = state.season.season + 1;
+
+  return {
+    ...state,
+    week: nextWeek,
+    cash: state.cash + review.cashReward + contractOffer.signingBonus,
+    prestige: state.prestige + review.prestigeReward,
+    contract: contractFromOffer(contractOffer),
+    trainingCompletedWeek: nextWeek - 1,
+    seasonStats: {
+      apps: 0,
+      starts: 0,
+      goals: 0,
+      assists: 0,
+      ratings: [],
+    },
+    season: {
+      season: nextSeason,
+      fixtureIndex: 0,
+      fixtures: seasonFixtures,
+      results: [],
+    },
+    dynastyHistory: [...state.dynastyHistory, dynastySeason],
+    lastTraining: undefined,
+    activeMatch: undefined,
+    lastEvent: `Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`,
+  };
+}
+
+function createDynastySeasonSnapshot(state: GameState, review = getSeasonReview(state)): DynastySeason {
+  return {
+    season: state.season.season,
+    club: "Northbridge FC",
+    leaguePosition: review.tablePosition,
+    record: `${review.record.wins}-${review.record.draws}-${review.record.losses}`,
+    apps: state.seasonStats.apps,
+    starts: state.seasonStats.starts,
+    goals: state.seasonStats.goals,
+    assists: state.seasonStats.assists,
+    averageRating: Number(review.averageRating.toFixed(1)),
+  };
+}
+
+function getMatchContractEarnings(contract: Contract, totals: Pick<MatchTotals, "goals" | "assists">, madeSquad: boolean) {
+  const appearanceBonus = madeSquad ? contract.appearanceBonus : 0;
+  const goalBonus = totals.goals * contract.goalBonus;
+  const assistBonus = totals.assists * contract.assistBonus;
+  const weeklyWage = contract.weeklyWage;
+
+  return {
+    weeklyWage,
+    appearanceBonus,
+    goalBonus,
+    assistBonus,
+    total: weeklyWage + appearanceBonus + goalBonus + assistBonus,
+  };
+}
+
+function advanceContractWeek(contract: Contract): Contract {
+  return {
+    ...contract,
+    weeksRemaining: Math.max(0, contract.weeksRemaining - 1),
+  };
+}
+
+function contractFromOffer(offer: ContractOffer): Contract {
+  return {
+    club: offer.club,
+    label: offer.label,
+    weeklyWage: offer.weeklyWage,
+    weeksRemaining: offer.weeks,
+    rolePromise: offer.rolePromise,
+    appearanceBonus: offer.appearanceBonus,
+    goalBonus: offer.goalBonus,
+    assistBonus: offer.assistBonus,
+    pressureModifier: offer.pressureModifier,
+  };
+}
+
+function getSeasonContractOffer(game: GameState, review = getSeasonReview(game)): ContractOffer {
+  const current = game.contract;
+  const agentLevel = getSupportLevel(game, "agent");
+  const rolePromise = getPromisedRole(review.selection.score, current.rolePromise);
+  const performanceWage = 90 + review.selection.score * 3 + Math.max(0, review.averageRating - 6.2) * 90 + game.seasonStats.goals * 14 + game.seasonStats.assists * 9;
+  const weeklyWage = roundToNearest(Math.max(current.weeklyWage, performanceWage) * (1 + agentLevel * 0.04), 10);
+  const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
+  const title = weeklyWage > current.weeklyWage || rolePromise !== current.rolePromise ? "Improved terms" : "Contract extended";
+
+  return {
+    club: current.club,
+    label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Development deal",
+    title,
+    weeklyWage,
+    weeks: 12,
+    rolePromise,
+    appearanceBonus: roundToNearest(18 + weeklyWage * 0.16, 5),
+    goalBonus: roundToNearest(30 + weeklyWage * 0.28, 5),
+    assistBonus: roundToNearest(22 + weeklyWage * 0.22, 5),
+    signingBonus: roundToNearest(weeklyWage * (review.verdict.grade === "A" ? 2.2 : review.verdict.grade === "B" ? 1.5 : 0.8) * (1 + agentLevel * 0.08), 10),
+    pressureModifier,
+    summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
+  };
+}
+
+function getPromisedRole(selectionScore: number, currentRole: MatchRole): MatchRole {
+  const earnedRole = getPlayerMatchRole(selectionScore);
+  return getRoleThreshold(earnedRole) >= getRoleThreshold(currentRole) ? earnedRole : currentRole;
+}
+
+function getContractOfferSummary(rolePromise: MatchRole, weeklyWage: number, currentWage: number) {
+  if (weeklyWage > currentWage && rolePromise === "Starter") {
+    return "The club is ready to treat you as a first-team player, with pressure to match.";
+  }
+  if (weeklyWage > currentWage) {
+    return "Your season earned a better weekly wage and stronger match bonuses.";
+  }
+  return "The club keeps you on the pathway, but wants another season before a bigger promise.";
+}
+
+function roundToNearest(value: number, step: number) {
+  return Math.round(value / step) * step;
 }
 
 function createFixtureResult(match: MatchState, totals: MatchTotals): FixtureResult {
@@ -3082,11 +3944,19 @@ function hasPlayableFixture(season: SeasonState) {
   return !!fixture && !season.results.some((result) => result.fixtureId === fixture.id);
 }
 
+function isSeasonComplete(season: SeasonState) {
+  return season.fixtures.length > 0 && season.results.length >= season.fixtures.length;
+}
+
 function buildLastMatchSummary({
   match,
   results,
   totals,
   cashDelta,
+  weeklyWage,
+  appearanceBonus,
+  goalBonus,
+  assistBonus,
   prestigeDelta,
   moraleDelta,
   roleBefore,
@@ -3099,6 +3969,10 @@ function buildLastMatchSummary({
   results: MatchResult[];
   totals: MatchTotals;
   cashDelta: number;
+  weeklyWage: number;
+  appearanceBonus: number;
+  goalBonus: number;
+  assistBonus: number;
   prestigeDelta: number;
   moraleDelta: number;
   roleBefore: UpcomingMatch["playerRole"];
@@ -3120,6 +3994,10 @@ function buildLastMatchSummary({
     autoSimulated: results.filter((result) => result.source === "auto").length,
     manualHighlights: results.filter((result) => result.source !== "auto").length,
     cashDelta,
+    weeklyWage,
+    appearanceBonus,
+    goalBonus,
+    assistBonus,
     prestigeDelta,
     moraleDelta,
     roleBefore,
@@ -3666,6 +4544,98 @@ function getLeagueTable(season: SeasonState): LeagueTableRow[] {
     .map((row, index) => ({ ...row, position: index + 1 }));
 }
 
+function getSeasonReview(game: GameState) {
+  const record = getSeasonRecord(game.season.results);
+  const goals = getSeasonGoals(game.season.results);
+  const table = getLeagueTable(game.season);
+  const northbridge = table.find((row) => row.short === "NBR");
+  const averageRating = getAverageRating(game.seasonStats.ratings);
+  const selection = getSelectionReport(game, getCurrentFixture(game.season));
+  const goalDifference = goals.for - goals.against;
+  const outputBonus = game.seasonStats.goals * 45 + game.seasonStats.assists * 30;
+  const ratingBonus = Math.max(0, Math.round((averageRating - 6.3) * 120));
+  const tableBonus = Math.max(0, 9 - (northbridge?.position ?? 8)) * 15;
+  const cashReward = 180 + game.seasonStats.apps * 25 + outputBonus + ratingBonus + tableBonus;
+  const prestigeReward = Math.max(
+    1,
+    Math.round(
+      game.seasonStats.goals * 0.8 +
+        game.seasonStats.assists * 0.6 +
+        Math.max(0, averageRating - 6.2) * 4 +
+        Math.max(0, goalDifference) * 0.15 +
+        Math.max(0, 8 - (northbridge?.position ?? 8)) * 0.7,
+    ),
+  );
+  const verdict = getSeasonVerdict(game, northbridge?.position ?? table.length, averageRating);
+
+  return {
+    record,
+    goals,
+    tablePosition: northbridge?.position ?? table.length,
+    averageRating,
+    selection,
+    cashReward,
+    prestigeReward,
+    verdict,
+    marketInterest: getMarketInterest(selection.score, averageRating, game.prestige + prestigeReward),
+    contractOutlook: getContractOutlook(selection.score, averageRating, game.seasonStats.apps),
+  };
+}
+
+function getSeasonVerdict(game: GameState, tablePosition: number, averageRating: number) {
+  const goalInvolvements = game.seasonStats.goals + game.seasonStats.assists;
+
+  if (averageRating >= 7.1 || goalInvolvements >= 8 || tablePosition <= 2) {
+    return {
+      grade: "A",
+      title: "Breakout campaign",
+      copy: "The staff see real momentum. You are starting to look like a player who can force a bigger role next season.",
+    };
+  }
+
+  if (averageRating >= 6.7 || goalInvolvements >= 4 || game.trust >= 52) {
+    return {
+      grade: "B",
+      title: "Clear progress",
+      copy: "A solid year with enough good moments to keep the pathway open. More consistency will decide the next jump.",
+    };
+  }
+
+  if (averageRating >= 6.2 || game.seasonStats.apps >= 6) {
+    return {
+      grade: "C",
+      title: "Useful minutes",
+      copy: "You stayed involved and learned the level. The next season needs sharper output to change your status.",
+    };
+  }
+
+  return {
+    grade: "D",
+    title: "Development year",
+    copy: "The club still sees potential, but you need stronger training weeks and cleaner match moments to climb.",
+  };
+}
+
+function getMarketInterest(selectionScore: number, averageRating: number, prestige: number) {
+  if (selectionScore >= 70 || averageRating >= 7.2 || prestige >= 35) {
+    return "Regional clubs";
+  }
+  if (selectionScore >= 55 || averageRating >= 6.8 || prestige >= 20) {
+    return "Local attention";
+  }
+  return "Club pathway";
+}
+
+function getContractOutlook(selectionScore: number, averageRating: number, apps: number) {
+  if (selectionScore >= 68 || averageRating >= 7.1) {
+    return "Your agent expects a stronger squad promise if this form carries into pre-season.";
+  }
+  if (selectionScore >= 50 || apps >= 8) {
+    return "The club wants another season of steady minutes before making a bigger commitment.";
+  }
+  return "The staff still view you as a project, so training output matters immediately next season.";
+}
+
 function getNextFixtureAfterMatch(season: SeasonState) {
   return season.fixtures[Math.min(season.fixtureIndex + 1, season.fixtures.length - 1)] ?? getCurrentFixture(season);
 }
@@ -3683,7 +4653,9 @@ function getSelectionReport(
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
   const fixtureImpact = fixture.opponentStrength >= 60 ? -2 : fixture.opponentStrength <= 50 ? 1 : 0;
-  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact, 0, 100);
+  const promiseImpact = Math.round(getRoleThreshold(state.contract.rolePromise) * 0.12);
+  const analystImpact = getSupportLevel(state, "analyst") * 2;
+  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact, 0, 100);
   const role = getPlayerMatchRole(score);
   const nextRole = getNextRole(role);
   const nextThreshold = nextRole ? getRoleThreshold(nextRole) : 100;
@@ -3723,6 +4695,18 @@ function getSelectionReport(
         value: importance,
         impact: importanceImpact + fixtureImpact,
         tone: importance === "High" || fixture.opponentStrength >= 60 ? "warn" : "neutral",
+      },
+      {
+        label: "Contract",
+        value: state.contract.rolePromise,
+        impact: promiseImpact,
+        tone: promiseImpact >= 7 ? "good" : "neutral",
+      },
+      {
+        label: "Analyst",
+        value: `Lv ${getSupportLevel(state, "analyst")}`,
+        impact: analystImpact,
+        tone: analystImpact > 0 ? "good" : "neutral",
       },
     ],
     summary: getSelectionSummary(score, role, nextRole),
@@ -4001,19 +4985,20 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
     ...coreResult,
     rating: getPositionAdjustedRating(coreResult.rating, coreResult.outcomeTier, coreResult.decisiveOutcome, moment, choice, positionModule),
   };
-  const xp = buildChoiceXp(choice, positionAdjustedResult.outcomeTier, positionModule, moment);
+  const supportAdjustedResult = applyMatchSupportEffects(state, positionAdjustedResult);
+  const xp = buildChoiceXp(choice, supportAdjustedResult.outcomeTier, positionModule, moment);
   const positionLabel = positionModule.displayName.toLowerCase();
-  const performanceReasons = buildPerformanceReasons(moment, choice, positionAdjustedResult, positionModule, xp);
+  const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
 
   if (choice.outcome === "goal") {
     return {
-      title: positionAdjustedResult.decisiveOutcome ? "Clinical action" : positionAdjustedResult.success ? `Useful ${positionLabel} action` : "Chance slips away",
-      detail: positionAdjustedResult.decisiveOutcome
+      title: supportAdjustedResult.decisiveOutcome ? "Clinical action" : supportAdjustedResult.success ? `Useful ${positionLabel} action` : "Chance slips away",
+      detail: supportAdjustedResult.decisiveOutcome
         ? `${moment.minute}': ${choice.label} works. You turn the moment into a goal and your match rating jumps.`
-        : positionAdjustedResult.success
+        : supportAdjustedResult.success
           ? `${moment.minute}': ${choice.label} is the right idea and keeps the attack alive, but it does not become a clear finish.`
           : `${moment.minute}': ${choice.label} is the right idea, but the execution is not clean enough this time.`,
-      ...positionAdjustedResult,
+      ...supportAdjustedResult,
       performanceReasons,
       xp,
     };
@@ -4021,28 +5006,40 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
 
   if (choice.outcome === "assist") {
     return {
-      title: positionAdjustedResult.decisiveOutcome ? "Chance created" : positionAdjustedResult.success ? "Attack connected" : "Move breaks down",
-      detail: positionAdjustedResult.decisiveOutcome
+      title: supportAdjustedResult.decisiveOutcome ? "Chance created" : supportAdjustedResult.success ? "Attack connected" : "Move breaks down",
+      detail: supportAdjustedResult.decisiveOutcome
         ? `${moment.minute}': ${choice.label} opens the defense and gives a teammate the clean finish.`
-        : positionAdjustedResult.success
+        : supportAdjustedResult.success
           ? `${moment.minute}': ${choice.label} helps the move, but the final chance never fully opens.`
           : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
-      ...positionAdjustedResult,
+      ...supportAdjustedResult,
       performanceReasons,
       xp,
     };
   }
 
   return {
-    title: positionAdjustedResult.outcomeTier === "Great" ? "Manager will remember that" : positionAdjustedResult.success ? "Useful shift" : "Useful but imperfect",
-    detail: positionAdjustedResult.outcomeTier === "Great"
+    title: supportAdjustedResult.outcomeTier === "Great" ? "Manager will remember that" : supportAdjustedResult.success ? "Useful shift" : "Useful but imperfect",
+    detail: supportAdjustedResult.outcomeTier === "Great"
       ? `${moment.minute}': ${choice.label} is not flashy, but it is exactly the kind of ${positionLabel} work that earns minutes.`
-      : positionAdjustedResult.success
+      : supportAdjustedResult.success
         ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
         : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
-    ...positionAdjustedResult,
+    ...supportAdjustedResult,
     performanceReasons,
     xp,
+  };
+}
+
+function applyMatchSupportEffects<T extends { rating: number; fitnessDelta: number }>(state: GameState, result: T): T {
+  const bootsLevel = getSupportLevel(state, "boots");
+  const recoveryLevel = getSupportLevel(state, "recovery");
+  const lifestyleLevel = getSupportLevel(state, "lifestyle");
+
+  return {
+    ...result,
+    rating: Number(clamp(result.rating + bootsLevel * 0.03 + lifestyleLevel * 0.02, 4, 10).toFixed(2)),
+    fitnessDelta: Math.min(0, result.fitnessDelta + recoveryLevel),
   };
 }
 
@@ -4231,19 +5228,21 @@ function getTrainingIntensityLabel(intensity: Intensity) {
 
 function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
+  const coachLevel = getSupportLevel(state, "coach");
+  const nutritionLevel = getSupportLevel(state, "nutrition");
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
 
   getCurrentTrainingFocuses(state).forEach((focus) => {
     const baseRange = getBaseTrainingRange(state, focus);
     ranges[focus] = {
-      min: Math.max(1, Math.round(baseRange.min * intensity.xpFloor)),
-      max: Math.max(1, Math.round(baseRange.max * intensity.xpCeiling)),
+      min: Math.max(1, Math.round(baseRange.min * intensity.xpFloor + coachLevel * 3)),
+      max: Math.max(1, Math.round(baseRange.max * intensity.xpCeiling + coachLevel * 2)),
     };
   });
 
   return {
     ranges,
-    fitnessDelta: intensity.fitnessDelta,
+    fitnessDelta: intensity.fitnessDelta < 0 ? Math.min(0, intensity.fitnessDelta + nutritionLevel * 2) : intensity.fitnessDelta,
     moraleDelta: intensity.moraleDelta,
     trustDelta: intensity.trustDelta,
   };

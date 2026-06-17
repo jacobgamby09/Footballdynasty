@@ -1,5 +1,69 @@
 # Progress Log
 
+## 2026-06-17
+
+### Season Review V1
+
+- Added an explicit end-of-season checkpoint after the final fixture.
+- The core loop now stops at `Season Review` instead of drifting into empty weeks or another training prompt.
+- Season Review shows Northbridge record, league position, goal difference, form, player appearances, starts, goals, assists and average rating.
+- Added a manager verdict, market interest, contract outlook and season rewards.
+- Season rewards are claimed when starting the next season, not when merely opening the review screen.
+- Starting the next season resets the season fixture/results snapshot and season stats while preserving player attributes, role momentum, cash, prestige and career state.
+- Player and Club screens now handle season-complete state without presenting a fake next fixture.
+
+### Dynasty History V1
+
+- Added persistent `dynastyHistory` to the career state.
+- Completed seasons are archived when the player starts the next season from Season Review.
+- Home now has `Base` and `Dynasty` subtabs.
+- Dynasty tab shows completed season history plus the current season in progress.
+- Season rows track club, league finish, record, apps, goals, assists and average rating.
+- Dynasty tab also shows career totals across completed and current seasons.
+
+### Economy Direction
+
+- Cemented the three-currency model in `GDD.md`.
+- `Cash` is spendable during the active run and should primarily buy in-run upgrades.
+- `Prestige` is career standing/status, not a spendable wallet.
+- `Legacy Points` are the spendable dynasty currency, primarily awarded at retirement from career achievements and final prestige.
+- Core economy rule: cash should not directly buy permanent dynasty power, so spending during the active career remains meaningful.
+
+### Contract V1
+
+- Added a persistent active contract to career state.
+- Contracts include club, label, weekly wage, weeks remaining, role promise, appearance bonus, goal bonus, assist bonus and pressure modifier.
+- Weekly wage is now paid after each matchweek.
+- Match cash now comes from contract wage and bonuses instead of a hardcoded generic match reward.
+- Post-match summary shows contract payout breakdown.
+- Player screen contract card now reads from actual contract data.
+- Season Review now generates a renewal package with wage, role promise, signing bonus and performance bonuses.
+- Starting the next season applies the generated contract package.
+- Contract role promise now contributes to selection score as a visible factor.
+
+### End Week Summary V1
+
+- Added a dedicated End Week Summary screen after Post Match Summary.
+- Main button flow is now `Post Match -> Week Summary -> Next Week/Season Review`.
+- Week Summary shows cash flow, wage/bonus breakdown, development XP, level-ups, match rating, selection movement, trust, prestige, condition and season status.
+- Post Match Summary is now reserved for match-specific feedback: score, rating, performance read, career impact and match development XP.
+- GDD now defines End Week Summary as the weekly payoff screen that summarizes important changes without replacing detailed training/match reports.
+
+### In-Run Economy V1
+
+- Added `supportUpgrades` to persistent career state.
+- Home now has a `Support` subtab for current-run cash upgrades.
+- Added first support upgrade catalog: Match boots, Recovery kit, Personal coach, Nutrition plan, Video analyst, Better agent and Lifestyle support.
+- Cash purchases now reduce current cash and increase owned support levels.
+- Personal coach raises training XP floor/ceiling slightly.
+- Nutrition plan reduces training fatigue.
+- Recovery kit reduces match fatigue.
+- Match boots and Lifestyle support add small match-rating support.
+- Video analyst adds a small visible selection-score factor.
+- Better agent improves contract wage and signing bonus negotiation.
+- GDD now defines Player Support as current-run only and separate from dynasty power.
+- GDD now also defines long-term in-run economy scaling: tiered upgrade tracks, rising costs, soft caps, club-tier access, repeatable cash sinks and retainers/upkeep so cash remains useful across 10-15 seasons.
+
 ## 2026-06-16
 
 ### Match Engine V2 Direction

@@ -43,8 +43,9 @@ Spillets primære loop er et kompakt matchweek-loop: træning -> kamp -> trænin
 3. Gennemfør træning og se XP, attribute progress og fitness-impact.
 4. Spil eller simuler kampens personlige moments.
 5. Modtag rating, XP, fatigue, form, manager trust og reputation-effekter.
-6. Brug penge, prestige eller tid på udstyr, privat træning, agent, recovery eller faciliteter mellem matchweeks.
-7. Over tid: forhandl kontrakt, skift klub, ændr rolle eller planlæg karriereretning.
+6. Se End Week Summary med økonomi, udvikling, condition, career movement og sæsonstatus.
+7. Brug cash eller tid på udstyr, privat træning, agent, recovery eller andre in-run forbedringer mellem matchweeks.
+8. Over tid: forhandl kontrakt, skift klub, ændr rolle eller planlæg karriereretning.
 
 Sæsoner bør holdes korte nok til, at mange sæsoner og prestige-progression kan mærkes. Hvis progressionen bliver for langsom, bør vi hellere justere XP-output, training multipliers og season rewards end at tilføje mange ekstra uger uden kampe.
 
@@ -91,6 +92,43 @@ Foreløbige attributes:
 - Consistency
 
 Potentiale bør være individuelt pr. attribute frem for ét samlet potentiale. En spiller kan have højt potentiale i Finishing og Off Ball, men lavere potentiale i Strength eller Passing.
+
+### Attribute XP Scaling
+
+Attribute level-ups skal ikke koste det samme gennem hele karrieren.
+
+Lavere stats bør være relativt hurtige at forbedre, mens høje stats skal kræve markant mere XP. Det giver en naturlig kurve, hvor tidlig progression føles tydelig, men eliteudvikling kræver bedre miljø, bedre investeringer og længere tid.
+
+Eksempelretning:
+
+- 30 -> 31: lav XP cost
+- 40 -> 41: moderat XP cost
+- 50 -> 51: højere XP cost
+- 60 -> 61: væsentligt højere XP cost
+- 70+ -> elite progression: langsomt og krævende
+
+Core rule:
+
+`Attribute level costs should scale upward with current attribute value.`
+
+Training upgrades, support items, club facilities og dynasty bonuses skal mitigere kurven ved at forbedre:
+
+- XP floor
+- training efficiency
+- variance
+- recovery cost per XP
+- access to high-level training methods
+
+De skal ikke fjerne kurven. En elite-stat skal stadig føles som noget man bygger over tid.
+
+UI'et skal være tydeligt, når XP requirements stiger. Spilleren skal kunne se:
+
+- XP gained
+- XP needed
+- progress to next level
+- relevante modifiers fra support, club facilities eller dynasty
+
+Ellers risikerer højere XP-krav at føles som skjult nerf i stedet for naturlig progression.
 
 ## Position Architecture
 
@@ -325,14 +363,236 @@ Form beskriver seneste performance. Pressure beskriver forventninger udefra.
 
 Fame skal ikke kun være positivt. Høj reputation giver flere muligheder, men også højere forventninger og hårdere konsekvenser efter dårlige kampe.
 
+## Economy and Currencies
+
+Spillets economy skal understøtte to forskellige progressionstyper:
+
+1. In-run progression for den aktive spiller.
+2. Dynasty progression for fremtidige generationer.
+
+Derfor skal spillet have tre tydeligt adskilte currencies/statusser.
+
+### Cash
+
+Cash er den aktive spillers spendable currency.
+
+Cash kommer primært fra:
+
+- wage
+- signing bonus
+- appearance bonus
+- goal/assist bonus
+- sponsor deals
+- event rewards
+
+Cash bruges primært på in-run economy:
+
+- boots
+- recovery gear
+- nutrition plan
+- personal coach
+- physio
+- analyst
+- agent services
+- lifestyle/morale purchases
+- short-term training camps
+
+Core rule:
+
+`Cash is for the current player. Cash should not directly buy permanent dynasty power.`
+
+Det betyder, at spilleren skal have et klart incitament til at bruge sin løn under karrieren. Hvis cash kan gemmes direkte til permanente dynasty upgrades, bliver det optimale ofte at spare alt og farme. Det skal undgås.
+
+### Prestige
+
+Prestige er ikke en spendable currency. Prestige er spillerens aktuelle reputation/status i karrieren.
+
+Prestige påvirker:
+
+- club interest
+- transfer visibility
+- sponsor interest
+- media pressure
+- fan expectations
+- contract leverage
+- retirement legacy value
+
+Prestige kan stige gennem:
+
+- gode ratings
+- mål og assists
+- vigtige kampmoments
+- trophies/promotions
+- højere klubniveau
+- awards
+- langvarig god form
+
+Core rule:
+
+`Prestige is career standing, not a wallet.`
+
+Prestige skal gerne give muligheder og pres, men spilleren skal ikke bruge prestige som en almindelig butik-valuta.
+
+### Legacy Points
+
+Legacy Points er dynastyens spendable currency.
+
+Legacy Points optjenes primært ved retirement, hvor hele karrieren omregnes til en permanent legacy payout.
+
+Legacy payout kan baseres på:
+
+- career length
+- peak OVR
+- total apps
+- total goals/assists
+- average rating
+- trophies/promotions
+- top club reached
+- wage peak
+- transfer reputation
+- awards
+- final prestige
+
+Legacy Points bruges på dynasty economy:
+
+- family home
+- home gym
+- private pitch
+- recovery room
+- analysis setup
+- mentor network
+- academy links
+- better starting attribute floor
+- better potential floor
+- heir support systems
+
+Core rule:
+
+`A stronger active career creates a stronger retirement payout. Legacy Points improve future generations.`
+
+Det skaber en sund incentive loop:
+
+1. Cash bruges på den aktive spiller.
+2. In-run upgrades hjælper spilleren med at performe bedre.
+3. Bedre performance øger prestige og career achievements.
+4. Ved retirement konverteres karrieren til Legacy Points.
+5. Legacy Points forbedrer næste generation.
+
+In-run purchases skal derfor aldrig føles som spild, selvom de forsvinder ved retirement. De hjælper spilleren med at opbygge den karriere, der senere bliver til Legacy Points.
+
+### In-Run Economy V1
+
+Første cash-spending layer er `Player Support`.
+
+Player Support er current-run only. Levels hjælper den aktive spiller, men arves ikke direkte som dynasty power.
+
+Første support categories:
+
+- Match boots: small match execution/rating support.
+- Recovery kit: reduces match fatigue.
+- Personal coach: raises weekly training XP floor.
+- Nutrition plan: softens training fatigue.
+- Video analyst: improves selection/match prep.
+- Better agent: improves contract wage and signing bonus negotiation.
+- Lifestyle support: improves morale/match sharpness slightly, with future pressure tradeoff potential.
+
+Support upgrades skal være stærke nok til, at weekly wage føles brugbar, men små nok til ikke at erstatte attributes, training og match performance som hovedmotor.
+
+### In-Run Economy Scaling Direction
+
+In-run upgrades skal designes til en hel karriere på 10-15 sæsoner, ikke kun de første par uger.
+
+V1 levels er placeholders. Den langsigtede model bør understøtte:
+
+- mange levels på brede upgrade tracks
+- tiered unlocks
+- stigende priser
+- soft caps
+- diminishing returns
+- club-tier access
+- always-available cash sinks
+
+Core rule:
+
+`In-run upgrades are career-long progression tracks. V1 levels are placeholders; final tuning should support 10-15 seasons through tiered unlocks, rising costs, soft caps and diminishing returns.`
+
+Upgrade tracks bør opdeles i tiers, eksempelvis:
+
+- Local / Starter
+- Semi-Pro
+- Professional
+- Elite
+- World Class
+
+Et tier kan have flere levels, men næste tier kræver typisk en kombination af:
+
+- højere club tier
+- bedre contract/wage level
+- højere prestige/status
+- agent access
+- sponsor or staff access
+
+Eksempel:
+
+- Local boots level 1-5
+- Semi-Pro boots level 1-5
+- Professional boots level 1-5
+- Elite boots level 1-5
+- World Class boots level 1-5
+
+Når spilleren rammer loftet i et tier, skal det være naturligt, at næste skridt kræver en bedre karrieresituation. Det gør contracts, transfers og club tier vigtige uden at gøre cash irrelevant.
+
+### Cash Sinks and Always-Useful Spending
+
+Cash må aldrig blive dødt, selv når en tier-gated upgrade track midlertidigt er capped.
+
+Core rule:
+
+`Cash should always have at least one meaningful active-run use, even when tier-gated upgrade tracks are temporarily capped.`
+
+In-run economy bør derfor have tre typer cash spending:
+
+1. Tier-gated progression tracks.
+2. Always-available repeatable services.
+3. High-ceiling retainers/upkeep systems.
+
+Tier-gated progression tracks giver langsigtet ambition:
+
+- boots
+- analyst setup
+- agent access
+- elite coach
+- advanced recovery tech
+
+Always-available cash sinks giver spilleren noget meningsfuldt at købe, selv når næste tier er låst:
+
+- extra recovery session
+- individual training camp
+- mental coach session
+- short-term nutrition boost
+- travel comfort
+- pre-match opposition report
+- confidence/form work
+
+Retainers/upkeep systems giver cash en løbende funktion:
+
+- personal staff retainer
+- private coach hours
+- physio subscription
+- agent retainer
+- lifestyle management
+- media team
+
+Det betyder, at en spiller i en lavere klub godt kan ramme et naturligt gear-loft, men stadig bruge cash på midlertidige services, preparation og recovery, mens de forsøger at performe sig til næste contract eller club tier.
+
 ## Contracts
 
 Kontrakter er karrierens økonomiske motor.
 
 En kontrakt kan indeholde:
 
-- wage
-- length
+- weekly wage
+- length measured in matchweeks/seasons
 - role promise
 - signing bonus
 - appearance bonus
@@ -350,6 +610,32 @@ Forhandling bør ske gennem pakker eller forhandlingsstile:
 - Risky
 
 Hvert forsøg bør have cooldown eller konsekvens, så kontrakter ikke bliver spam-optimering.
+
+Contract V1 direction:
+
+- Wage is paid weekly, so the player has continuous cash flow during the active career.
+- Match bonuses are paid after games and should be tied to the current contract.
+- Role promise should affect selection context, but not remove performance pressure.
+- Better season performance should create better renewal packages: higher weekly wage, stronger bonuses, better role promise or larger signing bonus.
+- Contract money feeds in-run economy. It should make boots, recovery, coaching, agent services and other active-career purchases feel reachable.
+
+## End Week Summary
+
+End Week Summary er ugens samlede payoff-skærm.
+
+Den skal vises efter post-match summary og før næste uge/season review.
+
+Formålet er at samle alle vigtige ændringer, så spilleren tydeligt kan mærke progression uden at skulle lede efter tallene på flere skærme.
+
+End Week Summary bør vise:
+
+- economy: weekly wage, bonuses, net cash og cash balance
+- development: training XP, match XP, level-ups og vigtigste attribute gains
+- career movement: rating, selection score, manager trust og prestige
+- condition: fitness, morale og fatigue impact fra træning/kamp
+- season: kampresultat, record og næste modstander eller season review status
+
+Skærmen skal være kompakt og scanbar. Den må gerne føles tilfredsstillende, men skal ikke erstatte de mere detaljerede training- og post-match summaries.
 
 ## Transfers
 
@@ -414,7 +700,7 @@ Effekter:
 - bedre offseason development
 - bedre start for næste generation
 
-Faciliteter bør koste penge og prestige, og nogle bør være låst bag career milestones.
+Permanente dynasty-faciliteter bør primært koste Legacy Points og eventuelt være låst bag career milestones. Midlertidige private services i den aktive karriere kan koste cash, men skal ikke give permanent dynasty power direkte.
 
 ## Relationships
 
@@ -463,7 +749,7 @@ Legacy kan give:
 - surname reputation
 - bedre agent network
 - mentor bonus
-- money inheritance
+- family security baseline
 - unlocked training methods
 
 Famous surname bør også kunne give højere pressure.

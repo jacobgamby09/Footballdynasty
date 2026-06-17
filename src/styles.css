@@ -214,31 +214,44 @@ button {
 
 .career-card {
   display: grid;
-  grid-template-columns: 105px minmax(0, 1fr);
-  gap: 13px;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
   border-color: var(--border-strong);
 }
 
 .career-score {
-  min-height: 128px;
+  min-height: 112px;
   display: grid;
   place-items: center;
-  padding: 13px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 11px;
   background:
-    radial-gradient(circle at 50% 32%, rgba(200, 243, 95, 0.22), transparent 4.5rem),
+    radial-gradient(circle at 50% 42%, rgba(200, 243, 95, 0.2), transparent 4rem),
+    linear-gradient(180deg, rgba(200, 243, 95, 0.09), rgba(255, 255, 255, 0.015)),
     #0d100d;
-  border: 1px solid rgba(200, 243, 95, 0.18);
+  border: 1px solid rgba(200, 243, 95, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 18px rgba(200, 243, 95, 0.08);
+}
+
+.career-score > div {
+  display: grid;
+  justify-items: center;
+  text-align: center;
 }
 
 .career-score strong {
   display: block;
-  margin-top: 4px;
-  color: var(--text);
-  font-size: 54px;
-  line-height: 1;
+  margin-top: 6px;
+  color: #ffffff;
+  font-size: 48px;
+  font-weight: 950;
+  line-height: 0.9;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(200, 243, 95, 0.18);
 }
 
 .career-details {
@@ -650,6 +663,191 @@ button {
 
 .screen-title {
   padding: 12px 0 5px;
+}
+
+.subtab-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 6px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.subtab-control button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.subtab-control button.is-active {
+  color: #10140d;
+  background: var(--lime);
+}
+
+.support-shop-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.support-upgrade-card {
+  display: grid;
+  gap: 10px;
+}
+
+.support-upgrade-card.is-maxed {
+  border-color: rgba(200, 243, 95, 0.28);
+}
+
+.support-upgrade-top,
+.support-upgrade-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.support-upgrade-top h2 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.support-level-pill {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border-radius: 999px;
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.1);
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.support-upgrade-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.support-upgrade-footer span {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.support-upgrade-footer button {
+  min-width: 88px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  color: #10140d;
+  background: var(--lime);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.support-upgrade-footer button:disabled {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: not-allowed;
+}
+
+.dynasty-card {
+  display: grid;
+  gap: 10px;
+}
+
+.dynasty-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dynasty-row {
+  display: grid;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dynasty-row.is-current {
+  border-color: var(--border-strong);
+  background: rgba(200, 243, 95, 0.07);
+}
+
+.dynasty-season-main {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+}
+
+.dynasty-season-main > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.12);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.dynasty-season-main strong {
+  display: block;
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.dynasty-season-main small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.dynasty-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dynasty-stats span {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dynasty-stats small {
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dynasty-stats b {
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .choice-preview {
@@ -1483,6 +1681,194 @@ button {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.contract-card,
+.contract-offer-card {
+  display: grid;
+  gap: 11px;
+}
+
+.contract-hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.contract-hero > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(200, 243, 95, 0.16);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 35%, rgba(200, 243, 95, 0.11), transparent 5rem),
+    rgba(255, 255, 255, 0.04);
+}
+
+.contract-hero span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.contract-hero strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.contract-hero div:first-child strong {
+  color: var(--lime);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contract-offer-card {
+  border-color: rgba(200, 243, 95, 0.28);
+}
+
+.contract-offer-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.week-summary-screen {
+  padding-bottom: 2px;
+}
+
+.week-summary-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 10px;
+  align-items: stretch;
+  border-color: rgba(200, 243, 95, 0.28);
+  background:
+    radial-gradient(circle at 18% 42%, rgba(200, 243, 95, 0.16), transparent 8rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    var(--surface);
+}
+
+.week-summary-hero h2 {
+  margin: 5px 0 0;
+  color: var(--lime);
+  font-size: 34px;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-summary-hero p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.week-summary-hero > div:last-child {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(200, 243, 95, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.week-summary-hero strong {
+  color: var(--text);
+  font-size: 23px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-summary-hero small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.week-note-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.week-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.week-note svg {
+  flex: 0 0 auto;
+  color: var(--lime);
+}
+
+.season-review-screen p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.season-review-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 12px;
+  align-items: center;
+  border-color: rgba(200, 243, 95, 0.28);
+  background:
+    radial-gradient(circle at 18% 42%, rgba(200, 243, 95, 0.17), transparent 8rem),
+    linear-gradient(145deg, rgba(244, 200, 74, 0.08), rgba(255, 255, 255, 0.02)),
+    var(--surface);
+}
+
+.season-review-hero h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.season-review-badge {
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(244, 200, 74, 0.28);
+  border-radius: 13px;
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.11);
+  text-align: center;
+}
+
+.season-review-badge strong {
+  color: var(--text);
+  font-size: 30px;
+  line-height: 0.95;
+}
+
+.season-review-badge span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
 }
 
 .selection-card {
@@ -2339,12 +2725,12 @@ button {
   }
 
   .career-card {
-    grid-template-columns: 94px minmax(0, 1fr);
+    grid-template-columns: 84px minmax(0, 1fr);
     gap: 10px;
   }
 
   .career-score strong {
-    font-size: 39px;
+    font-size: 42px;
   }
 
   .readiness-grid {

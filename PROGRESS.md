@@ -2,6 +2,19 @@
 
 ## 2026-06-17
 
+### League Context / Ability Scale V1
+
+- Added the first explicit global ability scale direction to `GDD.md`.
+- Added `LeagueTier` data with Grassroots, semi-pro, pro, top-flight and elite tiers.
+- Rebalanced the first playable environment to `Grassroots Development League` with average OVR 15 and team range 10-22.
+- Rebalanced Jonas Vale's starting attributes from mid-level 40-60 values down to a first-generation grassroots prospect around 10-20 OVR.
+- Lowered the first contract to grassroots-level wage and bonuses.
+- Match engine now keeps raw OVR for UI/dynasty progression but converts player attributes and opponent profiles into league-adjusted match ability for highlight generation/resolution.
+- Team score simulation still uses raw club/opponent strength, so match results reflect the actual league tier.
+- Selection score now includes a visible `Level fit` factor comparing player OVR against the current league average.
+- Save version bumped to reset old high-OVR local saves into the new scale.
+- Match balance lab now runs against the new grassroots scale and relative ability model.
+
 ### Season Review V1
 
 - Added an explicit end-of-season checkpoint after the final fixture.

@@ -93,6 +93,56 @@ Foreløbige attributes:
 
 Potentiale bør være individuelt pr. attribute frem for ét samlet potentiale. En spiller kan have højt potentiale i Finishing og Off Ball, men lavere potentiale i Strength eller Passing.
 
+## Ability Scale And League Context
+
+Football Dynasty bruger en global 1-100 ability scale, men performance skal altid vurderes relativt til spillerens aktuelle miljoe.
+
+Eksempelretning:
+
+- 1-15: grassroots / helt tidlig udvikling
+- 16-30: lav semi-pro
+- 31-45: staerk semi-pro / lav pro
+- 46-60: regional pro
+- 61-75: national liga
+- 76-90: topdivision
+- 91-100: elite/world class
+
+En spiller paa 18 OVR er ikke automatisk ubrugelig. Hvis ligaens gennemsnit er 15 OVR, er spilleren en svag men relevant prospect. Hvis samme spiller rykkes til en 45 OVR liga, bliver han langt under niveau.
+
+Core rule:
+
+`Player performance = player ability relative to league, club and opponent level.`
+
+Det betyder:
+
+- startspilleren kan starte omkring 10-20 OVR uden at gameplay kollapser
+- startklubben og startligaen skal vaere paa tilsvarende lavt niveau
+- en 40 OVR spiller kan vaere staerk i en lav liga, men ikke i en topdivision
+- en 85 OVR spiller skal foeles elite, men kun dominant hvis han spiller under sit niveau
+- dynasty progression skal give bedre startpunkt over generationer uden at springe hele fodboldpyramiden over
+
+### League Tiers
+
+Ligaer skal defineres med konkret kontekst:
+
+- average squad OVR
+- weak/strong team range
+- wage range
+- facility level
+- prestige multiplier
+- transfer visibility
+- expected player OVR range
+
+V1 starter i `Grassroots Development League`:
+
+- average OVR: 15
+- team range: 10-22
+- wage range: low cash terms
+- facility level: 1
+- purpose: give en 10-20 OVR foerstegenerationsspiller et trovaerdigt startmiljoe
+
+Senere tiers skal bruges til transfers, kontrakter, facilities, wage scaling og prestige/legacy rewards.
+
 ### Attribute XP Scaling
 
 Attribute level-ups skal ikke koste det samme gennem hele karrieren.

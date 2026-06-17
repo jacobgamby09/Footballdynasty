@@ -206,5 +206,5 @@ function seededProfileNoise(seed: string) {
 }
 
 function clampProfile(value: number) {
-  return Math.max(25, Math.min(90, Math.round(value)));
+  return Math.max(1, Math.min(99, Math.round(value)));
 }

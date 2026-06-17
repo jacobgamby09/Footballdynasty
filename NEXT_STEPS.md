@@ -217,3 +217,9 @@ Næste designsession bør fokusere på en af to retninger:
 
 1. UI: Player screen wireframe og informationshierarki.
 2. Gameplay: Striker attributes, archetypes og de første match moments.
+
+## Next After League Context V1
+
+- Build transfer/division progression so the player can move from grassroots to higher league tiers.
+- Add club tier data for facilities, wage ranges, reputation and expected squad OVR.
+- Rebalance start OVR, training XP and attribute XP cost curve against the new 1-100 dynasty scale.

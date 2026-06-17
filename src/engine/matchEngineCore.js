@@ -142,7 +142,7 @@ export function resolvePlayerChoice(input) {
   const threshold = input.choice.risk === "High" ? 55 : input.choice.risk === "Medium" ? 50 : 45;
   const outcomeTier = getOutcomeTier(resultScore, threshold);
   const success = outcomeTier !== "Poor";
-  const decisiveOutcome = isDecisiveOutcome(outcomeTier, chanceContext.quality, input.choice.outcome);
+  const decisiveOutcome = isDecisiveOutcome(outcomeTier, chanceContext.quality, input.choice.outcome, input.resultSeed);
   const fatigueCost = input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4;
   const explanationTags = buildResultExplanationTags(input.moment, input.choice, success, opponentModifier, chanceContext.quality, input.fitness);
 
@@ -479,20 +479,34 @@ function getOutcomeTier(resultScore, threshold) {
   return "Poor";
 }
 
-function isDecisiveOutcome(tier, chanceQuality, outcome) {
+function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") {
+  if (outcome !== "goal" && outcome !== "assist") {
+    return false;
+  }
+
   if (outcome === "assist") {
     if (tier === "Great") {
       return chanceQuality !== "Difficult chance";
     }
-    return tier === "Good" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance");
+    if (tier === "Good" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance")) {
+      return true;
+    }
   }
   if (tier === "Great") {
     return true;
   }
   if (tier !== "Good") {
+    if (tier === "Okay" && chanceQuality === "Clear chance") {
+      return seededNoise(`${resultSeed}-decisive`) < 0.1;
+    }
     return false;
   }
-  return outcome === "goal" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance");
+  if (outcome === "goal" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance")) {
+    return true;
+  }
+
+  const halfChanceRate = outcome === "assist" ? 0.14 : 0.1;
+  return chanceQuality === "Half chance" && seededNoise(`${resultSeed}-decisive`) < halfChanceRate;
 }
 
 function getRoleConfidenceModifier(role) {

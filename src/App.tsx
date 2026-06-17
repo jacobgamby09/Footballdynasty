@@ -55,6 +55,8 @@ type Venue = "Home" | "Away";
 type ClubView = "overview" | "fixtures" | "table";
 type HomeView = "base" | "support" | "dynasty";
 type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
+type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
+type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
 
 type Attribute = {
   label: AttributeKey;
@@ -109,6 +111,17 @@ type LeagueTeam = {
   name: string;
   short: string;
   strength: number;
+};
+
+type LeagueTier = {
+  id: LeagueTierId;
+  name: string;
+  averageOvr: number;
+  teamRange: [number, number];
+  wageRange: [number, number];
+  facilityLevel: number;
+  prestigeMultiplier: number;
+  description: string;
 };
 
 type LeagueTableRow = {
@@ -186,7 +199,7 @@ type GameState = {
 };
 
 type SavePayload = {
-  version: 1;
+  version: 2;
   game: GameState;
 };
 
@@ -226,6 +239,8 @@ type UpcomingMatch = {
   playerRole: MatchRole;
   selection: SelectionReport;
   expectedMinutes: string;
+  fitnessAvailability: FitnessAvailability;
+  isInSquad: boolean;
   managerInstruction: string;
   tacticalFocus: string;
   serviceLevel: ServiceLevel;
@@ -266,6 +281,8 @@ type MatchState = {
   selectionScore: number;
   selectionSummary: string;
   expectedMinutes: string;
+  fitnessAvailability: FitnessAvailability;
+  isInSquad: boolean;
   entryMinute: number;
   exitMinute?: number;
   managerInstruction: string;
@@ -369,23 +386,23 @@ type LastMatchSummary = MatchTotals & {
 };
 
 const initialAttributes: Attribute[] = [
-  { label: "Finishing", value: 54, potential: 82, xp: 42 },
-  { label: "Long Shots", value: 43, potential: 70, xp: 8 },
-  { label: "Passing", value: 45, potential: 72, xp: 24 },
-  { label: "Vision", value: 41, potential: 71, xp: 15 },
-  { label: "Dribbling", value: 48, potential: 76, xp: 29 },
-  { label: "Off Ball", value: 50, potential: 78, xp: 18 },
-  { label: "Composure", value: 46, potential: 74, xp: 64 },
-  { label: "First Touch", value: 49, potential: 76, xp: 33 },
-  { label: "Acceleration", value: 57, potential: 80, xp: 21 },
-  { label: "Pace", value: 52, potential: 78, xp: 19 },
-  { label: "Stamina", value: 55, potential: 79, xp: 36 },
-  { label: "Heading", value: 42, potential: 69, xp: 12 },
-  { label: "Strength", value: 44, potential: 71, xp: 40 },
-  { label: "Work Rate", value: 61, potential: 77, xp: 56 },
-  { label: "Tackling", value: 32, potential: 58, xp: 11 },
-  { label: "Marking", value: 34, potential: 60, xp: 17 },
-  { label: "Positioning", value: 47, potential: 73, xp: 27 },
+  { label: "Finishing", value: 18, potential: 48, xp: 22 },
+  { label: "Long Shots", value: 12, potential: 38, xp: 8 },
+  { label: "Passing", value: 14, potential: 42, xp: 14 },
+  { label: "Vision", value: 13, potential: 40, xp: 12 },
+  { label: "Dribbling", value: 16, potential: 45, xp: 17 },
+  { label: "Off Ball", value: 17, potential: 50, xp: 16 },
+  { label: "Composure", value: 14, potential: 46, xp: 24 },
+  { label: "First Touch", value: 16, potential: 47, xp: 19 },
+  { label: "Acceleration", value: 20, potential: 52, xp: 15 },
+  { label: "Pace", value: 18, potential: 49, xp: 13 },
+  { label: "Stamina", value: 17, potential: 48, xp: 18 },
+  { label: "Heading", value: 13, potential: 39, xp: 9 },
+  { label: "Strength", value: 12, potential: 41, xp: 11 },
+  { label: "Work Rate", value: 19, potential: 51, xp: 20 },
+  { label: "Tackling", value: 8, potential: 31, xp: 6 },
+  { label: "Marking", value: 9, potential: 32, xp: 7 },
+  { label: "Positioning", value: 13, potential: 42, xp: 15 },
 ];
 
 const attributeInfo: Record<
@@ -496,14 +513,82 @@ const attributeInfo: Record<
   },
 };
 
+const leagueTiers: Record<LeagueTierId, LeagueTier> = {
+  "grassroots-dev": {
+    id: "grassroots-dev",
+    name: "Grassroots Development League",
+    averageOvr: 15,
+    teamRange: [10, 22],
+    wageRange: [25, 90],
+    facilityLevel: 1,
+    prestigeMultiplier: 0.45,
+    description: "A local entry point where raw players can still earn minutes while learning the game.",
+  },
+  "local-semi-pro": {
+    id: "local-semi-pro",
+    name: "Local Semi-Pro League",
+    averageOvr: 28,
+    teamRange: [22, 36],
+    wageRange: [90, 240],
+    facilityLevel: 2,
+    prestigeMultiplier: 0.75,
+    description: "Organized senior football with better squads, better facilities and less room for weak fundamentals.",
+  },
+  "regional-pro": {
+    id: "regional-pro",
+    name: "Regional Pro League",
+    averageOvr: 45,
+    teamRange: [37, 54],
+    wageRange: [240, 650],
+    facilityLevel: 3,
+    prestigeMultiplier: 1,
+    description: "Lower professional football where strong attributes start to separate real prospects.",
+  },
+  "national-pro": {
+    id: "national-pro",
+    name: "National League",
+    averageOvr: 62,
+    teamRange: [55, 70],
+    wageRange: [650, 1800],
+    facilityLevel: 4,
+    prestigeMultiplier: 1.35,
+    description: "Full-time football with strong tactical demands and much less forgiveness.",
+  },
+  "top-flight": {
+    id: "top-flight",
+    name: "Top Flight",
+    averageOvr: 78,
+    teamRange: [70, 86],
+    wageRange: [1800, 6500],
+    facilityLevel: 5,
+    prestigeMultiplier: 1.8,
+    description: "Elite domestic football where even excellent players need role fit and consistency.",
+  },
+  elite: {
+    id: "elite",
+    name: "Elite Continental Level",
+    averageOvr: 90,
+    teamRange: [86, 98],
+    wageRange: [6500, 30000],
+    facilityLevel: 6,
+    prestigeMultiplier: 2.5,
+    description: "The endgame environment for legendary runs and dynasty-defining seasons.",
+  },
+};
+
+const currentLeagueTier = leagueTiers["grassroots-dev"];
+const currentClubName = "Northbridge FC";
+const currentClubShortName = "Northbridge";
+const currentClubStrength = 15;
+
 const seasonFixtures: Fixture[] = [
   {
     id: "md1-aalborg",
     opponent: "Aalborg United",
     opponentShort: "Aalborg",
     venue: "Away",
-    competition: "Regional League",
-    opponentStrength: 56,
+    competition: "Grassroots Development League",
+    opponentStrength: 17,
     opponentForm: "Good",
     serviceLevel: "Mixed",
   },
@@ -512,8 +597,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Roskilde Athletic",
     opponentShort: "Roskilde",
     venue: "Home",
-    competition: "Regional League",
-    opponentStrength: 51,
+    competition: "Grassroots Development League",
+    opponentStrength: 14,
     opponentForm: "Mixed",
     serviceLevel: "Good",
   },
@@ -522,8 +607,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Viborg Reserves",
     opponentShort: "Viborg",
     venue: "Away",
-    competition: "Cup Qualifier",
-    opponentStrength: 60,
+    competition: "Local Cup Qualifier",
+    opponentStrength: 21,
     opponentForm: "Hot",
     serviceLevel: "Low",
   },
@@ -532,8 +617,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Kolding Town",
     opponentShort: "Kolding",
     venue: "Home",
-    competition: "Regional League",
-    opponentStrength: 48,
+    competition: "Grassroots Development League",
+    opponentStrength: 12,
     opponentForm: "Poor",
     serviceLevel: "Good",
   },
@@ -542,8 +627,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Horsens Academy",
     opponentShort: "Horsens",
     venue: "Away",
-    competition: "Regional League",
-    opponentStrength: 53,
+    competition: "Grassroots Development League",
+    opponentStrength: 15,
     opponentForm: "Mixed",
     serviceLevel: "Mixed",
   },
@@ -552,8 +637,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Esbjerg Youth",
     opponentShort: "Esbjerg",
     venue: "Home",
-    competition: "Regional League",
-    opponentStrength: 58,
+    competition: "Grassroots Development League",
+    opponentStrength: 19,
     opponentForm: "Good",
     serviceLevel: "Low",
   },
@@ -562,8 +647,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Fredericia Colts",
     opponentShort: "Fredericia",
     venue: "Away",
-    competition: "Regional League",
-    opponentStrength: 49,
+    competition: "Grassroots Development League",
+    opponentStrength: 11,
     opponentForm: "Poor",
     serviceLevel: "Good",
   },
@@ -572,8 +657,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Naestved U21",
     opponentShort: "Naestved",
     venue: "Home",
-    competition: "Regional Cup",
-    opponentStrength: 61,
+    competition: "Local Cup",
+    opponentStrength: 22,
     opponentForm: "Hot",
     serviceLevel: "Mixed",
   },
@@ -582,8 +667,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Silkeborg II",
     opponentShort: "Silkeborg",
     venue: "Away",
-    competition: "Regional League",
-    opponentStrength: 57,
+    competition: "Grassroots Development League",
+    opponentStrength: 18,
     opponentForm: "Good",
     serviceLevel: "Low",
   },
@@ -592,8 +677,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Randers Academy",
     opponentShort: "Randers",
     venue: "Home",
-    competition: "Regional League",
-    opponentStrength: 54,
+    competition: "Grassroots Development League",
+    opponentStrength: 16,
     opponentForm: "Mixed",
     serviceLevel: "Good",
   },
@@ -602,8 +687,8 @@ const seasonFixtures: Fixture[] = [
     opponent: "Vejle Juniors",
     opponentShort: "Vejle",
     venue: "Away",
-    competition: "Regional League",
-    opponentStrength: 62,
+    competition: "Grassroots Development League",
+    opponentStrength: 22,
     opponentForm: "Good",
     serviceLevel: "Mixed",
   },
@@ -612,37 +697,37 @@ const seasonFixtures: Fixture[] = [
     opponent: "Odense Prospects",
     opponentShort: "Odense",
     venue: "Home",
-    competition: "Regional League",
-    opponentStrength: 59,
+    competition: "Grassroots Development League",
+    opponentStrength: 20,
     opponentForm: "Hot",
     serviceLevel: "Good",
   },
 ];
 
 const leagueTeams: LeagueTeam[] = [
-  { name: "Northbridge FC", short: "NBR", strength: 54 },
-  { name: "Aalborg United", short: "AAL", strength: 56 },
-  { name: "Roskilde Athletic", short: "ROS", strength: 51 },
-  { name: "Viborg Reserves", short: "VIB", strength: 60 },
-  { name: "Kolding Town", short: "KOL", strength: 48 },
-  { name: "Horsens Academy", short: "HOR", strength: 53 },
-  { name: "Esbjerg Youth", short: "ESB", strength: 58 },
-  { name: "Fredericia Colts", short: "FRE", strength: 49 },
-  { name: "Silkeborg II", short: "SIL", strength: 57 },
-  { name: "Randers Academy", short: "RAN", strength: 54 },
-  { name: "Vejle Juniors", short: "VEJ", strength: 62 },
-  { name: "Odense Prospects", short: "ODE", strength: 59 },
+  { name: currentClubName, short: "NBR", strength: currentClubStrength },
+  { name: "Aalborg United", short: "AAL", strength: 17 },
+  { name: "Roskilde Athletic", short: "ROS", strength: 14 },
+  { name: "Viborg Reserves", short: "VIB", strength: 21 },
+  { name: "Kolding Town", short: "KOL", strength: 12 },
+  { name: "Horsens Academy", short: "HOR", strength: 15 },
+  { name: "Esbjerg Youth", short: "ESB", strength: 19 },
+  { name: "Fredericia Colts", short: "FRE", strength: 11 },
+  { name: "Silkeborg II", short: "SIL", strength: 18 },
+  { name: "Randers Academy", short: "RAN", strength: 16 },
+  { name: "Vejle Juniors", short: "VEJ", strength: 22 },
+  { name: "Odense Prospects", short: "ODE", strength: 20 },
 ];
 
 const initialContract: Contract = {
-  club: "Northbridge FC",
-  label: "Academy terms",
-  weeklyWage: 120,
+  club: currentClubName,
+  label: "Grassroots terms",
+  weeklyWage: 45,
   weeksRemaining: 12,
   rolePromise: "Impact Sub",
-  appearanceBonus: 20,
-  goalBonus: 45,
-  assistBonus: 30,
+  appearanceBonus: 8,
+  goalBonus: 18,
+  assistBonus: 12,
   pressureModifier: 0,
 };
 
@@ -751,7 +836,7 @@ const initialState: GameState = {
 };
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 
 function createInitialState(): GameState {
   return cloneGameState(initialState);
@@ -1501,7 +1586,7 @@ function Header({ game }: { game: GameState }) {
         </div>
         <div className="club-chip">
           <span className="club-dot" />
-          Northbridge FC
+          {currentClubName}
         </div>
       </div>
 
@@ -2094,8 +2179,8 @@ function MatchScoreHeader({
   teamGoals: number;
   opponentGoals: number;
 }) {
-  const homeName = match.venue === "Home" ? "Northbridge" : match.opponent;
-  const awayName = match.venue === "Home" ? match.opponent : "Northbridge";
+  const homeName = match.venue === "Home" ? currentClubShortName : match.opponent;
+  const awayName = match.venue === "Home" ? match.opponent : currentClubShortName;
   const homeGoals = match.venue === "Home" ? teamGoals : opponentGoals;
   const awayGoals = match.venue === "Home" ? opponentGoals : teamGoals;
 
@@ -2115,8 +2200,8 @@ function MatchScoreHeader({
 }
 
 function SummaryScoreHeader({ summary }: { summary: LastMatchSummary }) {
-  const homeName = summary.venue === "Home" ? "Northbridge" : summary.opponent;
-  const awayName = summary.venue === "Home" ? summary.opponent : "Northbridge";
+  const homeName = summary.venue === "Home" ? currentClubShortName : summary.opponent;
+  const awayName = summary.venue === "Home" ? summary.opponent : currentClubShortName;
   const homeGoals = summary.venue === "Home" ? summary.teamGoals : summary.opponentGoals;
   const awayGoals = summary.venue === "Home" ? summary.opponentGoals : summary.teamGoals;
 
@@ -2193,31 +2278,29 @@ function PreMatchScreen({ match }: { match: MatchState }) {
 }
 
 function getPreMatchEntryPlan(match: MatchState) {
+  if (match.isInSquad === false || match.fitnessAvailability === "Out") {
+    return "Likely rested";
+  }
+
+  if (match.fitnessAvailability === "Critical") {
+    return "Emergency only";
+  }
+
   if (match.playerRole === "Starter") {
-    return "Start XI";
+    return match.fitnessAvailability === "Heavy" || match.fitnessAvailability === "Tired"
+      ? "Start, managed load"
+      : "Start XI";
   }
 
   if (match.playerRole === "Rotation Starter") {
-    return "Start, managed load";
+    return match.fitnessAvailability === "Heavy" ? "Limited start" : "Start or early rotation";
   }
 
   if (match.playerRole === "Impact Sub") {
-    if (match.entryMinute <= 56) {
-      return "Early second half";
-    }
-
-    if (match.entryMinute <= 70) {
-      return "If chasing or tired legs";
-    }
-
-    return "Late attacking option";
+    return match.fitnessAvailability === "Heavy" ? "If chasing late" : "Second-half option";
   }
 
-  if (match.entryMinute <= 65) {
-    return "If match opens up";
-  }
-
-  return "Late bench option";
+  return "Late bench cover";
 }
 
 function MatchMomentScreen({
@@ -2339,7 +2422,7 @@ function MatchMomentScreen({
           ) : (
               <div className="timeline-item">
                 <strong>0'</strong>
-                <span>Kickoff. Northbridge settle into shape.</span>
+                <span>Kickoff. {currentClubShortName} settle into shape.</span>
               </div>
             )}
           </div>
@@ -2689,7 +2772,7 @@ function SeasonReviewScreen({ game }: { game: GameState }) {
 
       <div className="card season-review-hero">
         <div>
-          <span className="metric-label">Northbridge FC</span>
+          <span className="metric-label">{currentClubName}</span>
           <h2>{review.tablePosition}. place</h2>
           <p>
             {review.record.wins}-{review.record.draws}-{review.record.losses}, {review.record.points} pts
@@ -2923,9 +3006,9 @@ function ClubScreen({ game }: { game: GameState }) {
 
   return (
     <section className="simple-screen">
-      <ScreenTitle label="Club" title="Northbridge FC" />
+      <ScreenTitle label="Club" title={currentClubName} />
       <div className="card">
-        <InfoRow label="League tier" value="Regional" />
+        <InfoRow label="League tier" value={currentLeagueTier.name} />
         <InfoRow label="Squad role" value={upcomingMatch?.playerRole ?? "Season Review"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
         <ProgressRow label="Team form" value={getTeamFormScore(game.season.results)} display={getRecentFormText(game.season.results)} accent="neutral" />
@@ -2960,7 +3043,7 @@ function ClubScreen({ game }: { game: GameState }) {
         <div className="section-heading">
           <div>
             <span className="metric-label">League table</span>
-            <h2>Regional League</h2>
+            <h2>{currentLeagueTier.name}</h2>
           </div>
           <Trophy size={19} />
         </div>
@@ -3665,6 +3748,10 @@ function applyTrainingWeek(state: GameState): GameState {
 
 function getTrainingSummaryText(summary: TrainingSummary) {
   const topXp = Object.entries(summary.xp).sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0];
+  if (!topXp) {
+    return `Recovery session complete: fitness ${formatSigned(summary.fitnessDelta)}.`;
+  }
+
   const levelText = summary.levelUps.length > 0 ? `${summary.levelUps.length} level-up.` : "No level-up yet.";
   return `Training complete: ${topXp?.[0] ?? "Attributes"} +${topXp?.[1] ?? 0} XP. ${levelText}`;
 }
@@ -3714,7 +3801,8 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const totals = summarizeMatchResults(results, simTotals);
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const moraleDelta = totals.rating >= 7 ? 3 : -2;
-  const contractEarnings = getMatchContractEarnings(state.contract, totals, Boolean(match));
+  const playerAppeared = didPlayerAppear(match);
+  const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
   const cashDelta = contractEarnings.total;
   const prestigeDelta = Math.max(0, Math.round((totals.rating - 6) * 2));
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season));
@@ -3766,8 +3854,8 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     contract: advanceContractWeek(state.contract),
     attributes: addAttributeXp(state.attributes, totals.xp),
     seasonStats: {
-      apps: state.seasonStats.apps + 1,
-      starts: state.seasonStats.starts + (match && isStartingRole(match.playerRole) ? 1 : 0),
+      apps: state.seasonStats.apps + (playerAppeared ? 1 : 0),
+      starts: state.seasonStats.starts + (playerAppeared && match && isStartingRole(match.playerRole) ? 1 : 0),
       goals: state.seasonStats.goals + totals.goals,
       assists: state.seasonStats.assists + totals.assists,
       ratings: postMatchState.seasonStats.ratings,
@@ -3779,6 +3867,14 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     lastMatch,
     activeMatch: undefined,
   };
+}
+
+function didPlayerAppear(match?: MatchState) {
+  if (!match || match.isInSquad === false || match.fitnessAvailability === "Out") {
+    return false;
+  }
+
+  return match.entryMinute <= 90 && (!match.exitMinute || match.exitMinute > match.entryMinute);
 }
 
 function startNextSeasonState(state: GameState): GameState {
@@ -3818,7 +3914,7 @@ function startNextSeasonState(state: GameState): GameState {
 function createDynastySeasonSnapshot(state: GameState, review = getSeasonReview(state)): DynastySeason {
   return {
     season: state.season.season,
-    club: "Northbridge FC",
+    club: currentClubName,
     leaguePosition: review.tablePosition,
     record: `${review.record.wins}-${review.record.draws}-${review.record.losses}`,
     apps: state.seasonStats.apps,
@@ -4287,7 +4383,7 @@ function getRecentTimelineItems(match: MatchState, results: MatchResult[]) {
     if (event.type !== "player_moment") {
       const goalText =
         event.teamGoalDelta > 0
-          ? " Goal for Northbridge."
+          ? ` Goal for ${currentClubShortName}.`
           : event.opponentGoalDelta > 0
             ? ` Goal for ${match.opponent}.`
             : "";
@@ -4340,20 +4436,23 @@ function getRecentTimelineItems(match: MatchState, results: MatchResult[]) {
 }
 
 function formatFixtureTitle(venue: Venue, opponent: string) {
-  return venue === "Home" ? `Northbridge - ${opponent}` : `${opponent} - Northbridge`;
+  return venue === "Home" ? `${currentClubShortName} - ${opponent}` : `${opponent} - ${currentClubShortName}`;
 }
 
 function getAppearanceText(match: MatchState) {
+  if (match.isInSquad === false || match.fitnessAvailability === "Out" || match.entryMinute > 90) {
+    return "Not selected";
+  }
   if (match.entryMinute === 0 && !match.exitMinute) {
     return "Full match";
   }
   if (match.entryMinute === 0 && match.exitMinute) {
-    return `0'-${match.exitMinute}'`;
+    return "Managed start";
   }
   if (match.exitMinute) {
-    return `${match.entryMinute}'-${match.exitMinute}'`;
+    return match.isComplete ? `${match.entryMinute}'-${match.exitMinute}'` : "Bench shift";
   }
-  return `On ${match.entryMinute}'`;
+  return match.isComplete ? `On ${match.entryMinute}'` : match.expectedMinutes;
 }
 
 function getMatchupText(delta: number) {
@@ -4387,8 +4486,11 @@ function getPitchStatus(match: MatchState) {
 
   if (match.liveMinute < match.entryMinute) {
     return {
-      label: "On the bench",
-      detail: `Expected to enter around ${match.entryMinute}'.`,
+      label: match.isInSquad === false ? "Not selected" : "On the bench",
+      detail:
+        match.isInSquad === false
+          ? "Recovery comes first today."
+          : `Plan: ${match.expectedMinutes.toLowerCase()}. Match state can change it.`,
       tone: "bench",
     };
   }
@@ -4417,13 +4519,15 @@ function getUpcomingMatch(state: GameState): UpcomingMatch {
     serviceLevel: fixture.serviceLevel,
     seed: fixture.id,
   });
-  const teamStrength = 52 + Math.round(getFormScore(state.seasonStats.ratings) / 12);
+  const teamStrength = currentClubStrength + Math.round((getFormScore(state.seasonStats.ratings) - 50) / 18);
   const matchImportance = fixture.competition.includes("Cup")
     ? "High"
     : Math.abs(teamStrength - fixture.opponentStrength) <= 3
       ? "Normal"
       : "Low";
   const selection = getSelectionReport(state, fixture, matchImportance);
+  const fitnessAvailability = getFitnessAvailability(state.fitness);
+  const isInSquad = isAvailableForSquad(state.fitness, `squad-${state.week}-${fixture.id}-${state.fitness}`);
 
   return {
     ...fixture,
@@ -4432,11 +4536,15 @@ function getUpcomingMatch(state: GameState): UpcomingMatch {
     opponentProfile,
     matchImportance,
     positionGroup: state.positionGroup,
-    playerRole: selection.role,
+    playerRole: isInSquad ? selection.role : "Bench",
     selection,
-    expectedMinutes: getExpectedMinutes(selection.role),
+    expectedMinutes: getExpectedMinutes(isInSquad ? selection.role : "Bench", fitnessAvailability, isInSquad),
+    fitnessAvailability,
+    isInSquad,
     tacticalFocus: getTacticalFocus(state, fixture.serviceLevel, positionModule),
-    managerInstruction: getManagerInstruction(selection.role, fixture.serviceLevel, positionModule),
+    managerInstruction: isInSquad
+      ? getManagerInstruction(selection.role, fixture.serviceLevel, positionModule)
+      : "Recovery first. The staff are unlikely to risk you unless the situation changes.",
   };
 }
 
@@ -4520,7 +4628,7 @@ function getLeagueTable(season: SeasonState): LeagueTableRow[] {
     }
 
     const teamPlayed = played;
-    const strengthGap = team.strength - 53;
+    const strengthGap = team.strength - currentLeagueTier.averageOvr;
     const wins = clamp(Math.floor(teamPlayed * 0.32 + strengthGap / 8), 0, teamPlayed);
     const draws = clamp(Math.round(teamPlayed * 0.22 + ((team.short.charCodeAt(0) + played) % 2)), 0, teamPlayed - wins);
     const losses = Math.max(0, teamPlayed - wins - draws);
@@ -4647,16 +4755,20 @@ function getSelectionReport(
 ): SelectionReport {
   const form = getFormScore(state.seasonStats.ratings);
   const lastRating = state.seasonStats.ratings[state.seasonStats.ratings.length - 1] ?? 6.4;
+  const availability = getFitnessAvailability(state.fitness);
   const trustImpact = Math.round(state.trust * 0.45);
-  const fitnessImpact = Math.round((state.fitness - 50) * 0.15);
+  const fitnessImpact = getFitnessSelectionImpact(state.fitness);
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
-  const fixtureImpact = fixture.opponentStrength >= 60 ? -2 : fixture.opponentStrength <= 50 ? 1 : 0;
+  const playerOvr = calculateOvr(state.attributes, getPositionModule(state.positionGroup).ovrWeights);
+  const abilityImpact = clamp(Math.round((playerOvr - currentLeagueTier.averageOvr) * 0.8), -8, 10);
+  const fixtureGap = fixture.opponentStrength - currentClubStrength;
+  const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
   const promiseImpact = Math.round(getRoleThreshold(state.contract.rolePromise) * 0.12);
   const analystImpact = getSupportLevel(state, "analyst") * 2;
-  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact, 0, 100);
-  const role = getPlayerMatchRole(score);
+  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact + abilityImpact, 0, 100);
+  const role = availability === "Out" ? "Bench" : getPlayerMatchRole(score);
   const nextRole = getNextRole(role);
   const nextThreshold = nextRole ? getRoleThreshold(nextRole) : 100;
 
@@ -4674,7 +4786,7 @@ function getSelectionReport(
       },
       {
         label: "Fitness",
-        value: `${Math.round(state.fitness)}%`,
+        value: availability,
         impact: fitnessImpact,
         tone: state.fitness >= 75 ? "good" : state.fitness < 58 ? "warn" : "neutral",
       },
@@ -4694,7 +4806,13 @@ function getSelectionReport(
         label: "Fixture",
         value: importance,
         impact: importanceImpact + fixtureImpact,
-        tone: importance === "High" || fixture.opponentStrength >= 60 ? "warn" : "neutral",
+        tone: importance === "High" || fixtureGap >= 6 ? "warn" : "neutral",
+      },
+      {
+        label: "Level fit",
+        value: `${playerOvr}/${currentLeagueTier.averageOvr}`,
+        impact: abilityImpact,
+        tone: abilityImpact >= 2 ? "good" : abilityImpact < -2 ? "warn" : "neutral",
       },
       {
         label: "Contract",
@@ -4723,6 +4841,57 @@ function getSelectionSummary(
   }
 
   return `Selection score ${score}. ${getRoleThreshold(nextRole) - score} more needed for ${nextRole}.`;
+}
+
+function getFitnessAvailability(fitness: number): FitnessAvailability {
+  if (fitness < 12) {
+    return "Out";
+  }
+  if (fitness < 25) {
+    return "Critical";
+  }
+  if (fitness < 45) {
+    return "Heavy";
+  }
+  if (fitness < 62) {
+    return "Tired";
+  }
+  if (fitness < 78) {
+    return "Playable";
+  }
+  return "Ready";
+}
+
+function getFitnessSelectionImpact(fitness: number) {
+  if (fitness < 12) {
+    return -45;
+  }
+  if (fitness < 25) {
+    return -30;
+  }
+  if (fitness < 45) {
+    return -18;
+  }
+  if (fitness < 62) {
+    return -9;
+  }
+  if (fitness < 78) {
+    return -2;
+  }
+  return Math.round((fitness - 78) * 0.12);
+}
+
+function isAvailableForSquad(fitness: number, matchSeed: string) {
+  if (fitness < 8) {
+    return false;
+  }
+  if (fitness < 18) {
+    return seededNoise(`${matchSeed}-fitness-selection`) > 0.7;
+  }
+  if (fitness < 28) {
+    return seededNoise(`${matchSeed}-fitness-selection`) > 0.28;
+  }
+  return true;
 }
 
 function getNextRole(role: UpcomingMatch["playerRole"]): SelectionReport["nextRole"] {
@@ -4762,12 +4931,18 @@ function getPlayerMatchRole(selectionScore: number): UpcomingMatch["playerRole"]
   return "Bench";
 }
 
-function getExpectedMinutes(role: UpcomingMatch["playerRole"]) {
+function getExpectedMinutes(role: UpcomingMatch["playerRole"], availability: FitnessAvailability = "Ready", isInSquad = true) {
+  if (!isInSquad || availability === "Out") {
+    return "Not selected";
+  }
+  if (availability === "Critical") {
+    return "Emergency only";
+  }
   const minutes: Record<UpcomingMatch["playerRole"], string> = {
-    Bench: "0-15",
-    "Impact Sub": "15-30",
-    "Rotation Starter": "55-70",
-    Starter: "75-90",
+    Bench: "Bench cover",
+    "Impact Sub": "Second half",
+    "Rotation Starter": availability === "Heavy" ? "Limited start" : "Around an hour",
+    Starter: availability === "Heavy" || availability === "Tired" ? "Managed start" : "Full match",
   };
 
   return minutes[role];
@@ -4821,6 +4996,10 @@ function getAppearanceWindow(
   simEvents: SimMatchEvent[],
   matchSeed: string,
 ) {
+  if (!context.isInSquad || context.fitnessAvailability === "Out") {
+    return { entryMinute: 91 };
+  }
+
   const window = getRoleMinuteWindow(role);
   const seed = `${matchSeed}-${state.week}-${context.id}-${role}-${state.trust}-${state.fitness}`;
   const variation = Math.round(seededNoise(seed) * 12) - 6;
@@ -4837,16 +5016,29 @@ function getAppearanceWindow(
           : 0;
 
   if (role === "Bench") {
-    return { entryMinute: clamp(window.start + variation + earlyEvent + (teamGoalDiff < 0 ? -6 : 0), 55, 89) };
+    if (context.fitnessAvailability === "Critical") {
+      return { entryMinute: clamp(window.start + variation + earlyEvent + (teamGoalDiff < 0 ? -4 : 0), 80, 89) };
+    }
+
+    return { entryMinute: clamp(window.start + variation + earlyEvent + (teamGoalDiff < 0 ? -6 : 0), 60, 89) };
   }
 
   if (role === "Impact Sub") {
-    return { entryMinute: clamp(66 + variation + earlyEvent + matchStateAdjustment, 48, 82) };
+    const fitnessDelay =
+      context.fitnessAvailability === "Critical" ? 12 : context.fitnessAvailability === "Heavy" ? 6 : 0;
+    return { entryMinute: clamp(66 + variation + earlyEvent + matchStateAdjustment + fitnessDelay, 48, 86) };
   }
 
   if (role === "Rotation Starter") {
-    const exitAdjustment = state.fitness < 62 ? -8 : teamGoalDiff >= 2 ? -5 : teamGoalDiff < 0 ? 6 : 0;
+    const fatigueExit =
+      context.fitnessAvailability === "Heavy" ? -14 : context.fitnessAvailability === "Tired" ? -8 : 0;
+    const exitAdjustment = fatigueExit + (teamGoalDiff >= 2 ? -5 : teamGoalDiff < 0 ? 6 : 0);
     return { entryMinute: 0, exitMinute: clamp(window.end + variation + exitAdjustment, 55, 86) };
+  }
+
+  if (role === "Starter" && ["Critical", "Heavy", "Tired"].includes(context.fitnessAvailability)) {
+    const exitBase = context.fitnessAvailability === "Critical" ? 58 : context.fitnessAvailability === "Heavy" ? 66 : 76;
+    return { entryMinute: 0, exitMinute: clamp(exitBase + variation, 50, 88) };
   }
 
   return { entryMinute: 0 };
@@ -4855,9 +5047,9 @@ function getAppearanceWindow(
 function getEventLabel(type: MatchEvent["type"]) {
   const labels: Record<MatchEvent["type"], string> = {
     player_moment: "Your moment",
-    team_goal: "Northbridge",
+    team_goal: currentClubShortName,
     opponent_goal: "Opponent",
-    team_chance: "Northbridge chance",
+    team_chance: `${currentClubShortName} chance`,
     opponent_chance: "Opponent chance",
     tempo: "Match tempo",
     substitution: "Tactical change",
@@ -4877,6 +5069,9 @@ function formatDelta(value: number) {
 function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   const matchSeed = createMatchSeed(state, context);
   const positionModule = getPositionModule(state.positionGroup);
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
+  const matchOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile);
+  const contextualOvr = getContextualAbilityScore(calculateOvr(state.attributes, positionModule.ovrWeights));
   const matchPool = createPositionMatchPool({
     opponentShort: context.opponentShort,
     managerInstruction: context.managerInstruction,
@@ -4888,9 +5083,9 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     state.trust * 0.35 +
     state.fitness * 0.25 +
     getFormScore(state.seasonStats.ratings) * 0.2 +
-    calculateOvr(state.attributes, positionModule.ovrWeights) * 0.2 +
+    contextualOvr * 0.2 +
     positionModule.matchTendencies.involvementBias[context.playerRole] * 10;
-  const playerMomentCount = getPlayerMomentCount(context.playerRole, involvementScore);
+  const playerMomentCount = context.isInSquad ? getPlayerMomentCount(context.playerRole, involvementScore) : 0;
   const minuteWindow = getRoleMinuteWindow(context.playerRole);
   const teamMatchModel = createTeamMatchModel({
     matchSeed,
@@ -4919,8 +5114,8 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     playerWindowEnd,
     role: context.playerRole,
     serviceLevel: context.serviceLevel,
-    opponentProfile: context.opponentProfile,
-    attributeValues: getAttributeValueMap(state.attributes),
+    opponentProfile: matchOpponentProfile,
+    attributeValues: matchAttributeValues,
     preferredCategories: positionModule.matchTendencies.preferredForwardCategories,
   });
   const playerEvents: PlayerMatchEvent[] = Array.from({ length: playerMomentCount }, (_, index) => {
@@ -4955,6 +5150,8 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     selectionScore: context.selection.score,
     selectionSummary: context.selection.summary,
     expectedMinutes: context.expectedMinutes,
+    fitnessAvailability: context.fitnessAvailability,
+    isInSquad: context.isInSquad,
     entryMinute: appearanceWindow.entryMinute,
     exitMinute: appearanceWindow.exitMinute,
     managerInstruction: context.managerInstruction,
@@ -4971,14 +5168,18 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
 function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
+  const matchOpponentProfile = state.activeMatch
+    ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile)
+    : undefined;
   const coreResult = resolvePlayerChoice({
     moment,
     choice,
-    attributeValues: getAttributeValueMap(state.attributes),
+    attributeValues: matchAttributeValues,
     fitness: state.fitness,
     trust: state.trust,
     playerRole: state.activeMatch?.playerRole,
-    opponentProfile: state.activeMatch?.opponentProfile,
+    opponentProfile: matchOpponentProfile,
     resultSeed,
   });
   const positionAdjustedResult = {
@@ -5044,13 +5245,14 @@ function applyMatchSupportEffects<T extends { rating: number; fitnessDelta: numb
 }
 
 function simulateRemainingPlayerMoments(state: GameState, match: MatchState): MatchResult[] {
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
   return match.events
     .slice(match.currentEventIndex)
     .filter((event): event is PlayerMatchEvent => event.type === "player_moment")
     .map((moment) => {
       const choice = chooseAutoSimChoice({
         moment,
-        attributeValues: getAttributeValueMap(state.attributes),
+        attributeValues: matchAttributeValues,
         fitness: state.fitness,
         trust: state.trust,
         matchSeed: match.matchSeed,
@@ -5230,7 +5432,17 @@ function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
   const coachLevel = getSupportLevel(state, "coach");
   const nutritionLevel = getSupportLevel(state, "nutrition");
+  const recoveryLevel = getSupportLevel(state, "recovery");
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
+
+  if (state.fitness < 12) {
+    return {
+      ranges,
+      fitnessDelta: 14 + recoveryLevel * 3 + nutritionLevel,
+      moraleDelta: 1,
+      trustDelta: -1,
+    };
+  }
 
   getCurrentTrainingFocuses(state).forEach((focus) => {
     const baseRange = getBaseTrainingRange(state, focus);
@@ -5335,6 +5547,31 @@ function getAttributeValue(attributes: Attribute[], key: AttributeKey) {
 
 function getAttributeValueMap(attributes: Attribute[]) {
   return Object.fromEntries(attributes.map((attribute) => [attribute.label, attribute.value]));
+}
+
+function getLeagueAdjustedAttributeValueMap(attributes: Attribute[], tier = currentLeagueTier) {
+  return Object.fromEntries(
+    attributes.map((attribute) => [attribute.label, getContextualAbilityScore(attribute.value, tier)]),
+  );
+}
+
+function getLeagueAdjustedOpponentProfile(profile: OpponentProfile, tier = currentLeagueTier): OpponentProfile {
+  return {
+    ...profile,
+    overall: getContextualAbilityScore(profile.overall, tier),
+    attack: getContextualAbilityScore(profile.attack, tier),
+    midfield: getContextualAbilityScore(profile.midfield, tier),
+    defense: getContextualAbilityScore(profile.defense, tier),
+    keeper: getContextualAbilityScore(profile.keeper, tier),
+    centerBackPace: getContextualAbilityScore(profile.centerBackPace, tier),
+    aerialDefense: getContextualAbilityScore(profile.aerialDefense, tier),
+    discipline: getContextualAbilityScore(profile.discipline, tier),
+    fatigueResistance: getContextualAbilityScore(profile.fatigueResistance, tier),
+  };
+}
+
+function getContextualAbilityScore(value: number, tier = currentLeagueTier) {
+  return clamp(Math.round(50 + (value - tier.averageOvr) * 1.15), 1, 99);
 }
 
 function getAverageRating(ratings: number[]) {

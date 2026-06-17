@@ -9,40 +9,42 @@ import {
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 
 const runs = Number(process.argv.find((arg) => arg.startsWith("--runs="))?.split("=")[1] ?? 500);
+const leagueAverageOvr = 15;
+const teamStrength = 15;
 
 const fixtures = [
-  { id: "md1-aalborg", opponent: "Aalborg", venue: "Away", opponentStrength: 56, opponentForm: "Good", serviceLevel: "Mixed" },
-  { id: "md2-roskilde", opponent: "Roskilde", venue: "Home", opponentStrength: 51, opponentForm: "Mixed", serviceLevel: "Good" },
-  { id: "md3-viborg", opponent: "Viborg", venue: "Away", opponentStrength: 60, opponentForm: "Hot", serviceLevel: "Low" },
-  { id: "md4-kolding", opponent: "Kolding", venue: "Home", opponentStrength: 48, opponentForm: "Poor", serviceLevel: "Good" },
-  { id: "md5-horsens", opponent: "Horsens", venue: "Away", opponentStrength: 53, opponentForm: "Mixed", serviceLevel: "Mixed" },
-  { id: "md6-esbjerg", opponent: "Esbjerg", venue: "Home", opponentStrength: 58, opponentForm: "Good", serviceLevel: "Low" },
-  { id: "md7-fredericia", opponent: "Fredericia", venue: "Away", opponentStrength: 49, opponentForm: "Poor", serviceLevel: "Good" },
-  { id: "md8-naestved", opponent: "Naestved", venue: "Home", opponentStrength: 61, opponentForm: "Hot", serviceLevel: "Mixed" },
-  { id: "md9-silkeborg", opponent: "Silkeborg", venue: "Away", opponentStrength: 57, opponentForm: "Good", serviceLevel: "Low" },
-  { id: "md10-randers", opponent: "Randers", venue: "Home", opponentStrength: 54, opponentForm: "Mixed", serviceLevel: "Good" },
-  { id: "md11-vejle", opponent: "Vejle", venue: "Away", opponentStrength: 62, opponentForm: "Good", serviceLevel: "Mixed" },
-  { id: "md12-hobro", opponent: "Hobro", venue: "Home", opponentStrength: 50, opponentForm: "Mixed", serviceLevel: "Good" },
+  { id: "md1-aalborg", opponent: "Aalborg", venue: "Away", opponentStrength: 17, opponentForm: "Good", serviceLevel: "Mixed" },
+  { id: "md2-roskilde", opponent: "Roskilde", venue: "Home", opponentStrength: 14, opponentForm: "Mixed", serviceLevel: "Good" },
+  { id: "md3-viborg", opponent: "Viborg", venue: "Away", opponentStrength: 21, opponentForm: "Hot", serviceLevel: "Low" },
+  { id: "md4-kolding", opponent: "Kolding", venue: "Home", opponentStrength: 12, opponentForm: "Poor", serviceLevel: "Good" },
+  { id: "md5-horsens", opponent: "Horsens", venue: "Away", opponentStrength: 15, opponentForm: "Mixed", serviceLevel: "Mixed" },
+  { id: "md6-esbjerg", opponent: "Esbjerg", venue: "Home", opponentStrength: 19, opponentForm: "Good", serviceLevel: "Low" },
+  { id: "md7-fredericia", opponent: "Fredericia", venue: "Away", opponentStrength: 11, opponentForm: "Poor", serviceLevel: "Good" },
+  { id: "md8-naestved", opponent: "Naestved", venue: "Home", opponentStrength: 22, opponentForm: "Hot", serviceLevel: "Mixed" },
+  { id: "md9-silkeborg", opponent: "Silkeborg", venue: "Away", opponentStrength: 18, opponentForm: "Good", serviceLevel: "Low" },
+  { id: "md10-randers", opponent: "Randers", venue: "Home", opponentStrength: 16, opponentForm: "Mixed", serviceLevel: "Good" },
+  { id: "md11-vejle", opponent: "Vejle", venue: "Away", opponentStrength: 22, opponentForm: "Good", serviceLevel: "Mixed" },
+  { id: "md12-hobro", opponent: "Hobro", venue: "Home", opponentStrength: 20, opponentForm: "Mixed", serviceLevel: "Good" },
 ];
 
 const baseAttributes = {
-  Finishing: 54,
-  "Long Shots": 43,
-  Passing: 45,
-  Vision: 41,
-  Dribbling: 48,
-  "Off Ball": 50,
-  Composure: 46,
-  "First Touch": 49,
-  Acceleration: 57,
-  Pace: 52,
-  Stamina: 55,
-  Heading: 42,
-  Strength: 44,
-  "Work Rate": 61,
-  Tackling: 32,
-  Marking: 34,
-  Positioning: 47,
+  Finishing: 18,
+  "Long Shots": 12,
+  Passing: 14,
+  Vision: 13,
+  Dribbling: 16,
+  "Off Ball": 17,
+  Composure: 14,
+  "First Touch": 16,
+  Acceleration: 20,
+  Pace: 18,
+  Stamina: 17,
+  Heading: 13,
+  Strength: 12,
+  "Work Rate": 19,
+  Tackling: 8,
+  Marking: 9,
+  Positioning: 13,
 };
 
 const ovrWeights = {
@@ -66,7 +68,7 @@ const scenarios = [
   },
   {
     name: "Improved finisher",
-    state: { trust: 48, fitness: 72, ratings: [6.9, 7.1, 6.8], attributes: { ...baseAttributes, Finishing: 64, Composure: 56, "Off Ball": 58 } },
+    state: { trust: 48, fitness: 72, ratings: [6.9, 7.1, 6.8], attributes: { ...baseAttributes, Finishing: 27, Composure: 22, "Off Ball": 25 } },
   },
   {
     name: "Low fitness",
@@ -108,10 +110,10 @@ function buildContext(state, fixture, matchSeed) {
     serviceLevel: fixture.serviceLevel,
     seed: fixture.id,
   });
-  const teamStrength = 52 + Math.round(getFormScore(state.ratings) / 12);
+  const formAdjustedTeamStrength = teamStrength + Math.round((getFormScore(state.ratings) - 50) / 18);
   const importance = fixture.competition?.includes("Cup")
     ? "High"
-    : Math.abs(teamStrength - fixture.opponentStrength) <= 3
+    : Math.abs(formAdjustedTeamStrength - fixture.opponentStrength) <= 3
       ? "Normal"
       : "Low";
   const selection = getSelectionReport(state, fixture, importance);
@@ -119,7 +121,7 @@ function buildContext(state, fixture, matchSeed) {
   return {
     ...fixture,
     matchSeed,
-    teamStrength,
+    teamStrength: formAdjustedTeamStrength,
     opponentProfile,
     matchImportance: importance,
     playerRole: selection.role,
@@ -143,8 +145,10 @@ function simulateMatch(state, context, matchSeed) {
     opponentShort: context.opponent,
     managerInstruction: "Balance lab simulation",
   });
+  const adjustedAttributes = getLeagueAdjustedAttributes(state.attributes);
+  const adjustedOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile);
   const involvementScore =
-    state.trust * 0.35 + state.fitness * 0.25 + getFormScore(state.ratings) * 0.2 + calculateOvr(state.attributes) * 0.2;
+    state.trust * 0.35 + state.fitness * 0.25 + getFormScore(state.ratings) * 0.2 + getContextualAbilityScore(calculateOvr(state.attributes)) * 0.2;
   const playerMomentCount = getPlayerMomentCount(context.playerRole, involvementScore);
   const moments = createPositionMatchPool({
     opponentShort: context.opponent,
@@ -162,14 +166,14 @@ function simulateMatch(state, context, matchSeed) {
     simEvents,
     role: context.playerRole,
     serviceLevel: context.serviceLevel,
-    opponentProfile: context.opponentProfile,
-    attributeValues: state.attributes,
+    opponentProfile: adjustedOpponentProfile,
+    attributeValues: adjustedAttributes,
     preferredCategories: forwardPreferredCategories,
   });
   const playerResults = selectedMoments.map((moment, index) => {
     const choice = chooseAutoSimChoice({
       moment,
-      attributeValues: state.attributes,
+      attributeValues: adjustedAttributes,
       fitness: state.fitness,
       trust: state.trust,
       matchSeed,
@@ -212,11 +216,11 @@ function createMatchResult(state, context, moment, choice, resultSeed) {
   const result = resolvePlayerChoice({
     moment,
     choice,
-    attributeValues: state.attributes,
+    attributeValues: getLeagueAdjustedAttributes(state.attributes),
     fitness: state.fitness,
     trust: state.trust,
     playerRole: context.playerRole,
-    opponentProfile: context.opponentProfile,
+    opponentProfile: getLeagueAdjustedOpponentProfile(context.opponentProfile),
     resultSeed,
   });
 
@@ -278,8 +282,11 @@ function getSelectionReport(state, fixture, importance = "Normal") {
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
-  const fixtureImpact = fixture.opponentStrength >= 60 ? -2 : fixture.opponentStrength <= 50 ? 1 : 0;
-  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact, 0, 100);
+  const playerOvr = calculateOvr(state.attributes);
+  const abilityImpact = clamp(Math.round((playerOvr - leagueAverageOvr) * 0.8), -8, 10);
+  const fixtureGap = fixture.opponentStrength - teamStrength;
+  const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
+  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + abilityImpact, 0, 100);
 
   return {
     score,
@@ -305,6 +312,29 @@ function calculateOvr(attributes) {
   const weighted = entries.reduce((sum, [key, weight]) => sum + attributes[key] * weight, 0);
   const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
   return Math.round(weighted / totalWeight);
+}
+
+function getLeagueAdjustedAttributes(attributes) {
+  return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, getContextualAbilityScore(value)]));
+}
+
+function getLeagueAdjustedOpponentProfile(profile) {
+  return {
+    ...profile,
+    overall: getContextualAbilityScore(profile.overall),
+    attack: getContextualAbilityScore(profile.attack),
+    midfield: getContextualAbilityScore(profile.midfield),
+    defense: getContextualAbilityScore(profile.defense),
+    keeper: getContextualAbilityScore(profile.keeper),
+    centerBackPace: getContextualAbilityScore(profile.centerBackPace),
+    aerialDefense: getContextualAbilityScore(profile.aerialDefense),
+    discipline: getContextualAbilityScore(profile.discipline),
+    fatigueResistance: getContextualAbilityScore(profile.fatigueResistance),
+  };
+}
+
+function getContextualAbilityScore(value) {
+  return clamp(Math.round(50 + (value - leagueAverageOvr) * 1.15), 1, 99);
 }
 
 function getFormScore(ratings) {
@@ -421,7 +451,7 @@ function profileSpread(seed, key, range) {
 }
 
 function clampProfile(value) {
-  return Math.max(25, Math.min(90, Math.round(value)));
+  return Math.max(1, Math.min(99, Math.round(value)));
 }
 
 function clamp(value, min, max) {

@@ -16,6 +16,26 @@ Hvis spilleren bliver bedre, skal kampen foeles anderledes. Hvis modstanderen er
 - Engine-data skal kunne bruges af UI: pre-match, live moments, post-match, XP og readiness.
 - Foerste robuste version skal vaere striker-first, men strukturen skal kunne udvides til andre positioner.
 
+## Relative Ability Model
+
+Match engine maa ikke behandle en raw 18 OVR spiller ens i alle ligaer. Den skal foerst forstaa kampens niveau.
+
+Core rule:
+
+`raw player ability -> league-adjusted match ability -> resolution`
+
+UI viser raw attributes og raw OVR, fordi de beskriver dynasty progression paa den globale 1-100 skala. Selve match engine bruger en kontekstjusteret score, hvor ligaens average OVR bliver engine baseline.
+
+Eksempel:
+
+- Player Finishing 18 i en 15 OVR liga bliver behandlet som lidt over kampens baseline.
+- Player Finishing 18 i en 45 OVR liga bliver behandlet som langt under kampens baseline.
+- Opponent profiles normaliseres paa samme maade i player highlight resolution.
+
+Team score simulation bruger stadig raw team/opponent strength, fordi holdenes xG skal komme fra forskellen mellem klubberne i den konkrete liga.
+
+Dette goer det muligt at starte dynastyen med meget lave stats uden at spilleren foeles broken, og det goer samtidig transfers til hoejere tiers risikable.
+
 ## Non-Goals For V2
 
 - Fuld 22-spiller taktisk simulation.

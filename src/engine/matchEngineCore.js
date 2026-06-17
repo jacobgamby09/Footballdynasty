@@ -480,14 +480,17 @@ function getOutcomeTier(resultScore, threshold) {
 }
 
 function isDecisiveOutcome(tier, chanceQuality, outcome) {
+  if (outcome === "assist") {
+    if (tier === "Great") {
+      return chanceQuality !== "Difficult chance";
+    }
+    return tier === "Good" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance");
+  }
   if (tier === "Great") {
     return true;
   }
   if (tier !== "Good") {
     return false;
-  }
-  if (outcome === "assist") {
-    return chanceQuality !== "Difficult chance";
   }
   return outcome === "goal" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance");
 }

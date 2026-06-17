@@ -185,13 +185,14 @@ function simulateMatch(state, context, matchSeed) {
   );
   const playerGoals = playerResults.reduce((sum, result) => sum + result.goals, 0);
   const playerAssists = playerResults.reduce((sum, result) => sum + result.assists, 0);
+  const playerTeamGoals = playerGoals + playerAssists;
   const playerRating = playerResults.length
     ? playerResults.reduce((sum, result) => sum + result.rating, 0) / playerResults.length
     : 6.4;
 
   return {
-    scoreline: `${simScore.team + playerGoals}-${simScore.opponent}`,
-    teamGoals: simScore.team + playerGoals,
+    scoreline: `${simScore.team + playerTeamGoals}-${simScore.opponent}`,
+    teamGoals: simScore.team + playerTeamGoals,
     opponentGoals: simScore.opponent,
     simGoals: simScore.team + simScore.opponent,
     playerGoals,

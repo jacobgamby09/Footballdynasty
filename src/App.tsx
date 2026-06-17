@@ -140,6 +140,11 @@ type GameState = {
   lastTraining?: TrainingSummary;
 };
 
+type SavePayload = {
+  version: 1;
+  game: GameState;
+};
+
 type AttributeLevelUp = {
   attribute: AttributeKey;
   before: number;
@@ -612,6 +617,128 @@ const initialState: GameState = {
   lastEvent: "Pre-season complete. Your first senior fixture is waiting.",
 };
 
+const SAVE_KEY = "football-dynasty-save";
+const SAVE_VERSION = 1;
+
+function createInitialState(): GameState {
+  return cloneGameState(initialState);
+}
+
+function cloneGameState(state: GameState): GameState {
+  return {
+    ...state,
+    attributes: state.attributes.map((attribute) => ({ ...attribute })),
+    seasonStats: {
+      ...state.seasonStats,
+      ratings: [...state.seasonStats.ratings],
+    },
+    season: {
+      ...state.season,
+      fixtures: state.season.fixtures.map((fixture) => ({ ...fixture })),
+      results: state.season.results.map((result) => ({ ...result })),
+    },
+    activeMatch: undefined,
+    lastMatch: state.lastMatch ? cloneLastMatchSummary(state.lastMatch) : undefined,
+    lastTraining: state.lastTraining ? cloneTrainingSummary(state.lastTraining) : undefined,
+  };
+}
+
+function cloneTrainingSummary(summary: TrainingSummary): TrainingSummary {
+  return {
+    ...summary,
+    focuses: [...summary.focuses],
+    ranges: { ...summary.ranges },
+    xp: { ...summary.xp },
+    levelUps: summary.levelUps.map((levelUp) => ({ ...levelUp })),
+  };
+}
+
+function cloneLastMatchSummary(summary: LastMatchSummary): LastMatchSummary {
+  return {
+    ...summary,
+    chanceQualities: [...summary.chanceQualities],
+    explanationTags: [...summary.explanationTags],
+    performanceReasons: [...summary.performanceReasons],
+    xp: { ...summary.xp },
+    careerImpact: [...summary.careerImpact],
+  };
+}
+
+function loadSavedGame(): GameState {
+  if (typeof window === "undefined") {
+    return createInitialState();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      return createInitialState();
+    }
+
+    const payload = JSON.parse(raw) as Partial<SavePayload>;
+    if (payload.version !== SAVE_VERSION || !payload.game) {
+      return createInitialState();
+    }
+
+    return normalizeSavedGame(payload.game);
+  } catch {
+    return createInitialState();
+  }
+}
+
+function normalizeSavedGame(saved: GameState): GameState {
+  const fallback = createInitialState();
+  return {
+    ...fallback,
+    ...saved,
+    positionCode: getPositionModule(saved.positionGroup ?? fallback.positionGroup).shortCode,
+    archetype: saved.archetype ?? getPositionModule(saved.positionGroup ?? fallback.positionGroup).defaultArchetype,
+    attributes: mergeSavedAttributes(saved.attributes ?? fallback.attributes),
+    seasonStats: {
+      ...fallback.seasonStats,
+      ...saved.seasonStats,
+      ratings: [...(saved.seasonStats?.ratings ?? [])],
+    },
+    season: {
+      ...fallback.season,
+      ...saved.season,
+      fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : fallback.season.fixtures,
+      results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
+    },
+    trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
+    activeMatch: undefined,
+    lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
+    lastTraining: saved.lastTraining ? cloneTrainingSummary(saved.lastTraining) : undefined,
+  };
+}
+
+function mergeSavedAttributes(savedAttributes: Attribute[]) {
+  return initialAttributes.map((initialAttribute) => {
+    const saved = savedAttributes.find((attribute) => attribute.label === initialAttribute.label);
+    return saved ? { ...initialAttribute, ...saved } : { ...initialAttribute };
+  });
+}
+
+function saveGameState(game: GameState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload: SavePayload = {
+    version: SAVE_VERSION,
+    game: cloneGameState(game),
+  };
+  window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+}
+
+function clearSavedGame() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(SAVE_KEY);
+}
+
 const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },
   { key: "training" as const, label: "Training", icon: Dumbbell },
@@ -621,8 +748,9 @@ const navItems = [
 
 function App() {
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("player");
-  const [game, setGame] = useState<GameState>(initialState);
+  const [game, setGame] = useState<GameState>(() => loadSavedGame());
   const [matchSpeed, setMatchSpeed] = useState<MatchSpeed>(2);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved">("saved");
 
   const activeNav =
     activeScreen === "pre-match" || activeScreen === "match" || activeScreen === "summary" || activeScreen === "training-summary"
@@ -648,6 +776,16 @@ function App() {
         : isMatchDay
           ? "Match Day"
           : "Next Week";
+
+  useEffect(() => {
+    if (game.activeMatch) {
+      setSaveStatus("unsaved");
+      return;
+    }
+
+    saveGameState(game);
+    setSaveStatus("saved");
+  }, [game]);
 
   useEffect(() => {
     if (activeScreen !== "match" || !game.activeMatch || game.activeMatch.currentResult) {
@@ -943,14 +1081,21 @@ function App() {
     setActiveScreen(nav);
   }
 
+  function resetCareer() {
+    const confirmed = window.confirm("Start a new career? This will delete the current local save.");
+    if (!confirmed) {
+      return;
+    }
+
+    clearSavedGame();
+    setGame(createInitialState());
+    setActiveScreen("player");
+    setSaveStatus("saved");
+  }
+
   return (
     <main className="app-shell">
-      <section className="phone-frame" aria-label="Football Dynasty prototype">
-        <div className="status-bar" aria-hidden="true">
-          <span>9:41</span>
-          <span className="status-icons">5G 100%</span>
-        </div>
-
+      <section className="app-frame" aria-label="Football Dynasty">
         <div className="screen-scroll">
           {activeScreen === "player" && <PlayerScreen game={game} />}
           {activeScreen === "training" && (
@@ -961,7 +1106,7 @@ function App() {
             />
           )}
           {activeScreen === "club" && <ClubScreen game={game} />}
-          {activeScreen === "home" && <HomeScreen game={game} />}
+          {activeScreen === "home" && <HomeScreen game={game} saveStatus={saveStatus} onResetCareer={resetCareer} />}
           {activeScreen === "pre-match" && game.activeMatch && <PreMatchScreen match={game.activeMatch} />}
           {activeScreen === "match" && game.activeMatch && (
             <MatchMomentScreen
@@ -1936,10 +2081,10 @@ function MatchMomentScreen({
 
       {isPlayerMoment && match.currentResult && (
         <div className="result-popup-backdrop">
-          <div className={`card result-card result-popup ${getResultPopupTone(match.currentResult.outcomeTier)}`}>
-            <span className="metric-label">Result</span>
+          <div className={`card result-card result-popup ${getResultPopupTone(match.currentResult)}`}>
+            <span className="metric-label">{getResultPopupLabel(match.currentResult)}</span>
             <div className="result-verdict">
-              <strong>{match.currentResult.outcomeTier}</strong>
+              <strong>{getResultVerdictText(match.currentResult)}</strong>
               <span>{match.currentResult.chanceQuality}</span>
             </div>
             <h2>{match.currentResult.title}</h2>
@@ -2183,17 +2328,22 @@ function TrainingSummaryScreen({
     <section className="simple-screen summary-screen">
       <ScreenTitle label={`Week ${summary.week} training`} title="Development Summary" />
 
-      <div className="card training-progress-hero">
+      <div className={`card training-progress-hero${levelUp ? " has-level-up" : ""}`}>
         <div className="section-heading">
           <div>
-            <span className="metric-label">Attribute progress</span>
+            <span className="metric-label">{levelUp ? "Attribute level-up" : "Attribute progress"}</span>
             <h2>{primaryFocus}</h2>
-            <p>
-              Level {previousLevel}
-              {levelUp ? ` to ${levelUp.after}` : ""} - +{primaryGain} XP
-            </p>
+            {levelUp ? (
+              <div className="level-up-showcase" aria-label={`${primaryFocus} level increased from ${previousLevel} to ${levelUp.after}`}>
+                <span>{previousLevel}</span>
+                <strong>{levelUp.after}</strong>
+                <em>+{primaryGain} XP</em>
+              </div>
+            ) : (
+              <p>Level {previousLevel} - +{primaryGain} XP</p>
+            )}
           </div>
-          <Dumbbell size={19} />
+          {levelUp ? <Sparkles size={20} /> : <Dumbbell size={19} />}
         </div>
         <div className="training-xp-meter">
           <div className="xp-meter-labels">
@@ -2258,26 +2408,6 @@ function TrainingSummaryScreen({
         </div>
       </div>
 
-      <div className="card">
-        <span className="metric-label">Level-ups</span>
-        <div className="impact-list">
-          {summary.levelUps.length > 0 ? (
-            summary.levelUps.map((levelUp) => (
-              <div className="impact-item" key={`${levelUp.attribute}-${levelUp.after}`}>
-                <Sparkles size={15} />
-                <span>
-                  {levelUp.attribute} {levelUp.before} to {levelUp.after}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="impact-item">
-              <Sparkles size={15} />
-              <span>No attribute level-up yet. XP progress has been banked.</span>
-            </div>
-          )}
-        </div>
-      </div>
     </section>
   );
 }
@@ -2540,7 +2670,15 @@ function LeagueTableRowView({ row, compact = false }: { row: LeagueTableRow; com
   );
 }
 
-function HomeScreen({ game }: { game: GameState }) {
+function HomeScreen({
+  game,
+  saveStatus,
+  onResetCareer,
+}: {
+  game: GameState;
+  saveStatus: "saved" | "unsaved";
+  onResetCareer: () => void;
+}) {
   return (
     <section className="simple-screen">
       <ScreenTitle label="Home" title="Private base" />
@@ -2566,6 +2704,23 @@ function HomeScreen({ game }: { game: GameState }) {
           <h2>{game.prestige}</h2>
           <p>Local name</p>
         </div>
+      </div>
+      <div className="card save-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Career save</span>
+            <h2>{saveStatus === "saved" ? "Saved locally" : "Match in progress"}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <p>
+          {saveStatus === "saved"
+            ? "Career progress is stored on this device."
+            : "Finish the current match to save the latest result."}
+        </p>
+        <button className="danger-action" type="button" onClick={onResetCareer}>
+          New Career
+        </button>
       </div>
     </section>
   );
@@ -2739,7 +2894,7 @@ function NavButton({
 
 function applyTrainingWeek(state: GameState): GameState {
   const projection = getTrainingProjection(state);
-  const rolledXp = rollTrainingXp(state, projection.ranges);
+  const rolledXp = rollTrainingXp(state, projection.ranges, createTrainingSeed(state));
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season)).score;
   const attributeResult = addAttributeXpDetailed(state.attributes, rolledXp);
   const fitness = clamp(state.fitness + projection.fitnessDelta, 0, 100);
@@ -3027,9 +3182,13 @@ function summarizeMatchResults(results: MatchResult[], simTotals = createEmptySi
 
   return {
     ...totals,
-    teamGoals: totals.teamGoals + totals.goals,
+    teamGoals: totals.teamGoals + getPlayerTeamGoalContributions(totals),
     rating: Number(clamp(totals.rating / results.length, 5.4, 9.6).toFixed(1)),
   };
+}
+
+function getPlayerTeamGoalContributions(totals: Pick<MatchTotals, "goals" | "assists">) {
+  return totals.goals + totals.assists;
 }
 
 function getMatchSummaryText(results: MatchResult[], totals: ReturnType<typeof summarizeMatchResults>) {
@@ -3099,14 +3258,37 @@ function getUniqueItems(items: string[], limit: number) {
   return Array.from(new Set(items)).slice(0, limit);
 }
 
-function getResultPopupTone(tier: OutcomeTier) {
-  if (tier === "Poor") {
+function getResultPopupTone(result: MatchResult) {
+  if (result.goals > 0 || result.assists > 0) {
+    return "is-goal-involvement";
+  }
+  if (result.outcomeTier === "Poor") {
     return "is-failure";
   }
-  if (tier === "Okay") {
+  if (result.outcomeTier === "Okay") {
     return "is-okay";
   }
   return "is-success";
+}
+
+function getResultPopupLabel(result: MatchResult) {
+  if (result.goals > 0) {
+    return "Goal";
+  }
+  if (result.assists > 0) {
+    return "Goal involvement";
+  }
+  return "Result";
+}
+
+function getResultVerdictText(result: MatchResult) {
+  if (result.goals > 0) {
+    return "GOAL";
+  }
+  if (result.assists > 0) {
+    return "ASSIST";
+  }
+  return result.outcomeTier;
 }
 
 function getOutcomeTierSummary(tier: OutcomeTier) {
@@ -3211,7 +3393,9 @@ function summarizeSimEvents(events: MatchEvent[], upToIndex: number) {
 function getTimelineScore(match: MatchState, results: MatchResult[], upToIndex: number) {
   const simTotals = summarizeSimEvents(match.events, upToIndex);
   const playerGoalsBeforeOrAtEvent = match.events.slice(0, upToIndex + 1).filter((event) => event.type === "player_moment").length;
-  const appliedPlayerGoals = results.slice(0, playerGoalsBeforeOrAtEvent).reduce((sum, result) => sum + result.goals, 0);
+  const appliedPlayerGoals = results
+    .slice(0, playerGoalsBeforeOrAtEvent)
+    .reduce((sum, result) => sum + result.goals + result.assists, 0);
 
   return {
     teamGoals: simTotals.teamGoals + appliedPlayerGoals,
@@ -4089,6 +4273,7 @@ function getIntensityProfile(intensity: Intensity) {
 function rollTrainingXp(
   state: GameState,
   ranges: Partial<Record<AttributeKey, { min: number; max: number }>>,
+  trainingSeed: string,
 ): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
 
@@ -4098,11 +4283,25 @@ function rollTrainingXp(
       return;
     }
 
-    const roll = seededNoise(`${state.week}-${focus}-${state.intensity}-${state.fitness}-${state.trust}`);
+    const roll = seededNoise(`${trainingSeed}-${focus}`);
     xp[focus] = Math.round(range.min + roll * (range.max - range.min));
   });
 
   return xp;
+}
+
+function createTrainingSeed(state: GameState) {
+  return [
+    "training",
+    state.week,
+    state.trainingCompletedWeek,
+    state.trainingFocuses.join(","),
+    state.intensity,
+    state.fitness,
+    state.trust,
+    Date.now().toString(36),
+    Math.random().toString(36).slice(2, 8),
+  ].join("-");
 }
 
 function createMatchSeed(state: GameState, context: UpcomingMatch) {

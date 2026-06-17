@@ -719,6 +719,39 @@
 
 - Match balancing tester nu den samme highlight variation som spilleren møder i UI.
 - Næste naturlige step er at begynde at udvide samme struktur med rolle-/positionsspecifikke moment libraries uden målmand.
+## 2026-06-17 - Local Save/Load V1
+
+### Implemented
+
+- Tilføjet versioneret localStorage save under `football-dynasty-save`.
+- Appen loader automatisk gemt career state ved start.
+- Career state gemmes automatisk, når spilleren ikke er midt i en aktiv live-kamp.
+- Aktive live-kampe gemmes ikke midt i timeline for at undgå ødelagte reload-states.
+- Home screen viser save status:
+  - `Saved locally`
+  - `Match in progress`
+- Home screen har nu `New Career`, som sletter local save og starter forfra efter confirm.
+- Save load normaliserer attributes, fixtures, results, last match og last training mod nuværende state-shape.
+
+### Design Impact
+
+- Mobiltest og længere balancing-forløb kan nu overleve refresh/dev-server reload.
+- Næste større progression-lag kan trygt bygge mod end-of-season checkpoint og kontrakt/transfer flow.
+
+## 2026-06-17 - Assist Scoreline Integrity Fix
+
+### Implemented
+
+- Decisive player assists tæller nu som et Northbridge goal i både live timeline og post-match scoreline.
+- Balance lab tæller nu også player assists som team goals, så simulationen matcher spillets scorelogik.
+- Assist conversion er tunet lidt strengere, så bugfixet ikke gør scorelines for målrige.
+
+### Design Rule
+
+- Spilleren kan kun få mål/assist fra et player moment.
+- Hvis spilleren skipper/auto-simulerer resterende highlights, kan auto-simmed player moments stadig give mål/assist.
+- Non-player sim goals giver ikke automatisk spilleren mål/assist.
+
 ## 2026-06-17 - Position-Aware Post-Match Breakdown
 
 ### Implemented

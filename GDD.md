@@ -92,6 +92,30 @@ Foreløbige attributes:
 
 Potentiale bør være individuelt pr. attribute frem for ét samlet potentiale. En spiller kan have højt potentiale i Finishing og Off Ball, men lavere potentiale i Strength eller Passing.
 
+## Position Architecture
+
+Spillet skal understøtte alle markspiller-positioner over tid, men uden at bygge separate spil for hver position. Fundamentet er derfor position modules.
+
+Første scope uden målmand:
+
+- Forward
+- Winger
+- Midfielder
+- Fullback
+- Centerback
+
+Hvert position module definerer:
+
+- short code og default archetype
+- key attributes til Player/Training UI
+- OVR weights for den position
+- rating focus, så post-match vurdering kan skifte efter rolle
+- manager instructions og tactical focus
+- match tendencies, som påvirker involveringsgrad og highlight-typer
+- moment pools, så nye positionsspecifikke highlights kan tilføjes senere
+
+Alle spillere beholder stadig alle stats. Positionen afgør kun, hvilke stats der vægtes højest og fremhæves først.
+
 ## Striker V1
 
 Angriber er første position, fordi feedbacken er tydelig: mål, assists, chancer, spilletid og form.
@@ -156,6 +180,9 @@ Et moment består af:
 2. 2-4 mulige valg.
 3. En resolution baseret på stats, kontekst og randomness.
 4. Konsekvenser for rating, confidence, fatigue, trust og kampresultat.
+
+
+Moment-biblioteket skal vaere bredt nok til, at en saeson ikke foeles loest efter faa kampe. Hver position boer derfor have baade egne moments og faelles moments, og generatoren skal kunne blande dem ud fra position, rolle, score state, service, fitness og modstanderprofil.
 
 Eksempel:
 

@@ -1,0 +1,723 @@
+export function createForwardMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  const managerInstruction = input.managerInstruction;
+  const tacticalFocus = input.tacticalFocus;
+  const fitnessContext =
+    input.fitness > 80
+      ? "You feel sharp enough to attack the space early."
+      : "Your legs are not perfect, so the safer choice may have value.";
+
+  return [
+    {
+      id: "through-on-goal",
+      category: "run_behind",
+      minute: 67,
+      opponent: opponentShort,
+      situation: "Through on goal, defender closing",
+      context: `${fitnessContext} ${managerInstruction}`,
+      choices: [
+        {
+          id: "place-shot",
+          label: "Place Shot",
+          uses: ["Finishing", "Composure"],
+          risk: "Medium",
+          reward: "Goal threat",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "round-keeper",
+          label: "Round Keeper",
+          uses: ["Acceleration", "First Touch"],
+          risk: "High",
+          reward: "Huge chance",
+          manager: "Risky",
+          outcome: "goal",
+        },
+        {
+          id: "square-pass",
+          label: "Square Pass",
+          uses: ["Composure", "Off Ball"],
+          risk: "Low",
+          reward: "Assist chance",
+          manager: "Likes",
+          outcome: "assist",
+        },
+      ],
+    },
+    {
+      id: "cutback",
+      category: "first_time_finish",
+      minute: 54,
+      opponent: opponentShort,
+      situation: "Cutback arrives near the penalty spot",
+      context: "You have a yard of space, but the ball is slightly behind you and the keeper is set.",
+      choices: [
+        {
+          id: "first-time-finish",
+          label: "First-time finish",
+          uses: ["Finishing", "First Touch"],
+          risk: "Medium",
+          reward: "Quick shot",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "control-then-shoot",
+          label: "Control then shoot",
+          uses: ["First Touch", "Composure"],
+          risk: "High",
+          reward: "Better angle",
+          manager: "Risky",
+          outcome: "goal",
+        },
+        {
+          id: "dummy-run",
+          label: "Let it run",
+          uses: ["Off Ball", "Composure"],
+          risk: "Low",
+          reward: "Team chance",
+          manager: "Likes",
+          outcome: "assist",
+        },
+      ],
+    },
+    {
+      id: "pressing-trigger",
+      category: "press",
+      minute: 31,
+      opponent: opponentShort,
+      situation: "Centre-back receives a loose pass",
+      context: `${managerInstruction} Jump now and you may force a mistake.`,
+      choices: [
+        {
+          id: "sprint-press",
+          label: "Explosive press",
+          uses: ["Acceleration", "Work Rate"],
+          risk: "High",
+          reward: "Turnover",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "screen-pass",
+          label: "Screen the pass",
+          uses: ["Work Rate", "Composure"],
+          risk: "Low",
+          reward: "Tactical trust",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "hold-position",
+          label: "Hold shape",
+          uses: ["Composure", "Off Ball"],
+          risk: "Low",
+          reward: "Low fatigue",
+          manager: "Neutral",
+          outcome: "trust",
+        },
+      ],
+    },
+    {
+      id: "aerial-duel",
+      category: "aerial_duel",
+      minute: 74,
+      opponent: opponentShort,
+      situation: "Deep cross toward the far post",
+      context: `You are between two defenders. ${tacticalFocus} A brave run could decide the match.`,
+      choices: [
+        {
+          id: "attack-header",
+          label: "Attack header",
+          uses: ["Heading", "Strength"],
+          risk: "High",
+          reward: "Big chance",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "pull-away",
+          label: "Pull away",
+          uses: ["Off Ball", "Composure"],
+          risk: "Medium",
+          reward: "Second ball",
+          manager: "Likes",
+          outcome: "assist",
+        },
+        {
+          id: "challenge-defender",
+          label: "Challenge defender",
+          uses: ["Strength", "Work Rate"],
+          risk: "Medium",
+          reward: "Keep attack alive",
+          manager: "Likes",
+          outcome: "trust",
+        },
+      ],
+    },
+    {
+      id: "hold-up-play",
+      category: "hold_up",
+      minute: 42,
+      opponent: opponentShort,
+      situation: "Long ball into your feet under pressure",
+      context: `The team needs a breather. ${managerInstruction} A clean touch could bring midfield runners into play.`,
+      choices: [
+        {
+          id: "shield-ball",
+          label: "Shield ball",
+          uses: ["Strength", "First Touch"],
+          risk: "Medium",
+          reward: "Retain possession",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "flick-behind",
+          label: "Flick behind",
+          uses: ["First Touch", "Composure"],
+          risk: "High",
+          reward: "Break line",
+          manager: "Risky",
+          outcome: "assist",
+        },
+        {
+          id: "draw-foul",
+          label: "Draw foul",
+          uses: ["Strength", "Composure"],
+          risk: "Low",
+          reward: "Relieve pressure",
+          manager: "Likes",
+          outcome: "trust",
+        },
+      ],
+    },
+    {
+      id: "late-scramble",
+      category: "late_pressure",
+      minute: 88,
+      opponent: opponentShort,
+      situation: "Loose ball bouncing in the box",
+      context: "It is messy and crowded. Instinct matters, but a rushed swing could waste the chance.",
+      choices: [
+        {
+          id: "toe-poke",
+          label: "Toe poke",
+          uses: ["Finishing", "Acceleration"],
+          risk: "High",
+          reward: "Winner chance",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "set-yourself",
+          label: "Set yourself",
+          uses: ["First Touch", "Composure"],
+          risk: "Medium",
+          reward: "Clean contact",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "knock-down",
+          label: "Knock down",
+          uses: ["Heading", "Strength"],
+          risk: "Medium",
+          reward: "Assist chance",
+          manager: "Likes",
+          outcome: "assist",
+        },
+      ],
+    },
+    {
+      id: "counter-carry",
+      category: "counter",
+      minute: 58,
+      opponent: opponentShort,
+      situation: "Counterattack with grass ahead",
+      context: "You receive the ball near halfway. The defense is stretched, but support is arriving late.",
+      choices: [
+        {
+          id: "drive-at-center-back",
+          label: "Drive at defender",
+          uses: ["Dribbling", "Pace"],
+          risk: "High",
+          reward: "Create shot",
+          manager: "Risky",
+          outcome: "goal",
+        },
+        {
+          id: "thread-runner",
+          label: "Thread runner",
+          uses: ["Vision", "Passing"],
+          risk: "Medium",
+          reward: "Assist chance",
+          manager: "Likes",
+          outcome: "assist",
+        },
+        {
+          id: "hold-for-support",
+          label: "Hold for support",
+          uses: ["Strength", "Composure"],
+          risk: "Low",
+          reward: "Keep pressure",
+          manager: "Neutral",
+          outcome: "trust",
+        },
+      ],
+    },
+    {
+      id: "third-man-run",
+      category: "link_up",
+      minute: 62,
+      opponent: opponentShort,
+      situation: "Midfielder bursts beyond you",
+      context: "You receive with your back to goal. One clean connection can release the runner before the defense resets.",
+      choices: [
+        {
+          id: "slip-through-ball",
+          label: "Slip through ball",
+          uses: ["Vision", "Passing"],
+          risk: "Medium",
+          reward: "Assist chance",
+          manager: "Likes",
+          outcome: "assist",
+        },
+        {
+          id: "one-touch-layoff",
+          label: "One-touch layoff",
+          uses: ["First Touch", "Composure"],
+          risk: "Low",
+          reward: "Keep move alive",
+          manager: "Likes",
+          outcome: "assist",
+        },
+        {
+          id: "roll-defender",
+          label: "Roll defender",
+          uses: ["Dribbling", "Strength"],
+          risk: "High",
+          reward: "Open shot",
+          manager: "Risky",
+          outcome: "goal",
+        },
+      ],
+    },
+    {
+      id: "edge-of-box",
+      category: "shot",
+      minute: 69,
+      opponent: opponentShort,
+      situation: "Ball drops outside the box",
+      context: "The clearance falls to you with one defender rushing out. You have half a second to decide.",
+      choices: [
+        {
+          id: "strike-from-range",
+          label: "Strike from range",
+          uses: ["Long Shots", "Composure"],
+          risk: "High",
+          reward: "Spectacular goal",
+          manager: "Neutral",
+          outcome: "goal",
+        },
+        {
+          id: "slip-wide-run",
+          label: "Slip wide runner",
+          uses: ["Vision", "Passing"],
+          risk: "Medium",
+          reward: "Chance created",
+          manager: "Likes",
+          outcome: "assist",
+        },
+        {
+          id: "reset-attack",
+          label: "Reset attack",
+          uses: ["Passing", "Positioning"],
+          risk: "Low",
+          reward: "Control",
+          manager: "Likes",
+          outcome: "trust",
+        },
+      ],
+    },
+    {
+      id: "defensive-corner",
+      category: "defensive_set_piece",
+      minute: 35,
+      opponent: opponentShort,
+      situation: "Defending a dangerous corner",
+      context: "You are back helping on set pieces. Losing your runner could give them a free header.",
+      choices: [
+        {
+          id: "track-runner",
+          label: "Track runner",
+          uses: ["Marking", "Positioning"],
+          risk: "Medium",
+          reward: "Prevent chance",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "attack-clearance",
+          label: "Attack clearance",
+          uses: ["Heading", "Strength"],
+          risk: "Medium",
+          reward: "Clear danger",
+          manager: "Neutral",
+          outcome: "trust",
+        },
+        {
+          id: "break-early",
+          label: "Break early",
+          uses: ["Pace", "Off Ball"],
+          risk: "High",
+          reward: "Counter threat",
+          manager: "Risky",
+          outcome: "assist",
+        },
+      ],
+    },
+    {
+      id: "track-back",
+      category: "press",
+      minute: 81,
+      opponent: opponentShort,
+      situation: "Full-back overlaps behind you",
+      context: "Your legs are heavy, but the manager is watching how you react without the ball.",
+      choices: [
+        {
+          id: "recover-tackle",
+          label: "Recover and tackle",
+          uses: ["Stamina", "Tackling"],
+          risk: "High",
+          reward: "Win it back",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "block-lane",
+          label: "Block passing lane",
+          uses: ["Positioning", "Work Rate"],
+          risk: "Low",
+          reward: "Protect shape",
+          manager: "Likes",
+          outcome: "trust",
+        },
+        {
+          id: "save-legs",
+          label: "Save legs",
+          uses: ["Composure", "Positioning"],
+          risk: "Medium",
+          reward: "Stay ready",
+          manager: "Neutral",
+          outcome: "trust",
+        },
+      ],
+    },
+  ];
+}
+
+export function createPositionMatchPool(input) {
+  const pools = input.momentPools?.length ? input.momentPools : ["forward", "shared"];
+  const creators = {
+    forward: createForwardMatchPool,
+    winger: createWingerMatchPool,
+    midfielder: createMidfielderMatchPool,
+    fullback: createFullbackMatchPool,
+    centerback: createCenterbackMatchPool,
+    shared: createSharedMatchPool,
+  };
+
+  return pools.flatMap((pool) => creators[pool]?.(input) ?? []);
+}
+
+export function createSharedMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  return [
+    {
+      id: "loose-second-ball",
+      category: "press",
+      minute: 52,
+      opponent: opponentShort,
+      situation: "Loose second ball in midfield",
+      context: "Both teams are stretched for a moment. A quick reaction can turn a messy phase into control.",
+      choices: [
+        { id: "snap-to-ball", label: "Snap to ball", uses: ["Acceleration", "Work Rate"], risk: "Medium", reward: "Win tempo", manager: "Likes", outcome: "trust" },
+        { id: "hold-shape", label: "Hold shape", uses: ["Positioning", "Composure"], risk: "Low", reward: "Protect structure", manager: "Likes", outcome: "trust" },
+        { id: "force-forward", label: "Force it forward", uses: ["Vision", "Passing"], risk: "High", reward: "Break line", manager: "Risky", outcome: "assist" },
+      ],
+    },
+    {
+      id: "transition-choice",
+      category: "counter",
+      minute: 57,
+      opponent: opponentShort,
+      situation: "Turnover with space opening ahead",
+      context: "The match flips quickly. You can accelerate the attack or make sure the ball stays yours.",
+      choices: [
+        { id: "carry-space", label: "Carry space", uses: ["Pace", "Dribbling"], risk: "Medium", reward: "Progress attack", manager: "Neutral", outcome: "trust" },
+        { id: "early-release", label: "Early release", uses: ["Passing", "Vision"], risk: "Medium", reward: "Chance created", manager: "Likes", outcome: "assist" },
+        { id: "slow-tempo", label: "Slow tempo", uses: ["Composure", "First Touch"], risk: "Low", reward: "Keep control", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "late-pressure-work",
+      category: "late_pressure",
+      minute: 84,
+      opponent: opponentShort,
+      situation: "Late pressure around the box",
+      context: "Bodies are tired and decisions are rushed. One composed action can settle the phase.",
+      choices: [
+        { id: "attack-rebound", label: "Attack rebound", uses: ["Off Ball", "Acceleration"], risk: "High", reward: "Big chance", manager: "Neutral", outcome: "goal" },
+        { id: "secure-pass", label: "Secure pass", uses: ["Passing", "Composure"], risk: "Low", reward: "Keep pressure", manager: "Likes", outcome: "trust" },
+        { id: "draw-contact", label: "Draw contact", uses: ["Strength", "Composure"], risk: "Medium", reward: "Set piece", manager: "Neutral", outcome: "trust" },
+      ],
+    },
+    {
+      id: "defensive-recovery",
+      category: "defensive_set_piece",
+      minute: 76,
+      opponent: opponentShort,
+      situation: "Scramble after a half-cleared set piece",
+      context: "The ball drops awkwardly and runners are loose. Staying calm matters more than forcing a hero play.",
+      choices: [
+        { id: "clear-zone", label: "Clear zone", uses: ["Heading", "Positioning"], risk: "Medium", reward: "Clear danger", manager: "Likes", outcome: "trust" },
+        { id: "track-run", label: "Track run", uses: ["Marking", "Work Rate"], risk: "Low", reward: "Stop chance", manager: "Likes", outcome: "trust" },
+        { id: "launch-counter", label: "Launch counter", uses: ["Vision", "Passing"], risk: "High", reward: "Counter threat", manager: "Risky", outcome: "assist" },
+      ],
+    },
+  ];
+}
+
+export function createWingerMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  return [
+    {
+      id: "wide-one-v-one",
+      category: "counter",
+      minute: 49,
+      opponent: opponentShort,
+      situation: "Isolated against the fullback",
+      context: "You have width and a yard to attack. The next touch decides whether the defender turns.",
+      choices: [
+        { id: "drive-outside", label: "Drive outside", uses: ["Pace", "Dribbling"], risk: "High", reward: "Beat defender", manager: "Likes", outcome: "assist" },
+        { id: "cut-inside", label: "Cut inside", uses: ["Dribbling", "Composure"], risk: "Medium", reward: "Shooting lane", manager: "Neutral", outcome: "goal" },
+        { id: "bounce-pass", label: "Bounce pass", uses: ["Passing", "First Touch"], risk: "Low", reward: "Keep move alive", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "low-cutback",
+      category: "link_up",
+      minute: 61,
+      opponent: opponentShort,
+      situation: "Low cutback lane opens",
+      context: "A runner arrives near the penalty spot, but the window is closing fast.",
+      choices: [
+        { id: "drill-cutback", label: "Drill cutback", uses: ["Passing", "Vision"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "stand-cross", label: "Stand cross", uses: ["First Touch", "Composure"], risk: "Low", reward: "Safer delivery", manager: "Neutral", outcome: "assist" },
+        { id: "shoot-tight-angle", label: "Shoot tight angle", uses: ["Finishing", "Composure"], risk: "High", reward: "Surprise goal", manager: "Risky", outcome: "goal" },
+      ],
+    },
+    {
+      id: "far-post-arrival",
+      category: "run_behind",
+      minute: 70,
+      opponent: opponentShort,
+      situation: "Far-post run behind the fullback",
+      context: "The opposite winger shapes to cross. Timing the blind-side run could give you a clean touch.",
+      choices: [
+        { id: "attack-far-post", label: "Attack far post", uses: ["Off Ball", "Acceleration"], risk: "Medium", reward: "Chance", manager: "Likes", outcome: "goal" },
+        { id: "hold-edge", label: "Hold edge", uses: ["Positioning", "Composure"], risk: "Low", reward: "Second ball", manager: "Neutral", outcome: "trust" },
+        { id: "crash-header", label: "Crash header", uses: ["Heading", "Strength"], risk: "High", reward: "Big chance", manager: "Risky", outcome: "goal" },
+      ],
+    },
+    {
+      id: "track-overlap",
+      category: "press",
+      minute: 79,
+      opponent: opponentShort,
+      situation: "Their fullback overlaps outside you",
+      context: "You can save your legs or make the recovery run the manager expects.",
+      choices: [
+        { id: "sprint-track", label: "Sprint track", uses: ["Stamina", "Work Rate"], risk: "Medium", reward: "Stop overload", manager: "Likes", outcome: "trust" },
+        { id: "show-inside", label: "Show inside", uses: ["Positioning", "Composure"], risk: "Low", reward: "Protect lane", manager: "Likes", outcome: "trust" },
+        { id: "gamble-counter", label: "Gamble counter", uses: ["Pace", "Off Ball"], risk: "High", reward: "Counter outlet", manager: "Risky", outcome: "assist" },
+      ],
+    },
+  ];
+}
+
+export function createMidfielderMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  return [
+    {
+      id: "receive-under-press",
+      category: "link_up",
+      minute: 33,
+      opponent: opponentShort,
+      situation: "Receive under midfield pressure",
+      context: "A marker jumps tight as the pass arrives. Your first action can break or invite the press.",
+      choices: [
+        { id: "open-body", label: "Open body", uses: ["First Touch", "Composure"], risk: "Medium", reward: "Beat press", manager: "Likes", outcome: "trust" },
+        { id: "one-touch-set", label: "One-touch set", uses: ["Passing", "Vision"], risk: "Low", reward: "Keep rhythm", manager: "Likes", outcome: "trust" },
+        { id: "turn-forward", label: "Turn forward", uses: ["Dribbling", "Composure"], risk: "High", reward: "Break line", manager: "Risky", outcome: "assist" },
+      ],
+    },
+    {
+      id: "through-ball-window",
+      category: "link_up",
+      minute: 55,
+      opponent: opponentShort,
+      situation: "Runner darts between centerbacks",
+      context: "The through-ball lane appears for a split second. Weight and timing are everything.",
+      choices: [
+        { id: "thread-pass", label: "Thread pass", uses: ["Vision", "Passing"], risk: "High", reward: "Clear chance", manager: "Likes", outcome: "assist" },
+        { id: "clip-channel", label: "Clip channel", uses: ["Passing", "Composure"], risk: "Medium", reward: "Territory", manager: "Neutral", outcome: "trust" },
+        { id: "recycle-wide", label: "Recycle wide", uses: ["Composure", "First Touch"], risk: "Low", reward: "Control", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "edge-box-arrival",
+      category: "shot",
+      minute: 66,
+      opponent: opponentShort,
+      situation: "Arrive late at the edge of the box",
+      context: "The clearance falls into your path. You can strike early or keep the move alive.",
+      choices: [
+        { id: "first-time-strike", label: "First-time strike", uses: ["Long Shots", "Composure"], risk: "High", reward: "Goal threat", manager: "Neutral", outcome: "goal" },
+        { id: "shape-pass", label: "Shape pass", uses: ["Vision", "Passing"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "settle-ball", label: "Settle ball", uses: ["First Touch", "Composure"], risk: "Low", reward: "Sustain attack", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "midfield-interception",
+      category: "press",
+      minute: 72,
+      opponent: opponentShort,
+      situation: "Loose square pass across midfield",
+      context: "You read the pass early. Going now could open the pitch, but missing it exposes the back line.",
+      choices: [
+        { id: "jump-intercept", label: "Jump intercept", uses: ["Positioning", "Acceleration"], risk: "High", reward: "Counter chance", manager: "Likes", outcome: "assist" },
+        { id: "screen-receiver", label: "Screen receiver", uses: ["Work Rate", "Positioning"], risk: "Low", reward: "Force backwards", manager: "Likes", outcome: "trust" },
+        { id: "tackle-through", label: "Tackle through", uses: ["Tackling", "Strength"], risk: "Medium", reward: "Win duel", manager: "Neutral", outcome: "trust" },
+      ],
+    },
+  ];
+}
+
+export function createFullbackMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  return [
+    {
+      id: "wide-defensive-duel",
+      category: "press",
+      minute: 28,
+      opponent: opponentShort,
+      situation: "Winger drives at you near the touchline",
+      context: "You need to control the angle without giving away the inside lane.",
+      choices: [
+        { id: "stand-up", label: "Stand up", uses: ["Positioning", "Composure"], risk: "Low", reward: "Delay attack", manager: "Likes", outcome: "trust" },
+        { id: "poke-tackle", label: "Poke tackle", uses: ["Tackling", "Acceleration"], risk: "Medium", reward: "Win ball", manager: "Neutral", outcome: "trust" },
+        { id: "force-counter", label: "Force counter", uses: ["Pace", "Tackling"], risk: "High", reward: "Spring attack", manager: "Risky", outcome: "assist" },
+      ],
+    },
+    {
+      id: "overlap-window",
+      category: "counter",
+      minute: 58,
+      opponent: opponentShort,
+      situation: "Overlap opens outside the winger",
+      context: "The space is there, but going too early leaves your channel exposed.",
+      choices: [
+        { id: "burst-overlap", label: "Burst overlap", uses: ["Stamina", "Pace"], risk: "Medium", reward: "Crossing lane", manager: "Likes", outcome: "assist" },
+        { id: "underlap-pass", label: "Underlap pass", uses: ["Passing", "Vision"], risk: "Medium", reward: "Central entry", manager: "Neutral", outcome: "assist" },
+        { id: "stay-secure", label: "Stay secure", uses: ["Positioning", "Work Rate"], risk: "Low", reward: "Protect shape", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "back-post-mark",
+      category: "defensive_set_piece",
+      minute: 64,
+      opponent: opponentShort,
+      situation: "Back-post runner slips behind",
+      context: "The cross hangs deep. Your body position decides whether the runner gets a clean header.",
+      choices: [
+        { id: "body-runner", label: "Body runner", uses: ["Marking", "Strength"], risk: "Medium", reward: "Deny header", manager: "Likes", outcome: "trust" },
+        { id: "attack-ball", label: "Attack ball", uses: ["Heading", "Positioning"], risk: "Medium", reward: "Clear cross", manager: "Neutral", outcome: "trust" },
+        { id: "leave-for-keeper", label: "Leave keeper", uses: ["Composure", "Positioning"], risk: "Low", reward: "Avoid panic", manager: "Neutral", outcome: "trust" },
+      ],
+    },
+    {
+      id: "stop-counter-wide",
+      category: "press",
+      minute: 82,
+      opponent: opponentShort,
+      situation: "Counterattack breaks down your side",
+      context: "You are isolated in space. One wrong angle can turn danger into a clear chance.",
+      choices: [
+        { id: "recovery-sprint", label: "Recovery sprint", uses: ["Pace", "Stamina"], risk: "Medium", reward: "Close space", manager: "Likes", outcome: "trust" },
+        { id: "tactical-foul-shape", label: "Use body", uses: ["Strength", "Composure"], risk: "High", reward: "Stop break", manager: "Risky", outcome: "trust" },
+        { id: "guide-wide", label: "Guide wide", uses: ["Positioning", "Marking"], risk: "Low", reward: "Low-value chance", manager: "Likes", outcome: "trust" },
+      ],
+    },
+  ];
+}
+
+export function createCenterbackMatchPool(input) {
+  const opponentShort = input.opponentShort;
+  return [
+    {
+      id: "striker-back-to-goal",
+      category: "press",
+      minute: 37,
+      opponent: opponentShort,
+      situation: "Striker receives with back to goal",
+      context: "You can step in, hold the line or force him away from goal.",
+      choices: [
+        { id: "step-tight", label: "Step tight", uses: ["Strength", "Tackling"], risk: "Medium", reward: "Win duel", manager: "Likes", outcome: "trust" },
+        { id: "hold-line", label: "Hold line", uses: ["Positioning", "Composure"], risk: "Low", reward: "Protect depth", manager: "Likes", outcome: "trust" },
+        { id: "nick-and-release", label: "Nick and release", uses: ["Tackling", "Passing"], risk: "High", reward: "Counter chance", manager: "Risky", outcome: "assist" },
+      ],
+    },
+    {
+      id: "aerial-clearance",
+      category: "defensive_set_piece",
+      minute: 46,
+      opponent: opponentShort,
+      situation: "High cross into the six-yard crowd",
+      context: "The ball drops into traffic. Winning first contact can kill the pressure.",
+      choices: [
+        { id: "dominant-header", label: "Dominant header", uses: ["Heading", "Strength"], risk: "Medium", reward: "Clear danger", manager: "Likes", outcome: "trust" },
+        { id: "block-runner", label: "Block runner", uses: ["Marking", "Positioning"], risk: "Low", reward: "Deny space", manager: "Likes", outcome: "trust" },
+        { id: "attack-near-post", label: "Attack near post", uses: ["Acceleration", "Heading"], risk: "High", reward: "Start break", manager: "Neutral", outcome: "assist" },
+      ],
+    },
+    {
+      id: "last-man-duel",
+      category: "press",
+      minute: 73,
+      opponent: opponentShort,
+      situation: "Forward runs across you in transition",
+      context: "You are the last defender with no cover. Patience and timing matter.",
+      choices: [
+        { id: "match-stride", label: "Match stride", uses: ["Pace", "Positioning"], risk: "Medium", reward: "Delay chance", manager: "Likes", outcome: "trust" },
+        { id: "commit-tackle", label: "Commit tackle", uses: ["Tackling", "Composure"], risk: "High", reward: "Stop attack", manager: "Risky", outcome: "trust" },
+        { id: "shepherd-wide", label: "Shepherd wide", uses: ["Marking", "Strength"], risk: "Low", reward: "Reduce angle", manager: "Likes", outcome: "trust" },
+      ],
+    },
+    {
+      id: "attacking-set-piece",
+      category: "aerial_duel",
+      minute: 68,
+      opponent: opponentShort,
+      situation: "Attacking corner near the penalty spot",
+      context: "You get a run on your marker. This is one of the rare moments to influence the other box.",
+      choices: [
+        { id: "power-header", label: "Power header", uses: ["Heading", "Strength"], risk: "High", reward: "Goal threat", manager: "Neutral", outcome: "goal" },
+        { id: "screen-keeper", label: "Screen keeper", uses: ["Strength", "Positioning"], risk: "Medium", reward: "Create chaos", manager: "Likes", outcome: "assist" },
+        { id: "peel-second-ball", label: "Peel second ball", uses: ["Off Ball", "Composure"], risk: "Low", reward: "Sustain pressure", manager: "Neutral", outcome: "trust" },
+      ],
+    },
+  ];
+}

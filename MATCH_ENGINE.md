@@ -200,13 +200,42 @@ type PositionGroup =
 
 type PositionModule = {
   group: PositionGroup;
+  displayName: string;
+  shortCode: string;
+  defaultArchetype: string;
   keyAttributes: AttributeKey[];
-  highlightWeights: HighlightWeight[];
-  ratingWeights: RatingWeights;
-  roleExpectations: RoleExpectation[];
-  opponentCounters: OpponentCounterWeight[];
+  ovrWeights: Partial<Record<AttributeKey, number>>;
+  momentPools: PositionMomentPool[];
+  matchTendencies: {
+    involvementBias: Record<MatchRole, number>;
+    attacking: number;
+    chanceCreation: number;
+    possession: number;
+    defending: number;
+    transition: number;
+    preferredForwardCategories: ForwardHighlightCategory[];
+  };
+  highlightCategories: string[];
+  ratingFocus: string[];
+  tacticalFocuses: TacticalFocusSet;
+  managerInstructions: Record<MatchRole, ManagerInstruction>;
 };
 ```
+
+Current implementation lives in `src/positionRoles.ts`. The app uses this module for OVR, key attributes, tactical focus, match-generation bias and moment pool selection.
+
+The first position moment libraries live in `src/engine/forwardMoments.js`:
+
+- Forward
+- Winger
+- Midfielder
+- Fullback
+- Centerback
+- Shared
+
+These libraries intentionally reuse the current core engine categories while changing situation text, choices and attribute requirements by position. This gives match variety now without creating separate resolution engines per position.
+
+Position modules also define `performanceWeights`, which let the same outcome mean different things by position. A goal is heavily rewarded for a Forward, assists and transition actions matter more for a Winger, possession/link-up matters more for a Midfielder, and defensive actions matter more for Fullbacks and Centerbacks. This keeps future positions from being judged like strikers.
 
 ### Forward Module
 

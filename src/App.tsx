@@ -21,14 +21,31 @@ import {
   UsersRound,
 } from "lucide-react";
 import {
+  createSimEvents,
+  createTeamMatchModel,
+  getSimScoreAtMinute,
+  chooseAutoSimChoice,
+  resolvePlayerChoice,
+  selectPlayerHighlights,
+  seededNoise,
+  type EngineSimEvent,
+} from "./engine/matchEngineCore";
+import { createPositionMatchPool } from "./engine/forwardMoments";
+import {
   buildOpponentProfile,
-  getForwardHighlightWeight,
-  getHighlightTaxonomy,
   type ForwardHighlightCategory,
   type OpponentForm,
   type OpponentProfile,
   type ServiceLevel,
 } from "./matchEngine";
+import {
+  getPositionModule,
+  positionModules,
+  type AttributeKey,
+  type MatchRole,
+  type PositionGroup,
+  type PositionModule,
+} from "./positionRoles";
 
 type NavKey = "player" | "training" | "club" | "home";
 type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary";
@@ -36,50 +53,12 @@ type Intensity = "Light" | "Balanced" | "Hard";
 type MatchSpeed = 1 | 2 | 4;
 type Venue = "Home" | "Away";
 type ClubView = "overview" | "fixtures" | "table";
-type MatchRole = "Bench" | "Impact Sub" | "Rotation Starter" | "Starter";
-type PositionGroup = "Forward" | "Winger" | "Midfielder" | "Fullback" | "Centerback";
-type AttributeKey =
-  | "Finishing"
-  | "Long Shots"
-  | "Passing"
-  | "Vision"
-  | "Dribbling"
-  | "Off Ball"
-  | "Composure"
-  | "First Touch"
-  | "Acceleration"
-  | "Pace"
-  | "Stamina"
-  | "Heading"
-  | "Strength"
-  | "Work Rate"
-  | "Tackling"
-  | "Marking"
-  | "Positioning";
 
 type Attribute = {
   label: AttributeKey;
   value: number;
   potential: number;
   xp: number;
-};
-
-type PositionModule = {
-  group: PositionGroup;
-  displayName: string;
-  shortCode: string;
-  defaultArchetype: string;
-  keyAttributes: AttributeKey[];
-  ovrWeights: Partial<Record<AttributeKey, number>>;
-  highlightCategories: string[];
-  ratingFocus: string[];
-  tacticalFocuses: {
-    default: string;
-    lowService: string;
-    movement: string;
-    workRate: string;
-  };
-  managerInstructions: Record<MatchRole, { default: string; lowService?: string }>;
 };
 
 type SeasonStats = {
@@ -252,18 +231,7 @@ type MatchState = {
 
 type MatchEvent = SimMatchEvent | PlayerMatchEvent;
 
-type SimMatchEvent = {
-  id: string;
-  type: "team_goal" | "opponent_goal" | "team_chance" | "opponent_chance" | "tempo" | "substitution";
-  minute: number;
-  title: string;
-  detail: string;
-  teamGoalDelta: number;
-  opponentGoalDelta: number;
-  ratingDelta: number;
-  trustDelta: number;
-  fitnessDelta: number;
-};
+type SimMatchEvent = EngineSimEvent;
 
 type PlayerMatchEvent = MatchMoment & {
   type: "player_moment";
@@ -291,12 +259,16 @@ type MatchChoice = {
 };
 
 type ChanceQuality = "Clear chance" | "Good chance" | "Half chance" | "Difficult chance";
+type OutcomeTier = "Poor" | "Okay" | "Good" | "Great";
 
 type MatchResult = {
   title: string;
   detail: string;
+  success: boolean;
+  outcomeTier: OutcomeTier;
   chanceQuality: ChanceQuality;
   explanationTags: string[];
+  performanceReasons: string[];
   rating: number;
   trustDelta: number;
   fitnessDelta: number;
@@ -316,6 +288,7 @@ type MatchTotals = {
   opponentGoals: number;
   chanceQualities: ChanceQuality[];
   explanationTags: string[];
+  performanceReasons: string[];
   xp: Partial<Record<AttributeKey, number>>;
 };
 
@@ -466,167 +439,6 @@ const attributeInfo: Record<
     strikerKey: false,
     description: "Reading where to be when the game shifts.",
     affects: "Defensive shape, rebounds and second-ball situations.",
-  },
-};
-
-const positionModules: Record<PositionGroup, PositionModule> = {
-  Forward: {
-    group: "Forward",
-    displayName: "Forward",
-    shortCode: "ST",
-    defaultArchetype: "Poacher",
-    keyAttributes: ["Finishing", "Off Ball", "Composure", "First Touch", "Acceleration", "Heading", "Strength", "Work Rate"],
-    ovrWeights: {
-      Finishing: 1.35,
-      "Off Ball": 1.2,
-      Composure: 1.15,
-      "First Touch": 1.05,
-      Acceleration: 0.9,
-      Heading: 0.7,
-      Strength: 0.65,
-      "Work Rate": 0.8,
-    },
-    highlightCategories: ["Shot", "Run Behind", "Hold-up", "Aerial Duel", "Pressing", "Late Chance"],
-    ratingFocus: ["Goals", "Assists", "Chance quality", "Pressing", "Hold-up play"],
-    tacticalFocuses: {
-      default: "Box movement",
-      lowService: "Hold-up play",
-      movement: "Attack channels",
-      workRate: "Lead the press",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready; minutes are not guaranteed." },
-      "Impact Sub": {
-        default: "Attack tired defenders and make one clean decision count.",
-        lowService: "Win second balls and make the ball stick late.",
-      },
-      "Rotation Starter": { default: "Set the press early and keep your movement disciplined." },
-      Starter: { default: "Lead the line and deliver a complete striker performance." },
-    },
-  },
-  Winger: {
-    group: "Winger",
-    displayName: "Winger",
-    shortCode: "W",
-    defaultArchetype: "Wide Threat",
-    keyAttributes: ["Pace", "Acceleration", "Dribbling", "Passing", "Vision", "First Touch", "Work Rate", "Stamina"],
-    ovrWeights: {
-      Pace: 1.2,
-      Acceleration: 1.15,
-      Dribbling: 1.25,
-      Passing: 0.9,
-      Vision: 0.85,
-      "First Touch": 1,
-      "Work Rate": 0.8,
-      Stamina: 0.8,
-    },
-    highlightCategories: ["Wide 1v1", "Cross", "Cutback", "Counter Carry", "Far-post Run", "Track Fullback"],
-    ratingFocus: ["Assists", "Chances created", "Carries", "Crosses", "Defensive work"],
-    tacticalFocuses: {
-      default: "Isolate fullback",
-      lowService: "Carry in transition",
-      movement: "Attack wide space",
-      workRate: "Track the flank",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready to stretch the match late." },
-      "Impact Sub": { default: "Run at tired legs and look for cutbacks." },
-      "Rotation Starter": { default: "Keep width, press their fullback and pick your moments." },
-      Starter: { default: "Drive the wide channel and create repeatable service." },
-    },
-  },
-  Midfielder: {
-    group: "Midfielder",
-    displayName: "Midfielder",
-    shortCode: "CM",
-    defaultArchetype: "Box-to-Box",
-    keyAttributes: ["Passing", "Vision", "First Touch", "Composure", "Positioning", "Work Rate", "Stamina", "Tackling"],
-    ovrWeights: {
-      Passing: 1.25,
-      Vision: 1.15,
-      "First Touch": 1.1,
-      Composure: 1.05,
-      Positioning: 0.95,
-      "Work Rate": 0.9,
-      Stamina: 0.9,
-      Tackling: 0.8,
-    },
-    highlightCategories: ["Receive Under Press", "Through Ball", "Switch Play", "Interception", "Late Box Arrival", "Midfield Duel"],
-    ratingFocus: ["Progressive passes", "Tempo control", "Chance creation", "Ball wins", "Press resistance"],
-    tacticalFocuses: {
-      default: "Control tempo",
-      lowService: "Find early passes",
-      movement: "Arrive late",
-      workRate: "Win second balls",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready to stabilize the midfield." },
-      "Impact Sub": { default: "Bring energy, protect the middle and move the ball early." },
-      "Rotation Starter": { default: "Keep the tempo clean and compete for second balls." },
-      Starter: { default: "Set the rhythm and connect both phases." },
-    },
-  },
-  Fullback: {
-    group: "Fullback",
-    displayName: "Fullback",
-    shortCode: "FB",
-    defaultArchetype: "Wingback",
-    keyAttributes: ["Pace", "Stamina", "Work Rate", "Tackling", "Positioning", "Marking", "Passing", "First Touch"],
-    ovrWeights: {
-      Pace: 1.05,
-      Stamina: 1.1,
-      "Work Rate": 1.1,
-      Tackling: 1.15,
-      Positioning: 1,
-      Marking: 0.9,
-      Passing: 0.8,
-      "First Touch": 0.75,
-    },
-    highlightCategories: ["Wide Duel", "Recovery Run", "Overlap", "Cross", "Back-post Marking", "Stop Counter"],
-    ratingFocus: ["Defensive duels", "Recoveries", "Interceptions", "Crosses", "Shape discipline"],
-    tacticalFocuses: {
-      default: "Control the flank",
-      lowService: "Support overlap",
-      movement: "Time the overlap",
-      workRate: "Recover wide",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready to protect the flank." },
-      "Impact Sub": { default: "Add legs wide and keep the defensive shape clean." },
-      "Rotation Starter": { default: "Choose overlaps carefully and recover fast." },
-      Starter: { default: "Own your channel on both sides of the ball." },
-    },
-  },
-  Centerback: {
-    group: "Centerback",
-    displayName: "Centerback",
-    shortCode: "CB",
-    defaultArchetype: "Stopper",
-    keyAttributes: ["Strength", "Heading", "Marking", "Positioning", "Tackling", "Composure", "Work Rate", "Passing"],
-    ovrWeights: {
-      Strength: 1.15,
-      Heading: 1.15,
-      Marking: 1.25,
-      Positioning: 1.2,
-      Tackling: 1.15,
-      Composure: 0.9,
-      "Work Rate": 0.75,
-      Passing: 0.65,
-    },
-    highlightCategories: ["Aerial Clearance", "Mark Striker", "Block Shot", "Step Out", "Last-man Duel", "Set Piece"],
-    ratingFocus: ["Duels won", "Blocks", "Interceptions", "Errors avoided", "Set-piece impact"],
-    tacticalFocuses: {
-      default: "Hold the line",
-      lowService: "Play through pressure",
-      movement: "Attack set pieces",
-      workRate: "Command the box",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready if the match needs defensive control." },
-      "Impact Sub": { default: "Bring calm defending and win the first duel." },
-      "Rotation Starter": { default: "Keep the line organized and avoid cheap risks." },
-      Starter: { default: "Lead the back line and win your duels." },
-    },
   },
 };
 
@@ -822,7 +634,9 @@ function App() {
     activeScreen === "pre-match"
       ? "Start Match"
       : activeScreen === "match"
-      ? "In Match"
+      ? game.activeMatch?.isComplete
+        ? "Finish Match"
+        : "In Match"
       : activeScreen === "summary"
         ? "Continue Career"
       : activeScreen === "training-summary"
@@ -906,6 +720,9 @@ function App() {
 
   function handleAdvance() {
     if (activeScreen === "match") {
+      if (game.activeMatch?.isComplete && !game.activeMatch.currentResult) {
+        finishMatch();
+      }
       return;
     }
 
@@ -980,10 +797,6 @@ function App() {
   }
 
   function continueMatch() {
-    const shouldFinish =
-      game.activeMatch?.currentResult &&
-      game.activeMatch.currentEventIndex >= game.activeMatch.events.length - 1;
-
     setGame((state) => {
       if (!state.activeMatch) {
         return state;
@@ -995,7 +808,15 @@ function App() {
       const nextIndex = state.activeMatch.currentEventIndex + 1;
 
       if (nextIndex >= state.activeMatch.events.length) {
-        return finishMatchState(state, results);
+        return {
+          ...state,
+          activeMatch: {
+            ...state.activeMatch,
+            currentEventIndex: state.activeMatch.events.length,
+            results,
+            currentResult: undefined,
+          },
+        };
       }
 
       return {
@@ -1008,10 +829,6 @@ function App() {
         },
       };
     });
-
-    if (shouldFinish) {
-      setActiveScreen("summary");
-    }
   }
 
   function skipToNextEvent() {
@@ -1152,7 +969,6 @@ function App() {
               match={game.activeMatch}
               onChoose={resolveMatchChoice}
               onContinue={continueMatch}
-              onFinish={finishMatch}
               onSetMatchSpeed={setMatchSpeed}
               onSkipToEvent={skipToNextEvent}
               onSkipToHighlight={skipToNextHighlight}
@@ -1174,7 +990,7 @@ function App() {
         <BottomNav
           activeNav={activeNav}
           advanceLabel={advanceLabel}
-          disabled={activeScreen === "match"}
+          disabled={activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))}
           onAdvance={handleAdvance}
           onNavigate={navigate}
         />
@@ -1978,7 +1794,6 @@ function MatchMomentScreen({
   matchSpeed,
   onChoose,
   onContinue,
-  onFinish,
   onSetMatchSpeed,
   onSkipToEvent,
   onSkipToHighlight,
@@ -1989,7 +1804,6 @@ function MatchMomentScreen({
   matchSpeed: MatchSpeed;
   onChoose: (choice: MatchChoice) => void;
   onContinue: () => void;
-  onFinish: () => void;
   onSetMatchSpeed: (speed: MatchSpeed) => void;
   onSkipToEvent: () => void;
   onSkipToHighlight: () => void;
@@ -2002,7 +1816,6 @@ function MatchMomentScreen({
   const simTotals = summarizeSimEvents(match.events, processedEventIndex);
   const totals = summarizeMatchResults(completedResults, simTotals);
   const visibleScore = getTimelineScore(match, completedResults, processedEventIndex);
-  const isFinalEvent = match.currentEventIndex >= match.events.length - 1;
   const recentEvents = getRecentTimelineItems(match, completedResults);
   const nextEventMinute = event ? `${event.minute}'` : "FT";
   const pitchStatus = getPitchStatus(match);
@@ -2091,18 +1904,13 @@ function MatchMomentScreen({
                   <span>{item.text}</span>
                 </div>
               ))
-            ) : (
+          ) : (
               <div className="timeline-item">
                 <strong>0'</strong>
                 <span>Kickoff. Northbridge settle into shape.</span>
               </div>
             )}
           </div>
-          {match.isComplete && (
-            <button className="primary-action" type="button" onClick={onFinish}>
-              Finish Match
-            </button>
-          )}
         </div>
       )}
 
@@ -2127,29 +1935,35 @@ function MatchMomentScreen({
       )}
 
       {isPlayerMoment && match.currentResult && (
-        <div className="card result-card">
-          <span className="metric-label">Result</span>
-          <h2>{match.currentResult.title}</h2>
-          <p>{match.currentResult.detail}</p>
-          <div className="next-grid">
-            <InfoTile label="Rating" value={match.currentResult.rating.toFixed(1)} tone="gold" />
-            <InfoTile label="Trust" value={`${match.currentResult.trustDelta > 0 ? "+" : ""}${match.currentResult.trustDelta}`} />
-            <InfoTile label="Fitness" value={`${match.currentResult.fitnessDelta}`} tone="warn" />
-          </div>
-          <div className="result-explain-card">
-            <div>
-              <span>Chance quality</span>
-              <strong>{match.currentResult.chanceQuality}</strong>
+        <div className="result-popup-backdrop">
+          <div className={`card result-card result-popup ${getResultPopupTone(match.currentResult.outcomeTier)}`}>
+            <span className="metric-label">Result</span>
+            <div className="result-verdict">
+              <strong>{match.currentResult.outcomeTier}</strong>
+              <span>{match.currentResult.chanceQuality}</span>
             </div>
-            <ul>
-              {getReadableExplanations(match.currentResult.explanationTags, 3).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
+            <h2>{match.currentResult.title}</h2>
+            <p>{match.currentResult.detail}</p>
+            <div className="next-grid">
+              <InfoTile label="Rating" value={match.currentResult.rating.toFixed(1)} tone="gold" />
+              <InfoTile label="Trust" value={`${match.currentResult.trustDelta > 0 ? "+" : ""}${match.currentResult.trustDelta}`} />
+              <InfoTile label="Fitness" value={`${match.currentResult.fitnessDelta}`} tone="warn" />
+            </div>
+            <div className="result-explain-card">
+              <div>
+                <span>Why</span>
+                <strong>{getOutcomeTierSummary(match.currentResult.outcomeTier)}</strong>
+              </div>
+              <ul>
+                {getReadableExplanations(match.currentResult.explanationTags, 3).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+            <button className="primary-action" type="button" onClick={onContinue}>
+              Resume Match
+            </button>
           </div>
-          <button className="primary-action" type="button" onClick={isFinalEvent ? onFinish : onContinue}>
-            {isFinalEvent ? "Finish Match" : "Resume Match"}
-          </button>
         </div>
       )}
 
@@ -2214,6 +2028,7 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
     ? `${summary.pointsToNextRole} pts to ${nextRole}`
     : "Starter role secured";
   const performanceReasons = getReadableExplanations(summary.explanationTags, 3);
+  const performanceBreakdown = getUniqueItems(summary.performanceReasons, 4);
   const primaryChanceQuality = getPrimaryChanceQuality(summary.chanceQualities);
 
   return (
@@ -2247,6 +2062,26 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
             {performanceReasons.map((reason) => (
               <div className="reason-item" key={reason}>
                 <Sparkles size={14} />
+                <span>{reason}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {performanceBreakdown.length > 0 && (
+        <div className="card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Performance breakdown</span>
+              <h2>Why the rating moved</h2>
+            </div>
+            <BarChart3 size={19} />
+          </div>
+          <div className="reason-list">
+            {performanceBreakdown.map((reason) => (
+              <div className="reason-item" key={reason}>
+                <ShieldCheck size={14} />
                 <span>{reason}</span>
               </div>
             ))}
@@ -3152,6 +2987,7 @@ function summarizeMatchResults(results: MatchResult[], simTotals = createEmptySi
     opponentGoals: simTotals.opponentGoals,
     chanceQualities: [] as ChanceQuality[],
     explanationTags: [] as string[],
+    performanceReasons: [] as string[],
     xp: {} as Partial<Record<AttributeKey, number>>,
   };
 
@@ -3179,6 +3015,7 @@ function summarizeMatchResults(results: MatchResult[], simTotals = createEmptySi
         opponentGoals: summary.opponentGoals,
         chanceQualities: [...summary.chanceQualities, result.chanceQuality],
         explanationTags: [...summary.explanationTags, ...result.explanationTags],
+        performanceReasons: [...summary.performanceReasons, ...result.performanceReasons],
         xp: summary.xp,
       };
     },
@@ -3256,6 +3093,31 @@ function getReadableExplanations(tags: string[], limit = 3) {
   });
 
   return sortedTags.slice(0, limit).map((tag) => getExplanationCopy(tag));
+}
+
+function getUniqueItems(items: string[], limit: number) {
+  return Array.from(new Set(items)).slice(0, limit);
+}
+
+function getResultPopupTone(tier: OutcomeTier) {
+  if (tier === "Poor") {
+    return "is-failure";
+  }
+  if (tier === "Okay") {
+    return "is-okay";
+  }
+  return "is-success";
+}
+
+function getOutcomeTierSummary(tier: OutcomeTier) {
+  const summaries: Record<OutcomeTier, string> = {
+    Poor: "Edge lost",
+    Okay: "Job done",
+    Good: "Edge gained",
+    Great: "Big moment",
+  };
+
+  return summaries[tier];
 }
 
 function getPrimaryChanceQuality(qualities: ChanceQuality[]) {
@@ -3822,127 +3684,6 @@ function getAppearanceWindow(
   return { entryMinute: 0 };
 }
 
-function createSimEvents(state: GameState, count: number, context: UpcomingMatch, matchSeed: string): SimMatchEvent[] {
-  const teamBias = context.teamStrength + state.trust * 0.08 + getFormScore(state.seasonStats.ratings) * 0.06;
-  const opponentBias = context.opponentProfile.attack + context.opponentProfile.midfield * 0.25 + (context.venue === "Away" ? 2 : 0);
-  const opponentDefensiveResistance = context.opponentProfile.defense * 0.65 + context.opponentProfile.keeper * 0.35;
-  const teamGoalChance = clamp(0.22 + (teamBias - opponentDefensiveResistance) * 0.02, 0.06, 0.58);
-  const opponentGoalChance = clamp(0.2 + (opponentBias - context.teamStrength) * 0.018, 0.06, 0.56);
-  const templates: Array<Omit<SimMatchEvent, "id" | "minute">> = [
-    {
-      type: "team_chance",
-      title: "Northbridge chance",
-      detail: "A winger cuts inside and forces the keeper into a save.",
-      teamGoalDelta: 0,
-      opponentGoalDelta: 0,
-      ratingDelta: 0.05,
-      trustDelta: 0,
-      fitnessDelta: -1,
-    },
-    {
-      type: "opponent_chance",
-      title: `${context.opponentShort} chance`,
-      detail: `${context.opponentShort} break through midfield, but the shot drifts wide.`,
-      teamGoalDelta: 0,
-      opponentGoalDelta: 0,
-      ratingDelta: -0.05,
-      trustDelta: 0,
-      fitnessDelta: 0,
-    },
-    {
-      type: "tempo",
-      title: "Quiet spell",
-      detail: "The match settles into midfield duels with little service into the box.",
-      teamGoalDelta: 0,
-      opponentGoalDelta: 0,
-      ratingDelta: -0.03,
-      trustDelta: 0,
-      fitnessDelta: -1,
-    },
-    {
-      type: "substitution",
-      title: "Fresh legs around you",
-      detail: `Northbridge change shape. ${context.managerInstruction}`,
-      teamGoalDelta: 0,
-      opponentGoalDelta: 0,
-      ratingDelta: 0.02,
-      trustDelta: 1,
-      fitnessDelta: 0,
-    },
-    {
-      type: "team_goal",
-      title: "Northbridge goal",
-      detail: "A midfielder arrives late and finishes from the edge of the box.",
-      teamGoalDelta: 1,
-      opponentGoalDelta: 0,
-      ratingDelta: 0.15,
-      trustDelta: 0,
-      fitnessDelta: 0,
-    },
-    {
-      type: "opponent_goal",
-      title: `${context.opponentShort} goal`,
-      detail: `${context.opponentShort} punish a loose clearance and the stadium gets louder.`,
-      teamGoalDelta: 0,
-      opponentGoalDelta: 1,
-      ratingDelta: -0.15,
-      trustDelta: 0,
-      fitnessDelta: 0,
-    },
-  ];
-
-  const minutes = [8, 18, 27, 39, 52, 63, 76, 84];
-  return Array.from({ length: count }, (_, index) => {
-    const templateIndex = Math.floor(seededNoise(`${matchSeed}-template-${index}`) * templates.length) % templates.length;
-    const template = templates[templateIndex];
-    const minuteNoise = Math.round(seededNoise(`${matchSeed}-minute-${index}`) * 10) - 5;
-    const minute = clamp(minutes[index % minutes.length] + minuteNoise, 4, 89);
-    const goalRoll = seededNoise(`${matchSeed}-goal-${index}`);
-    const isTeamGoal = template.type === "team_goal" && goalRoll <= teamGoalChance;
-    const isOpponentGoal = template.type === "opponent_goal" && goalRoll <= opponentGoalChance;
-    const type =
-      template.type === "team_goal" && !isTeamGoal
-        ? "team_chance"
-        : template.type === "opponent_goal" && !isOpponentGoal
-          ? "opponent_chance"
-          : template.type;
-    const missedTeamGoal = template.type === "team_goal" && !isTeamGoal;
-    const missedOpponentGoal = template.type === "opponent_goal" && !isOpponentGoal;
-
-    return {
-      ...template,
-      type,
-      title: missedTeamGoal ? "Northbridge chance" : missedOpponentGoal ? `${context.opponentShort} chance` : template.title,
-      detail: missedTeamGoal
-        ? "A midfielder arrives late, but the finish flashes just wide."
-        : missedOpponentGoal
-          ? `${context.opponentShort} threaten from a loose clearance, but Northbridge survive.`
-          : template.detail,
-      teamGoalDelta: isTeamGoal ? 1 : 0,
-      opponentGoalDelta: isOpponentGoal ? 1 : 0,
-      ratingDelta: isTeamGoal ? 0.15 : isOpponentGoal ? -0.15 : template.ratingDelta,
-      id: `sim-${index}-${type}`,
-      minute,
-    };
-  }).sort((a, b) => a.minute - b.minute);
-}
-
-function getSimScoreAtMinute(events: SimMatchEvent[], minute: number) {
-  return events.reduce(
-    (score, event) => {
-      if (event.minute > minute) {
-        return score;
-      }
-
-      return {
-        teamGoals: score.teamGoals + event.teamGoalDelta,
-        opponentGoals: score.opponentGoals + event.opponentGoalDelta,
-      };
-    },
-    { teamGoals: 0, opponentGoals: 0 },
-  );
-}
-
 function getEventLabel(type: MatchEvent["type"]) {
   const labels: Record<MatchEvent["type"], string> = {
     player_moment: "Your moment",
@@ -3967,399 +3708,55 @@ function formatDelta(value: number) {
 
 function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   const matchSeed = createMatchSeed(state, context);
-  const fitnessContext =
-    state.fitness > 80
-      ? "You feel sharp enough to attack the space early."
-      : "Your legs are not perfect, so the safer choice may have value.";
-
-  const matchPool: MatchMoment[] = [
-    {
-      id: "through-on-goal",
-      category: "run_behind",
-      minute: 67,
-      opponent: context.opponentShort,
-      situation: "Through on goal, defender closing",
-      context: `${fitnessContext} ${context.managerInstruction}`,
-      choices: [
-        {
-          id: "place-shot",
-          label: "Place Shot",
-          uses: ["Finishing", "Composure"],
-          risk: "Medium",
-          reward: "Goal threat",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "round-keeper",
-          label: "Round Keeper",
-          uses: ["Acceleration", "First Touch"],
-          risk: "High",
-          reward: "Huge chance",
-          manager: "Risky",
-          outcome: "goal",
-        },
-        {
-          id: "square-pass",
-          label: "Square Pass",
-          uses: ["Composure", "Off Ball"],
-          risk: "Low",
-          reward: "Assist chance",
-          manager: "Likes",
-          outcome: "assist",
-        },
-      ],
-    },
-    {
-      id: "cutback",
-      category: "first_time_finish",
-      minute: 54,
-      opponent: context.opponentShort,
-      situation: "Cutback arrives near the penalty spot",
-      context: "You have a yard of space, but the ball is slightly behind you and the keeper is set.",
-      choices: [
-        {
-          id: "first-time-finish",
-          label: "First-time finish",
-          uses: ["Finishing", "First Touch"],
-          risk: "Medium",
-          reward: "Quick shot",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "control-then-shoot",
-          label: "Control then shoot",
-          uses: ["First Touch", "Composure"],
-          risk: "High",
-          reward: "Better angle",
-          manager: "Risky",
-          outcome: "goal",
-        },
-        {
-          id: "dummy-run",
-          label: "Let it run",
-          uses: ["Off Ball", "Composure"],
-          risk: "Low",
-          reward: "Team chance",
-          manager: "Likes",
-          outcome: "assist",
-        },
-      ],
-    },
-    {
-      id: "pressing-trigger",
-      category: "press",
-      minute: 31,
-      opponent: context.opponentShort,
-      situation: "Centre-back receives a loose pass",
-      context: `${context.managerInstruction} Jump now and you may force a mistake.`,
-      choices: [
-        {
-          id: "sprint-press",
-          label: "Explosive press",
-          uses: ["Acceleration", "Work Rate"],
-          risk: "High",
-          reward: "Turnover",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "screen-pass",
-          label: "Screen the pass",
-          uses: ["Work Rate", "Composure"],
-          risk: "Low",
-          reward: "Tactical trust",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "hold-position",
-          label: "Hold shape",
-          uses: ["Composure", "Off Ball"],
-          risk: "Low",
-          reward: "Low fatigue",
-          manager: "Neutral",
-          outcome: "trust",
-        },
-      ],
-    },
-    {
-      id: "aerial-duel",
-      category: "aerial_duel",
-      minute: 74,
-      opponent: context.opponentShort,
-      situation: "Deep cross toward the far post",
-      context: `You are between two defenders. ${context.tacticalFocus} A brave run could decide the match.`,
-      choices: [
-        {
-          id: "attack-header",
-          label: "Attack header",
-          uses: ["Heading", "Strength"],
-          risk: "High",
-          reward: "Big chance",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "pull-away",
-          label: "Pull away",
-          uses: ["Off Ball", "Composure"],
-          risk: "Medium",
-          reward: "Second ball",
-          manager: "Likes",
-          outcome: "assist",
-        },
-        {
-          id: "challenge-defender",
-          label: "Challenge defender",
-          uses: ["Strength", "Work Rate"],
-          risk: "Medium",
-          reward: "Keep attack alive",
-          manager: "Likes",
-          outcome: "trust",
-        },
-      ],
-    },
-    {
-      id: "hold-up-play",
-      category: "hold_up",
-      minute: 42,
-      opponent: context.opponentShort,
-      situation: "Long ball into your feet under pressure",
-      context: `The team needs a breather. ${context.managerInstruction} A clean touch could bring midfield runners into play.`,
-      choices: [
-        {
-          id: "shield-ball",
-          label: "Shield ball",
-          uses: ["Strength", "First Touch"],
-          risk: "Medium",
-          reward: "Retain possession",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "flick-behind",
-          label: "Flick behind",
-          uses: ["First Touch", "Composure"],
-          risk: "High",
-          reward: "Break line",
-          manager: "Risky",
-          outcome: "assist",
-        },
-        {
-          id: "draw-foul",
-          label: "Draw foul",
-          uses: ["Strength", "Composure"],
-          risk: "Low",
-          reward: "Relieve pressure",
-          manager: "Likes",
-          outcome: "trust",
-        },
-      ],
-    },
-    {
-      id: "late-scramble",
-      category: "late_pressure",
-      minute: 88,
-      opponent: context.opponentShort,
-      situation: "Loose ball bouncing in the box",
-      context: "It is messy and crowded. Instinct matters, but a rushed swing could waste the chance.",
-      choices: [
-        {
-          id: "toe-poke",
-          label: "Toe poke",
-          uses: ["Finishing", "Acceleration"],
-          risk: "High",
-          reward: "Winner chance",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "set-yourself",
-          label: "Set yourself",
-          uses: ["First Touch", "Composure"],
-          risk: "Medium",
-          reward: "Clean contact",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "knock-down",
-          label: "Knock down",
-          uses: ["Heading", "Strength"],
-          risk: "Medium",
-          reward: "Assist chance",
-          manager: "Likes",
-          outcome: "assist",
-        },
-      ],
-    },
-    {
-      id: "counter-carry",
-      category: "counter",
-      minute: 58,
-      opponent: context.opponentShort,
-      situation: "Counterattack with grass ahead",
-      context: "You receive the ball near halfway. The defense is stretched, but support is arriving late.",
-      choices: [
-        {
-          id: "drive-at-center-back",
-          label: "Drive at defender",
-          uses: ["Dribbling", "Pace"],
-          risk: "High",
-          reward: "Create shot",
-          manager: "Risky",
-          outcome: "goal",
-        },
-        {
-          id: "thread-runner",
-          label: "Thread runner",
-          uses: ["Vision", "Passing"],
-          risk: "Medium",
-          reward: "Assist chance",
-          manager: "Likes",
-          outcome: "assist",
-        },
-        {
-          id: "hold-for-support",
-          label: "Hold for support",
-          uses: ["Strength", "Composure"],
-          risk: "Low",
-          reward: "Keep pressure",
-          manager: "Neutral",
-          outcome: "trust",
-        },
-      ],
-    },
-    {
-      id: "edge-of-box",
-      category: "shot",
-      minute: 69,
-      opponent: context.opponentShort,
-      situation: "Ball drops outside the box",
-      context: "The clearance falls to you with one defender rushing out. You have half a second to decide.",
-      choices: [
-        {
-          id: "strike-from-range",
-          label: "Strike from range",
-          uses: ["Long Shots", "Composure"],
-          risk: "High",
-          reward: "Spectacular goal",
-          manager: "Neutral",
-          outcome: "goal",
-        },
-        {
-          id: "slip-wide-run",
-          label: "Slip wide runner",
-          uses: ["Vision", "Passing"],
-          risk: "Medium",
-          reward: "Chance created",
-          manager: "Likes",
-          outcome: "assist",
-        },
-        {
-          id: "reset-attack",
-          label: "Reset attack",
-          uses: ["Passing", "Positioning"],
-          risk: "Low",
-          reward: "Control",
-          manager: "Likes",
-          outcome: "trust",
-        },
-      ],
-    },
-    {
-      id: "defensive-corner",
-      category: "defensive_set_piece",
-      minute: 35,
-      opponent: context.opponentShort,
-      situation: "Defending a dangerous corner",
-      context: "You are back helping on set pieces. Losing your runner could give them a free header.",
-      choices: [
-        {
-          id: "track-runner",
-          label: "Track runner",
-          uses: ["Marking", "Positioning"],
-          risk: "Medium",
-          reward: "Prevent chance",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "attack-clearance",
-          label: "Attack clearance",
-          uses: ["Heading", "Strength"],
-          risk: "Medium",
-          reward: "Clear danger",
-          manager: "Neutral",
-          outcome: "trust",
-        },
-        {
-          id: "break-early",
-          label: "Break early",
-          uses: ["Pace", "Off Ball"],
-          risk: "High",
-          reward: "Counter threat",
-          manager: "Risky",
-          outcome: "assist",
-        },
-      ],
-    },
-    {
-      id: "track-back",
-      category: "press",
-      minute: 81,
-      opponent: context.opponentShort,
-      situation: "Full-back overlaps behind you",
-      context: "Your legs are heavy, but the manager is watching how you react without the ball.",
-      choices: [
-        {
-          id: "recover-tackle",
-          label: "Recover and tackle",
-          uses: ["Stamina", "Tackling"],
-          risk: "High",
-          reward: "Win it back",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "block-lane",
-          label: "Block passing lane",
-          uses: ["Positioning", "Work Rate"],
-          risk: "Low",
-          reward: "Protect shape",
-          manager: "Likes",
-          outcome: "trust",
-        },
-        {
-          id: "save-legs",
-          label: "Save legs",
-          uses: ["Composure", "Positioning"],
-          risk: "Medium",
-          reward: "Stay ready",
-          manager: "Neutral",
-          outcome: "trust",
-        },
-      ],
-    },
-  ];
-
+  const positionModule = getPositionModule(state.positionGroup);
+  const matchPool = createPositionMatchPool({
+    opponentShort: context.opponentShort,
+    managerInstruction: context.managerInstruction,
+    tacticalFocus: context.tacticalFocus,
+    fitness: state.fitness,
+    momentPools: positionModule.momentPools,
+  }) as MatchMoment[];
   const involvementScore =
     state.trust * 0.35 +
     state.fitness * 0.25 +
     getFormScore(state.seasonStats.ratings) * 0.2 +
-    calculateOvr(state.attributes, getPositionModule(state.positionGroup).ovrWeights) * 0.2;
+    calculateOvr(state.attributes, positionModule.ovrWeights) * 0.2 +
+    positionModule.matchTendencies.involvementBias[context.playerRole] * 10;
   const playerMomentCount = getPlayerMomentCount(context.playerRole, involvementScore);
   const minuteWindow = getRoleMinuteWindow(context.playerRole);
-  const simEventCount = 4 + Math.floor(seededNoise(`${matchSeed}-sim-count`) * 3);
-  const simEvents = createSimEvents(state, simEventCount, context, matchSeed);
+  const teamMatchModel = createTeamMatchModel({
+    matchSeed,
+    teamStrength: context.teamStrength,
+    trust: state.trust,
+    formScore: getFormScore(state.seasonStats.ratings),
+    venue: context.venue,
+    serviceLevel: context.serviceLevel,
+    opponentProfile: context.opponentProfile,
+  });
+  const simEvents = createSimEvents({
+    matchSeed,
+    model: teamMatchModel,
+    opponentShort: context.opponentShort,
+    managerInstruction: context.managerInstruction,
+  });
   const appearanceWindow = getAppearanceWindow(context.playerRole, state, context, simEvents, matchSeed);
   const playerWindowStart = Math.max(minuteWindow.start, appearanceWindow.entryMinute);
   const playerWindowEnd = Math.max(playerWindowStart, appearanceWindow.exitMinute ?? minuteWindow.end);
-  const weightedMatchPool = orderForwardHighlights(matchPool, state, context, matchSeed);
+  const selectedMoments = selectPlayerHighlights({
+    moments: matchPool,
+    matchSeed,
+    count: playerMomentCount,
+    simEvents,
+    playerWindowStart,
+    playerWindowEnd,
+    role: context.playerRole,
+    serviceLevel: context.serviceLevel,
+    opponentProfile: context.opponentProfile,
+    attributeValues: getAttributeValueMap(state.attributes),
+    preferredCategories: positionModule.matchTendencies.preferredForwardCategories,
+  });
   const playerEvents: PlayerMatchEvent[] = Array.from({ length: playerMomentCount }, (_, index) => {
-    const moment = weightedMatchPool[index % weightedMatchPool.length];
+    const moment = selectedMoments[index % selectedMoments.length];
     const spread = playerMomentCount === 1 ? 0.5 : index / (playerMomentCount - 1);
     const roleMinute = Math.round(playerWindowStart + (playerWindowEnd - playerWindowStart) * spread);
     const minuteNoise = Math.round(seededNoise(`${matchSeed}-player-minute-${index}`) * 8) - 4;
@@ -4403,156 +3800,64 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   };
 }
 
-function orderForwardHighlights(matchPool: MatchMoment[], state: GameState, context: UpcomingMatch, matchSeed: string) {
-  return [...matchPool].sort((a, b) => {
-    const aWeight = getMomentGenerationScore(a, state, context, matchSeed);
-    const bWeight = getMomentGenerationScore(b, state, context, matchSeed);
-    return bWeight - aWeight;
-  });
-}
-
-function getMomentGenerationScore(moment: MatchMoment, state: GameState, context: UpcomingMatch, matchSeed: string) {
-  const taxonomy = getHighlightTaxonomy(moment.category);
-  const attributeAverage = taxonomy
-    ? taxonomy.primaryAttributes.reduce((sum, key) => sum + getAttributeValue(state.attributes, key as AttributeKey), 0) /
-      taxonomy.primaryAttributes.length
-    : 50;
-  const tacticalWeight = getForwardHighlightWeight(moment.category, {
-    serviceLevel: context.serviceLevel,
-    opponentProfile: context.opponentProfile,
-    playerAttributeAverage: attributeAverage,
-  });
-  const seededJitter = 0.65 + seededNoise(`${matchSeed}-${moment.id}-highlight-weight`) * 0.7;
-
-  return tacticalWeight * seededJitter;
-}
-
-function getOpponentResolutionModifier(moment: MatchMoment, opponentProfile?: OpponentProfile) {
-  if (!opponentProfile) {
-    return 0;
-  }
-
-  const taxonomy = getHighlightTaxonomy(moment.category);
-  if (!taxonomy) {
-    return 0;
-  }
-
-  const counterAverage =
-    taxonomy.opponentCounters.reduce((sum, key) => {
-      const value = opponentProfile[key];
-      return sum + (typeof value === "number" ? value : 55);
-    }, 0) / taxonomy.opponentCounters.length;
-
-  return clamp((counterAverage - 52) * 0.16, -3, 7);
-}
-
-function getChanceQualityContext(moment: MatchMoment, playerScore: number, opponentModifier: number) {
-  const rawQuality = playerScore - opponentModifier;
-  const categoryBonus = moment.category === "shot" || moment.category === "first_time_finish" ? 2 : moment.category === "late_pressure" ? -1 : 0;
-  const qualityScore = rawQuality + categoryBonus;
-
-  if (qualityScore >= 62) {
-    return { quality: "Clear chance" as const, modifier: 4 };
-  }
-  if (qualityScore >= 54) {
-    return { quality: "Good chance" as const, modifier: 2 };
-  }
-  if (qualityScore >= 45) {
-    return { quality: "Half chance" as const, modifier: 0 };
-  }
-  return { quality: "Difficult chance" as const, modifier: -3 };
-}
-
-function buildResultExplanationTags(
-  moment: MatchMoment,
-  choice: MatchChoice,
-  success: boolean,
-  opponentModifier: number,
-  chanceQuality: ChanceQuality,
-  fitness: number,
-) {
-  const tags = [success ? "execution_helped" : "execution_lacked", `quality_${chanceQuality.toLowerCase().replace(/\s+/g, "_")}`];
-  const taxonomy = getHighlightTaxonomy(moment.category);
-
-  if (taxonomy) {
-    tags.push(`highlight_${taxonomy.id}`);
-  }
-  if (opponentModifier >= 4) {
-    tags.push("opponent_countered_action");
-  }
-  if (fitness < 62) {
-    tags.push("fatigue_limited_action");
-  }
-  if (choice.risk === "High") {
-    tags.push("high_risk_choice");
-  }
-
-  return tags;
-}
-
 function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
-  const score = choice.uses.reduce((sum, key) => sum + getAttributeValue(state.attributes, key), 0) / choice.uses.length;
-  const fitnessModifier = (state.fitness - 70) / 10;
-  const riskPenalty = choice.risk === "High" ? 6 : choice.risk === "Medium" ? 2 : -2;
-  const managerModifier = choice.manager === "Likes" ? 3 : choice.manager === "Risky" ? -2 : 0;
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
-  const variance = Math.round(seededNoise(`${resultSeed}-outcome`) * 18) - 9;
-  const ratingVariance = (seededNoise(`${resultSeed}-rating`) - 0.5) * 0.3;
-  const opponentModifier = getOpponentResolutionModifier(moment, state.activeMatch?.opponentProfile);
-  const chanceContext = getChanceQualityContext(moment, score, opponentModifier);
-  const resultScore = score + fitnessModifier + managerModifier + chanceContext.modifier - riskPenalty - opponentModifier + variance;
-  const threshold = choice.risk === "High" ? 55 : choice.risk === "Medium" ? 50 : 45;
-  const success = resultScore >= threshold;
-  const fatigueCost = choice.risk === "High" ? -8 : choice.risk === "Medium" ? -6 : -4;
-  const xp = buildChoiceXp(choice, success);
-  const explanationTags = buildResultExplanationTags(moment, choice, success, opponentModifier, chanceContext.quality, state.fitness);
+  const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
+  const coreResult = resolvePlayerChoice({
+    moment,
+    choice,
+    attributeValues: getAttributeValueMap(state.attributes),
+    fitness: state.fitness,
+    trust: state.trust,
+    playerRole: state.activeMatch?.playerRole,
+    opponentProfile: state.activeMatch?.opponentProfile,
+    resultSeed,
+  });
+  const positionAdjustedResult = {
+    ...coreResult,
+    rating: getPositionAdjustedRating(coreResult.rating, coreResult.outcomeTier, coreResult.decisiveOutcome, moment, choice, positionModule),
+  };
+  const xp = buildChoiceXp(choice, positionAdjustedResult.outcomeTier, positionModule, moment);
+  const positionLabel = positionModule.displayName.toLowerCase();
+  const performanceReasons = buildPerformanceReasons(moment, choice, positionAdjustedResult, positionModule, xp);
 
   if (choice.outcome === "goal") {
     return {
-      title: success ? "Clinical action" : "Chance slips away",
-      detail: success
+      title: positionAdjustedResult.decisiveOutcome ? "Clinical action" : positionAdjustedResult.success ? `Useful ${positionLabel} action` : "Chance slips away",
+      detail: positionAdjustedResult.decisiveOutcome
         ? `${moment.minute}': ${choice.label} works. You turn the moment into a goal and your match rating jumps.`
-        : `${moment.minute}': ${choice.label} is the right idea, but the execution is not clean enough this time.`,
-      chanceQuality: chanceContext.quality,
-      explanationTags,
-      rating: Number((success ? 7.6 + (choice.risk === "High" ? 0.2 : 0) + ratingVariance : 6.4 + ratingVariance).toFixed(1)),
-      trustDelta: success ? 4 : choice.manager === "Risky" ? -1 : 1,
-      fitnessDelta: fatigueCost,
-      goals: success ? 1 : 0,
-      assists: 0,
+        : positionAdjustedResult.success
+          ? `${moment.minute}': ${choice.label} is the right idea and keeps the attack alive, but it does not become a clear finish.`
+          : `${moment.minute}': ${choice.label} is the right idea, but the execution is not clean enough this time.`,
+      ...positionAdjustedResult,
+      performanceReasons,
       xp,
     };
   }
 
   if (choice.outcome === "assist") {
     return {
-      title: success ? "Chance created" : "Move breaks down",
-      detail: success
+      title: positionAdjustedResult.decisiveOutcome ? "Chance created" : positionAdjustedResult.success ? "Attack connected" : "Move breaks down",
+      detail: positionAdjustedResult.decisiveOutcome
         ? `${moment.minute}': ${choice.label} opens the defense and gives a teammate the clean finish.`
-        : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
-      chanceQuality: chanceContext.quality,
-      explanationTags,
-      rating: Number((success ? 7.3 + ratingVariance : 6.6 + ratingVariance).toFixed(1)),
-      trustDelta: success ? 5 : 2,
-      fitnessDelta: fatigueCost,
-      goals: 0,
-      assists: success ? 1 : 0,
+        : positionAdjustedResult.success
+          ? `${moment.minute}': ${choice.label} helps the move, but the final chance never fully opens.`
+          : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
+      ...positionAdjustedResult,
+      performanceReasons,
       xp,
     };
   }
 
   return {
-    title: success ? "Manager will remember that" : "Useful but imperfect",
-    detail: success
-      ? `${moment.minute}': ${choice.label} is not flashy, but it is exactly the kind of striker work that earns minutes.`
-      : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
-    chanceQuality: chanceContext.quality,
-    explanationTags,
-    rating: Number((success ? 7.0 + ratingVariance : 6.5 + ratingVariance).toFixed(1)),
-    trustDelta: success ? 5 : 2,
-    fitnessDelta: fatigueCost,
-    goals: 0,
-    assists: 0,
+    title: positionAdjustedResult.outcomeTier === "Great" ? "Manager will remember that" : positionAdjustedResult.success ? "Useful shift" : "Useful but imperfect",
+    detail: positionAdjustedResult.outcomeTier === "Great"
+      ? `${moment.minute}': ${choice.label} is not flashy, but it is exactly the kind of ${positionLabel} work that earns minutes.`
+      : positionAdjustedResult.success
+        ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
+        : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
+    ...positionAdjustedResult,
+    performanceReasons,
     xp,
   };
 }
@@ -4562,42 +3867,167 @@ function simulateRemainingPlayerMoments(state: GameState, match: MatchState): Ma
     .slice(match.currentEventIndex)
     .filter((event): event is PlayerMatchEvent => event.type === "player_moment")
     .map((moment) => {
-      const choice = chooseAutoSimChoice(state, moment);
+      const choice = chooseAutoSimChoice({
+        moment,
+        attributeValues: getAttributeValueMap(state.attributes),
+        fitness: state.fitness,
+        trust: state.trust,
+        matchSeed: match.matchSeed,
+      });
       return { ...createMatchResult(state, moment, choice), source: "auto" as const };
     });
 }
 
-function chooseAutoSimChoice(state: GameState, moment: PlayerMatchEvent): MatchChoice {
-  const choiceScores = moment.choices.map((choice) => {
-    const attributeScore =
-      choice.uses.reduce((sum, key) => sum + getAttributeValue(state.attributes, key), 0) / choice.uses.length;
-    const riskScore = choice.risk === "Low" ? 8 : choice.risk === "Medium" ? 3 : -5;
-    const managerScore = choice.manager === "Likes" ? 7 : choice.manager === "Neutral" ? 2 : -4;
-    const outputScore = choice.outcome === "goal" ? 5 : choice.outcome === "assist" ? 4 : 2;
-    const fitnessAdjustment = state.fitness < 65 && choice.risk === "High" ? -8 : 0;
-    const trustAdjustment = state.trust < 45 && choice.manager === "Likes" ? 5 : 0;
-
-    return {
-      choice,
-      score: attributeScore + riskScore + managerScore + outputScore + fitnessAdjustment + trustAdjustment,
-    };
-  });
-
-  return choiceScores.sort((a, b) => b.score - a.score)[0]?.choice ?? moment.choices[0];
-}
-
-function buildChoiceXp(choice: MatchChoice, success: boolean): Partial<Record<AttributeKey, number>> {
+function buildChoiceXp(choice: MatchChoice, tier: OutcomeTier, positionModule: PositionModule, moment: MatchMoment): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
-  const base = success ? 14 : 8;
+  const tierBase: Record<OutcomeTier, number> = {
+    Poor: 7,
+    Okay: 10,
+    Good: 14,
+    Great: 18,
+  };
+  const base = tierBase[tier];
   choice.uses.forEach((key, index) => {
-    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 4 : 0);
+    const keyAttributeBonus = positionModule.keyAttributes.includes(key) ? 2 : 0;
+    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 4 : 0) + keyAttributeBonus;
   });
 
   if (choice.manager === "Likes") {
-    xp["Work Rate"] = (xp["Work Rate"] ?? 0) + 4;
+    const managerBonusAttribute = getManagerBonusAttribute(choice, positionModule);
+    xp[managerBonusAttribute] = (xp[managerBonusAttribute] ?? 0) + 4;
+  }
+
+  if (positionModule.matchTendencies.preferredForwardCategories.includes(moment.category)) {
+    const focusAttribute = choice.uses.find((key) => positionModule.keyAttributes.includes(key)) ?? choice.uses[0];
+    xp[focusAttribute] = (xp[focusAttribute] ?? 0) + 2;
   }
 
   return xp;
+}
+
+function getManagerBonusAttribute(choice: MatchChoice, positionModule: PositionModule): AttributeKey {
+  return (
+    choice.uses.find((key) => key === "Work Rate" || key === "Positioning") ??
+    choice.uses.find((key) => positionModule.keyAttributes.includes(key)) ??
+    positionModule.keyAttributes[0]
+  );
+}
+
+function getPositionAdjustedRating(
+  rating: number,
+  tier: OutcomeTier,
+  decisiveOutcome: boolean,
+  moment: MatchMoment,
+  choice: MatchChoice,
+  positionModule: PositionModule,
+) {
+  const weight = getPositionPerformanceWeight(moment, choice, positionModule);
+  const tierScale: Record<OutcomeTier, number> = {
+    Poor: -0.12,
+    Okay: 0.08,
+    Good: 0.22,
+    Great: 0.34,
+  };
+  const decisiveScale = decisiveOutcome ? 0.16 : 0;
+  const adjustment = (weight - 1) * (tierScale[tier] + decisiveScale);
+
+  return Number(clamp(rating + adjustment, 5.4, 9.8).toFixed(1));
+}
+
+function getPositionPerformanceWeight(moment: MatchMoment, choice: MatchChoice, positionModule: PositionModule) {
+  const weights = positionModule.performanceWeights;
+
+  if (choice.outcome === "goal") {
+    return weights.goal;
+  }
+  if (choice.outcome === "assist") {
+    return weights.assist;
+  }
+  if (moment.category === "defensive_set_piece") {
+    return weights.defensive;
+  }
+  if (moment.category === "press") {
+    return weights.defensive * 0.7 + weights.trust * 0.3;
+  }
+  if (moment.category === "link_up" || moment.category === "hold_up") {
+    return weights.possession;
+  }
+  if (moment.category === "counter" || moment.category === "run_behind") {
+    return weights.transition;
+  }
+
+  return weights.trust;
+}
+
+function buildPerformanceReasons(
+  moment: MatchMoment,
+  choice: MatchChoice,
+  result: Pick<MatchResult, "outcomeTier" | "rating" | "goals" | "assists" | "success"> & { decisiveOutcome: boolean },
+  positionModule: PositionModule,
+  xp: Partial<Record<AttributeKey, number>>,
+) {
+  const reasons = [
+    `${positionModule.displayName} focus: ${getPositionFocusReason(moment, choice, positionModule)}.`,
+    `${result.outcomeTier} action: ${getOutcomeReason(result, choice)}.`,
+  ];
+  const xpReason = getXpReason(xp, positionModule);
+  if (xpReason) {
+    reasons.push(xpReason);
+  }
+  if (choice.manager === "Likes") {
+    reasons.push("Manager read: this choice matched the role instruction.");
+  } else if (choice.manager === "Risky") {
+    reasons.push("Manager read: risky choice with a bigger rating swing.");
+  }
+
+  return Array.from(new Set(reasons)).slice(0, 4);
+}
+
+function getPositionFocusReason(moment: MatchMoment, choice: MatchChoice, positionModule: PositionModule) {
+  const weight = getPositionPerformanceWeight(moment, choice, positionModule);
+  if (weight >= 1.15) {
+    return "the action strongly matched your role";
+  }
+  if (weight >= 0.95) {
+    return "the action fit your expected job";
+  }
+  if (choice.outcome === "goal" && positionModule.group !== "Forward") {
+    return "useful output, but not your main role expectation";
+  }
+  return "solid team work, but outside your highest-value focus";
+}
+
+function getOutcomeReason(
+  result: Pick<MatchResult, "outcomeTier" | "goals" | "assists" | "success"> & { decisiveOutcome: boolean },
+  choice: MatchChoice,
+) {
+  if (result.goals > 0) {
+    return "goal output gave the rating a clear lift";
+  }
+  if (result.assists > 0) {
+    return "chance creation turned into direct output";
+  }
+  if (result.outcomeTier === "Great") {
+    return "execution stood out even without direct output";
+  }
+  if (result.success) {
+    return choice.outcome === "trust" ? "clean role action improved trust" : "good idea without the final decisive touch";
+  }
+  return "execution limited the rating gain";
+}
+
+function getXpReason(xp: Partial<Record<AttributeKey, number>>, positionModule: PositionModule) {
+  const topEntry = Object.entries(xp)
+    .filter(([, value]) => (value ?? 0) > 0)
+    .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0] as [AttributeKey, number] | undefined;
+
+  if (!topEntry) {
+    return undefined;
+  }
+
+  const [attribute, value] = topEntry;
+  const keyNote = positionModule.keyAttributes.includes(attribute) ? " key attribute" : "";
+  return `XP driver: ${attribute}${keyNote} gained +${value}.`;
 }
 
 function getChoiceAttributeAverage(attributes: Attribute[], choice: MatchChoice) {
@@ -4686,20 +4116,6 @@ function createMatchSeed(state: GameState, context: UpcomingMatch) {
   ].join("-");
 }
 
-function seededNoise(seed: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return (hash >>> 0) / 4294967295;
-}
-
-function getPositionModule(positionGroup: PositionGroup) {
-  return positionModules[positionGroup];
-}
-
 function calculateOvr(attributes: Attribute[], weights: Partial<Record<AttributeKey, number>> = positionModules.Forward.ovrWeights) {
   const weighted = attributes.reduce(
     (sum, attribute) => {
@@ -4717,6 +4133,10 @@ function calculateOvr(attributes: Attribute[], weights: Partial<Record<Attribute
 
 function getAttributeValue(attributes: Attribute[], key: AttributeKey) {
   return attributes.find((attribute) => attribute.label === key)?.value ?? 0;
+}
+
+function getAttributeValueMap(attributes: Attribute[]) {
+  return Object.fromEntries(attributes.map((attribute) => [attribute.label, attribute.value]));
 }
 
 function getAverageRating(ratings: number[]) {

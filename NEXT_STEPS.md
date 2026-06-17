@@ -33,9 +33,16 @@ Senest implementeret:
 - core loop fastlagt som Training -> Match -> Training -> Match
 - match engine direction dokumenteret i `MATCH_ENGINE.md`
 - match engine V2 foundation module med opponent profiles, Forward highlight taxonomy, chance quality og explanation tags
+- position role data layer i `src/positionRoles.ts` med Forward, Winger, Midfielder, Fullback og Centerback uden mÃ¥lmand
+- position modules styrer nu key attributes, OVR weights, manager instructions, tactical focus og let match tendency bias
+- første position moment libraries for Forward, Winger, Midfielder, Fullback, Centerback og Shared
+- position-aware rating/XP V1 med performance weights og key-attribute XP bias
+- position-aware post-match Performance Breakdown med rating, role fit og XP drivers
 
 Naeste oplagte gameplay-hul:
 
+- position-aware post-match breakdown, saa rating/XP forklares forskelligt pr. position
+- flere moment variants per position, saa hver rolle har nok variation over flere saesoner
 - match engine V2 resolution bands, explanation UI og batch simulation/debug tools
 - facilities/coaches/home gym som training multipliers, der haever floor og reducerer variance
 - recovery/fatigue model v2, saa haard traening kan give kortsigtet risiko

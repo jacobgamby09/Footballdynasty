@@ -192,7 +192,7 @@
   - accumulated results
 - Match screen viser progress som `Moment X/Y`.
 - Spilleren fortsætter mellem moments med `Continue`.
-- Sidste moment afsluttes med `Finish Match`.
+- Kampen afsluttes med `Finish Match` i main progress-knappen, når live-kampen rammer full time.
 - Kampens samlede resultater aggregeres først til karrieren efter kampen:
   - rating
   - goals
@@ -519,3 +519,317 @@
 
 - Spilleren kan nu se alle stats der bliver forbedret af en training plan.
 - Multi-stat drills som Finishing reps viser korrekt både Finishing og Composure.
+
+## 2026-06-17 - Match Highlight Feedback
+
+### Implemented
+
+- Player highlights viser nu en tydelig result popup efter valg.
+- Popup'en markerer valget som `Successful` eller `Unsuccessful` med tydelig success/failure styling.
+- Sidste player highlight afslutter ikke længere kampen tidligt.
+- Hvis der ikke er flere highlights, fortsætter live-kampen normalt mod 90 minutter.
+
+### Design Impact
+
+- Valg i kamp giver en mere umiddelbar YES/OEV feedback.
+- Match flow føles mindre scriptet, fordi highlights ikke længere fungerer som skjulte slutpunkter.
+
+## 2026-06-17 - Sim Scoreline Balance
+
+### Implemented
+
+- Sim-events bruger nu en seeded RNG-sekvens i stedet for enkeltstående sequential seed lookups.
+- Team chances og opponent chances kan nu også konverteres til mål, ikke kun eksplicitte goal templates.
+- Goal conversion tager højde for team strength, opponent attack, opponent defense/keeper, trust, form og venue.
+- Kampen genererer nu 6-8 naturlige sim-events i stedet for 4-6.
+
+### Design Impact
+
+- 0-0 er stadig muligt, men bør ikke længere dominere korte test-runs.
+- Scorelines bør føles mere varierede uden at alle kampe bliver målfester.
+
+## 2026-06-17 - Match Balance Lab
+
+### Implemented
+
+- Tilføjet `npm run balance:match`.
+- Scriptet simulerer 500 kampe per scenario som default.
+- Balance lab rapporterer:
+  - scoreline distribution
+  - average goals
+  - 0-0 rate
+  - player highlights per match
+  - player choice success rate
+  - player goals/assists per match
+  - average rating
+  - role split
+  - simple balance warnings
+- Første scenarios:
+  - Baseline prospect
+  - Improved finisher
+  - Low fitness
+  - High trust
+
+### Initial Read
+
+- Baseline ligger omkring 1.6 mål/kamp og 18% 0-0 i labbet.
+- Improved finisher og high trust giver flere highlights og flere team goals.
+- Auto/player choice success ligger højt, så næste tuning-pass bør gøre valg mindre automatiske.
+
+## 2026-06-17 - Player Outcome Tiers
+
+### Implemented
+
+- Player highlight results er nu opdelt i fire tiers:
+  - Poor
+  - Okay
+  - Good
+  - Great
+- `success` betyder nu acceptabel eller bedre aktion, ikke automatisk mål/assist.
+- Goal/assist kræver et decisive outcome baseret på tier og chance quality.
+- Result popup viser tier direkte i stedet for kun `Successful` / `Unsuccessful`.
+- Okay har neutral styling, Poor har failure styling, Good/Great har success styling.
+- Match balance lab rapporterer nu outcome tier distribution.
+
+### Initial Read
+
+- Baseline prospect lander primært i Good/Okay med færre Great moments.
+- Improved finisher skaber tydeligt flere Great outcomes og flere mål.
+- Low fitness reducerer Great outcomes uden at gøre spilleren konstant dårlig.
+- Næste tuning-kandidat er at gøre role/choice mix mere varieret, så high trust ikke kun bliver sikre trust-actions.
+
+## 2026-06-17 - Role-Aware Highlight Mix
+
+### Implemented
+
+- Player highlight selection bruger nu vægtet draft i stedet for bare top-sortering.
+- Hver valgt highlight fjernes fra puljen, så flere moments i samme kamp bliver mere varierede.
+- Highlight-vægt tager nu højde for:
+  - player role
+  - score state around the target minute
+  - late match context
+  - service level
+  - player attribute fit
+  - opponent profile counters
+- Impact Sub favoriserer flere direct/late attacking moments.
+- Rotation Starter og Starter får mere plads til link-up og bredere striker work.
+- Auto-sim choice selection vægter goal/assist ambition højere og har seeded choice variance.
+- Tilføjet en ny `third-man-run` / `link_up` highlight med assist-path.
+- Assist outcomes er lidt mere opnåelige end goals, hvis aktionen er Good og chance quality ikke er Difficult.
+
+### Initial Read
+
+- Baseline prospect: cirka 1 highlight/kamp, 0.11 assists/kamp, næsten ingen mål.
+- Improved finisher: cirka 0.76 mål/kamp og 0.35 assists/kamp i labbet.
+- High trust / Rotation Starter: cirka 3 highlights/kamp og 0.45 assists/kamp.
+- 0-0 ligger stadig omkring 14-20% afhængigt af scenario.
+- Baseline average goals er stadig lidt lav og bør være et senere scoreline tuning punkt.
+
+## 2026-06-17 - FM-Style Result Layer
+
+### Implemented
+
+- Match engine har nu et underliggende team result layer før highlight generation.
+- Kampen beregner non-player:
+  - Northbridge xG
+  - opponent xG
+  - Northbridge goals
+  - opponent goals
+  - attack/chance volume
+- xG tager højde for:
+  - team strength
+  - opponent attack/midfield
+  - opponent defense/keeper
+  - service level
+  - form
+  - trust
+  - venue
+- Sim timeline-events repræsenterer nu det allerede simulerede kampmiljø, i stedet for at være den eneste mål-generator.
+- Player goals/assists lægges stadig ovenpå, så spilleren kan påvirke kampen uden at hele verden afhænger af spilleren.
+- Balance lab viser nu average xG for begge hold.
+
+### Initial Read
+
+- Baseline prospect: cirka 2.75 mål/kamp, 6% 0-0.
+- Low fitness: cirka 2.80 mål/kamp, 7% 0-0.
+- High trust / Rotation Starter: cirka 2.71 mål/kamp, 6% 0-0.
+- Improved finisher: cirka 3.56 mål/kamp, fordi player contribution løfter scoreline markant.
+- Baseline/high trust ligger nu tættere på et FM-agtigt miljø omkring spilleren.
+
+## 2026-06-17 - Match Engine Foundation Pass
+
+### Implemented
+
+- Flyttet det rene result layer ud af `App.tsx` til `src/engine/matchEngineCore.js`.
+- Tilføjet TypeScript declarations i `src/engine/matchEngineCore.d.ts`.
+- Appen og `npm run balance:match` bruger nu samme runtime-kode til:
+  - team xG model
+  - non-player scoreline
+  - sim timeline-events
+  - seeded RNG helpers
+  - score-at-minute lookup
+- Balance lab spejler ikke længere result-layer logikken manuelt.
+
+### Design Impact
+
+- Match engine har nu en tydeligere API boundary uden at ændre UI-flowet.
+- Ligaer/divisioner kan senere kobles på via model input som team strength, service level, opponent profile og venue.
+- Næste naturlige engine-refactor er at flytte player highlight generation/resolution ud i samme engine namespace.
+
+## 2026-06-17 - Player Highlight Engine Boundary
+
+### Implemented
+
+- Flyttet player-side engine logic ind i `src/engine/matchEngineCore.js`.
+- Appen og balance lab bruger nu samme runtime-kode til:
+  - weighted player highlight selection
+  - role-aware highlight mix
+  - score-state aware highlight weighting
+  - auto-sim choice selection
+  - player choice resolution
+  - outcome tiers
+  - chance quality
+  - decisive goal/assist outcomes
+- `App.tsx` beholder nu primært UI-tekst, XP mapping og state orchestration for match results.
+- Balance lab spejler ikke længere player highlight generation/resolution manuelt.
+
+### Design Impact
+
+- Match engine er tættere på et rigtigt modul, som senere kan bruges af ligaer, divisioner og season simulation.
+- Player contribution kan balanceres ét sted i stedet for at divergere mellem spillet og labbet.
+- Næste naturlige foundation-step er at flytte match data definitions / moment library ud af `App.tsx`.
+
+## 2026-06-17 - Shared Forward Moment Library
+
+### Implemented
+
+- Flyttet forward highlight kataloget ud af `App.tsx` til `src/engine/forwardMoments.js`.
+- Tilføjet TypeScript declarations i `src/engine/forwardMoments.d.ts`.
+- Appen og `npm run balance:match` bruger nu samme moment library til player highlights.
+- Balance lab bruger nu den fulde striker/forward moment pool i stedet for en separat mini-testliste.
+
+### Current Lab Read
+
+- Baseline prospect: cirka 2.55 mål/kamp, 6% 0-0, 1 player highlight/kamp.
+- Improved finisher: cirka 3.02 mål/kamp, 5% 0-0, 2 player highlights/kamp.
+- High trust / Rotation Starter: cirka 2.89 mål/kamp, 6% 0-0, 3 player highlights/kamp.
+- Great outcomes er stadig sjældne i nogle scenarios og bør tunes forsigtigt, så vi ikke gør early-career spilleren for stærk.
+
+### Design Impact
+
+- Match balancing tester nu den samme highlight variation som spilleren møder i UI.
+- Næste naturlige step er at begynde at udvide samme struktur med rolle-/positionsspecifikke moment libraries uden målmand.
+## 2026-06-17 - Position-Aware Post-Match Breakdown
+
+### Implemented
+
+- `MatchResult` har nu `performanceReasons` ud over de tekniske explanation tags.
+- Post-match summary viser nu et `Performance breakdown` card med korte forklaringer på:
+  - position fit
+  - outcome/rating driver
+  - XP driver
+  - manager read
+- Performance breakdown deduplikeres på tværs af flere highlights.
+- Match result copy bruger nu positionens displayName i stedet for altid striker-formuleringer.
+
+### Design Impact
+
+- Spilleren kan bedre forstå, hvorfor rating og XP ændrede sig.
+- Foundation er klar til, at Winger/Midfielder/Fullback/Centerback kan føles fair uden goals/assists som eneste forklaring.
+
+## 2026-06-17 - Position-Aware Rating/XP V1
+
+### Implemented
+
+- Tilføjet `performanceWeights` til position modules i `src/positionRoles.ts`.
+- Match result rating justeres nu let efter positionens job:
+  - Forward belønnes mest for mål og direkte chance-actions.
+  - Winger belønnes mere for assists, transition og wide creation.
+  - Midfielder belønnes mere for possession/link-up og chance creation.
+  - Fullback belønnes mere for defensive actions, transition og support.
+  - Centerback belønnes mest for defensive actions og set pieces.
+- Match XP får nu små key-attribute bonuses, så positionens nøglestats udvikles lidt mere naturligt.
+- Manager-liked actions giver nu bonus til en relevant used/key attribute i stedet for altid kun `Work Rate`.
+- Balance lab spejler Forward performance rating adjustment.
+
+### Current Lab Read
+
+- Build passed.
+- Balance lab passed med 200 runs per scenario.
+- Baseline prospect: cirka 2.55 mål/kamp, 6% 0-0, 6.77 avg rating.
+- Improved finisher: cirka 3.00 mål/kamp, 5% 0-0, 6.90 avg rating.
+- High trust / Rotation Starter: cirka 2.88 mål/kamp, 6% 0-0, 6.82 avg rating.
+- Forward ratings faldt en anelse på shared/non-striker moments, hvilket er mere realistisk.
+
+### Design Impact
+
+- Andre positioner kan nu belønnes for deres egne job, når de åbnes senere.
+- Næste UI-lag bør forklare post-match rating/XP med positionens rating focus, ikke kun goals/assists.
+
+## 2026-06-17 - Position Moment Libraries V1
+
+### Implemented
+
+- Udvidet `src/engine/forwardMoments.js` med første version af position-specific moment pools:
+  - Forward
+  - Winger
+  - Midfielder
+  - Fullback
+  - Centerback
+  - Shared
+- Tilføjet `createPositionMatchPool`, så `positionModule.momentPools` nu vælger kampens moment-bibliotek.
+- Forward bruger nu både `forward` og `shared`, så den aktive striker-oplevelse allerede får mere variation.
+- Winger/Midfielder/Fullback/Centerback har nu første moment foundations klar til senere position-select.
+- `scripts/match-balance-lab.mjs` bruger samme position pool selector for Forward test-scenarios.
+
+### Current Lab Read
+
+- Build passed.
+- Balance lab passed med 200 runs per scenario.
+- Baseline prospect: cirka 2.55 mål/kamp, 6% 0-0, 1 player highlight/kamp.
+- Improved finisher: cirka 3.00 mål/kamp, 5% 0-0, 2 player highlights/kamp.
+- High trust / Rotation Starter: cirka 2.88 mål/kamp, 6% 0-0, 3 player highlights/kamp.
+- Shared moments sænker player assists lidt, men scoreline-balancen forbliver stabil.
+
+### Design Impact
+
+- Kampoplevelsen har nu et bredere moment-katalog, så samme sæson bør føles mindre repetitiv.
+- Position-aware rating/XP er nu implementeret som V1; næste lag er bedre post-match forklaring pr. position.
+
+## 2026-06-17 - Position Role Foundation
+
+### Implemented
+
+- Flyttet position modules ud af `App.tsx` til `src/positionRoles.ts`.
+- Første scope er alle markspillergrupper uden målmand:
+  - Forward
+  - Winger
+  - Midfielder
+  - Fullback
+  - Centerback
+- Hvert position module definerer nu:
+  - short code
+  - default archetype
+  - key attributes
+  - OVR weights
+  - moment pools
+  - match tendencies
+  - rating focus
+  - tactical focus
+  - manager instructions
+- Appen bruger fortsat position modules til Player/Training UI, OVR, tactical focus og manager instruction.
+- Match highlight selection bruger nu en let position category bias via `preferredForwardCategories`.
+
+### Current Lab Read
+
+- Build passed.
+- Balance lab passed med 200 runs per scenario.
+- Baseline prospect: cirka 2.56 mål/kamp, 6% 0-0, 1 player highlight/kamp.
+- Improved finisher: cirka 3.04 mål/kamp, 6% 0-0, 2 player highlights/kamp.
+- High trust / Rotation Starter: cirka 2.90 mål/kamp, 6% 0-0, 3 player highlights/kamp.
+- Great outcomes er stadig sjældne i nogle scenarios, men striker-balancen blev ikke markant ændret af positionslaget.
+
+### Design Impact
+
+- Positioner kan nu udbygges uden at lægge mere positionsdata ind i `App.tsx`.
+- Næste naturlige step er at tilføje rigtige moment libraries for Winger/Midfielder/Fullback/Centerback og lade positionens `momentPools` vælge bibliotek.

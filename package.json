@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "balance:match": "node scripts/match-balance-lab.mjs",
+    "balance:season": "node scripts/season-balance-lab.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

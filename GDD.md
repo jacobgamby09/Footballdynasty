@@ -93,6 +93,8 @@ Foreløbige attributes:
 
 Potentiale bør være individuelt pr. attribute frem for ét samlet potentiale. En spiller kan have højt potentiale i Finishing og Off Ball, men lavere potentiale i Strength eller Passing.
 
+Potential should not be a hard stop. It should act as growth pressure: the closer a player gets to their natural development zone, the harder and more expensive further progress becomes. Exceptional careers can still push beyond expectation through the full stack of training, support, facilities, performance, age timing and dynasty advantages.
+
 ## Ability Scale And League Context
 
 Football Dynasty bruger en global 1-100 ability scale, men performance skal altid vurderes relativt til spillerens aktuelle miljoe.
@@ -120,6 +122,60 @@ Det betyder:
 - en 40 OVR spiller kan vaere staerk i en lav liga, men ikke i en topdivision
 - en 85 OVR spiller skal foeles elite, men kun dominant hvis han spiller under sit niveau
 - dynasty progression skal give bedre startpunkt over generationer uden at springe hele fodboldpyramiden over
+
+### Position-Based OVR
+
+OVR is not a raw average of every attribute. OVR is the player's current ability for the active position/role.
+
+Each position defines its own weighted attribute profile. For example, a Forward OVR is driven by striker-relevant attributes such as Finishing, Off Ball, Composure, First Touch, Acceleration, Heading, Strength and Work Rate. Attributes outside that position profile can still matter in specific match moments, but they should not inflate the headline OVR.
+
+Core rule:
+
+`OVR = weighted current ability for the active position, not total attribute grind.`
+
+This means:
+
+- a Forward with 100 Long Shots but weak core striker attributes should remain a low-OVR specialist
+- a player can have different effective OVRs in different positions later
+- role fit can become a useful layer on top of position OVR
+- the Player screen OVR must be clickable and explain which attributes currently define the rating
+
+### Potential And Generation Model
+
+Potential is not a hard attribute cap. It is the player's natural development curve for each attribute: progress is efficient below expectation, slower near the player's natural level, and very expensive beyond it.
+
+Core rule:
+
+`Generation quality raises the starting floor and improves growth efficiency. Training, support, club facilities, age and performance decide how far beyond expectation the player can push.`
+
+V1 generation direction:
+
+- Gen 1 starts as a true grassroots prospect with low starting OVR and limited growth efficiency.
+- Later generations start slightly better, especially in key attributes for their position.
+- Later generations receive better attribute growth profiles, with key attributes improving more than secondary attributes.
+- Dynasty upgrades should eventually influence generation quality through Legacy Points, not direct cash spending.
+- The player should still need to climb through appropriate leagues. A better generation should feel advantaged, not instantly elite.
+
+Soft-cap progression should come from natural obstacles instead of a fixed wall:
+
+- XP required per attribute level rises as the attribute gets higher.
+- XP required rises further when the attribute is above the player's current growth profile.
+- Better club facilities, private support, dynasty upgrades and strong performance can mitigate the curve.
+- Age affects the curve: young players develop faster, peak years are about maximizing output, and older players fight decline/maintenance.
+- Higher leagues should demand higher ability, so raw OVR only matters relative to club, league and opponent context.
+
+The UI should expose:
+
+- current position OVR
+- growth profile / projected trajectory, if relevant
+- generation number and generation tier label
+- an explanation that OVR is role-weighted and potential is a soft growth curve, not a fixed ceiling
+
+Balance target:
+
+- Gen 1 should be capable of a meaningful but limited career.
+- Stronger generations should make higher leagues and higher long-term growth realistic.
+- A long career should need the full stack: generation growth profile, training choices, in-run support, recovery, club facilities, contracts and transfers.
 
 ### League Tiers
 
@@ -536,17 +592,66 @@ Første cash-spending layer er `Player Support`.
 
 Player Support er current-run only. Levels hjælper den aktive spiller, men arves ikke direkte som dynasty power.
 
-Første support categories:
+First support effect carriers:
 
-- Match boots: small match execution/rating support.
+- Match boots: improves relevant match-moment action attributes such as Finishing, First Touch, Dribbling, Acceleration and Pace.
 - Recovery kit: reduces match fatigue.
-- Personal coach: raises weekly training XP floor.
+- Personal coach: raises weekly training XP floor and ceiling.
 - Nutrition plan: softens training fatigue.
 - Video analyst: improves selection/match prep.
 - Better agent: improves contract wage and signing bonus negotiation.
-- Lifestyle support: improves morale/match sharpness slightly, with future pressure tradeoff potential.
+- Lifestyle support: reduces weekly pressure and can later connect to fame/sponsor systems.
 
 Support upgrades skal være stærke nok til, at weekly wage føles brugbar, men små nok til ikke at erstatte attributes, training og match performance som hovedmotor.
+
+### Support Tracks And Breakthroughs
+
+Player Support should be presented as a small number of broad investment tracks, not a long list of equally good micro-upgrades.
+
+V1 support tracks:
+
+- Training Setup: coach, drills and specialist development support.
+- Recovery Setup: nutrition, physio and conditioning support.
+- Performance Setup: boots, analyst and match-prep support.
+- Career Setup: agent, contracts and transfer leverage.
+- Lifestyle Setup: morale, pressure and stability.
+
+Each track contains small cash investments. Every investment gives a small immediate level gain through the underlying support systems, but the main player-facing payoff is the track bar.
+
+When a track bar reaches a breakpoint, the player earns a named breakthrough. Breakthroughs are larger, memorable milestones such as `Specialist Coach`, `Sports Science`, `Tactical Edge` or `Power Broker`.
+
+V1 breakthrough effects:
+
+- Training breakthroughs add extra training XP floor/ceiling on top of coach levels.
+- Recovery breakthroughs improve weekly recovery, training fatigue and match-action fatigue.
+- Performance breakthroughs improve match prep/selection support.
+- Career breakthroughs improve wage and signing bonus negotiation.
+- Lifestyle breakthroughs improve weekly pressure relief and can later feed fame/sponsor systems.
+
+V1 concrete investment effects:
+
+- Personal Coach: `+8 XP floor`, `+7 XP ceiling`.
+- Nutrition Plan: progress toward `+1 training fatigue relief`, using rounded diminishing returns.
+- Recovery Kit: progress toward `+1 match fatigue relief`, using rounded diminishing returns.
+- Match Boots: progress toward `+1 action attribute boost`; every 2 levels adds `+1` to relevant match-moment attributes such as Finishing, First Touch, Dribbling, Acceleration and Pace.
+- Video Analyst: `+2 selection score support`.
+- Better Agent: `+4% wage negotiation`, `+8% signing bonus`.
+- Lifestyle Support: progress toward `-1 weekly pressure`; every 3 levels adds pressure relief, with breakthroughs adding more.
+
+Core rule:
+
+`The player chooses between a few long-term support tracks, not a dozen tiny upgrades.`
+
+The granular support items can still exist under the hood as effect carriers, but the UI should group them into readable tracks with progress, cost and next breakthrough.
+
+Support balance lab rules:
+
+- Every broad support track must create a visible difference in season-lab output.
+- Training should improve development speed, but poor recovery should still make overtraining costly.
+- Recovery should improve availability and consistency, but it must not make fitness irrelevant.
+- Performance should improve moment execution and selection prep without replacing attributes.
+- Career should show up primarily in cash/contract outcomes.
+- Lifestyle should show pressure relief now and remain the bridge into future fame/sponsor systems.
 
 ### In-Run Economy Scaling Direction
 
@@ -813,3 +918,53 @@ Famous surname bør også kunne give højere pressure.
 - Hvordan undgår vi at weekly loop bliver rutineklik?
 - Hvornår skal kontrakter og transfers introduceres i spillerens første karriere?
 - Hvor meget skal sønnen arve fra faren uden at early-game forsvinder?
+
+## Career-Long In-Run Upgrade Direction
+
+In-run economy should have enough meaningful spending targets for a 15-20 season career. The player should rarely feel that cash is solved or that every useful upgrade is maxed.
+
+Upgrade families:
+
+- Core Support: broad, always useful, many levels. Examples: Personal Coach, Recovery Team, Nutrition Plan, Analyst Setup, Agent, Lifestyle Support.
+- Performance Gear: role/build flavored upgrades. Examples: Boots, recovery wear, GPS/watch, specialist equipment for shooting, pace, passing or strength.
+- Private Training: targeted development routes. Examples: finishing coach, speed coach, strength coach, technical coach, mental coach and position coach.
+- Career Infrastructure: expensive late-career systems. Examples: personal physio, private chef, elite coach retainer, agency representation, brand/media manager and personal training camp.
+- Repeatable Cash Sinks: seasonal or short-term services that keep cash useful. Examples: training camp, recovery retreat, specialist boot fitting, match-prep package and one-season coach contracts.
+
+Balance rules:
+
+- Baseline progression must be playable, but not optimal.
+- Cash upgrades should improve floor, consistency and mitigation before raw power.
+- Higher wages should open better support loops, not directly buy permanent dynasty power.
+- Some upgrade levels can be club-tier or reputation-gated, but not every useful cash spend should be gated.
+- Repeatable services should exist so the player always has something useful to buy during long careers.
+
+V1 implementation direction:
+
+- Player Support tracks should have many levels with rising prices.
+- Effects should use diminishing returns so early levels feel useful and late levels remain valuable without removing tradeoffs.
+- Recovery upgrades should help the player train and play more often, but should not make fatigue irrelevant.
+- Personal Coach should improve training XP floor/ceiling over time rather than giving direct attribute jumps.
+
+## Club Development Environment
+
+Club tier and facilities are a core progression layer. Higher clubs should not only pay more; they should provide a stronger development environment.
+
+Development environment affects:
+
+- training XP multiplier
+- training XP floor
+- recovery support
+- support upgrade efficiency
+
+Design direction:
+
+- Grassroots facilities are playable but limited.
+- Semi-pro and pro facilities make paid support upgrades more valuable.
+- Top clubs create better consistency and recovery, but the player must still be good enough relative to the league.
+- Better facilities should accelerate development without making fatigue irrelevant.
+- Long-career progression should come from the full stack: baseline training, cash support, club facilities, growth profile, age curve and dynasty upgrades.
+
+Important rule:
+
+`There should be no hard potential wall. Past the player's natural growth profile, progress should become slower and more expensive unless the player has earned better conditions through generation quality, dynasty upgrades, club facilities, career choices or special development events.`

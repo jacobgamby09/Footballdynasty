@@ -138,6 +138,19 @@ Type scale direction:
 - Body copy: 13-15px
 - Microcopy: 10-11px
 
+### OVR And Potential Presentation
+
+OVR is one of the most important player identity numbers and should feel prominent, centered and tappable.
+
+The OVR detail modal should explain:
+
+- current position-based OVR
+- growth profile / projected trajectory, when relevant
+- which attributes are weighted for the active position
+- generation tier, when relevant
+
+Potential should not be presented as a hard ceiling or as a second competing OVR on the main Player card. If shown, it should explain the player's current growth curve: progress is easier below expectation, slower near the natural development zone, and very expensive beyond it unless training, support, facilities, performance and dynasty advantages improve the situation.
+
 ## Layout System
 
 ### Spacing
@@ -222,7 +235,7 @@ Top priority:
 - position
 - role/archetype
 - OVR/current ability
-- potential or projected ceiling
+- growth profile or projected trajectory
 - form
 - fitness
 - manager trust
@@ -279,7 +292,7 @@ Design notes:
 Content:
 
 - OVR/current ability
-- potential range
+- growth profile marker, if shown
 - squad status
 - manager trust
 - next role target
@@ -287,7 +300,7 @@ Content:
 Example:
 
 - OVR 54
-- POT 72-81
+- Growth marker 72
 - Status: Prospect
 - Trust: 38%
 - Next: Rotation at 55% trust
@@ -459,6 +472,10 @@ Below first viewport:
 
 OVR is a headline number, but should not dominate the entire game. It should sit beside role, trust and form so the player learns that career momentum matters as much as raw ability.
 
+OVR must be clickable/tappable wherever it is presented as a primary player metric. The detail view explains that OVR is position-based current ability, shows the active position/role, and lists the weighted attributes used for the calculation.
+
+OVR should not be presented as a full-profile average. A specialist stat can be valuable in match moments without making the player high OVR for the active position.
+
 ### Attribute Bars
 
 Use horizontal bars for clarity.
@@ -492,6 +509,30 @@ Badges should represent achievements or identity:
 - Rising Prospect
 
 Badges should not become the main progression system.
+
+## Support Track UI
+
+The Support tab should avoid overwhelming the player with too many similar upgrade choices.
+
+Use a few broad track cards:
+
+- Training Setup
+- Recovery Setup
+- Performance Setup
+- Career Setup
+- Lifestyle Setup
+
+Each card should show:
+
+- current invested levels
+- exact next investment effect
+- next named breakthrough
+- one clear progress bar
+- one primary `Invest` action
+
+The player should understand the strategic choice at a glance: train faster, recover better, perform better, negotiate better or stabilize the career.
+
+Avoid vague copy such as `improves performance` as the only payoff. Every support track should show a concrete number or transparent progress toward the next rounded number, for example `+8 XP floor`, `+2 selection score`, `+1 action attribute boost` or `Progress toward -1 weekly pressure`.
 
 ## Match Moment UI Direction
 

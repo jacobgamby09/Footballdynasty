@@ -1,6 +1,130 @@
 # Progress Log
 
+## 2026-06-18
+
+### Support Tracks And Breakthroughs V1
+
+- Reworked the Support tab from seven separate shop cards into five broad investment tracks: Training, Recovery, Performance, Career and Lifestyle.
+- Each track now shows invested levels, next named breakthrough, exact next investment effect and a single progress bar.
+- Support purchases still use the existing underlying support levels, so training, recovery, match prep, contract and lifestyle effects continue to work without a save-breaking economy rewrite.
+- The player-facing action is now `Invest`, making support feel like long-term setup progress rather than a crowded list of tiny upgrades.
+- Breakthroughs now have V1 mechanical effects: Training improves XP range, Recovery improves fatigue/recovery, Performance improves prep/selection, Career improves contracts and Lifestyle improves pressure management.
+- Support investment now writes a breakthrough event when a breakpoint is crossed.
+- Season balance lab now mirrors support breakthrough effects, so future economy/progression runs include the same mechanics as the playable app.
+- Recovery breakthroughs were tuned down after lab output showed they could make fatigue too easy to solve.
+- Support cards now show an exact `Next investment` effect instead of vague upgrade copy.
+- Removed underlying component chips from Support cards so broad tracks do not look like hidden micro-upgrade choices.
+- Boots no longer provide a vague rating bonus. They now provide a concrete match-moment action attribute boost.
+- Lifestyle no longer provides a vague rating bonus. It now reduces weekly pressure and remains the likely future bridge into fame/sponsor systems.
+- GDD and DESIGN now define Support as broad tracks with breakthrough payoffs.
+
+### Support Balance Lab V1
+
+- Added dedicated support-track scenarios to `npm run balance:season`, so Training, Recovery, Performance, Career and Lifestyle can be tested as separate investment strategies.
+- Lab output now reports support track levels and track breakthroughs, not just raw support item levels.
+- The lab now mirrors contract cash multipliers from Career, pressure relief from Lifestyle and match-moment action boosts from Boots.
+- Early read: focused tracks now produce clearly different season profiles. Training drives development but can leave fitness low, Recovery protects availability strongly, Career produces a clearer cash edge, and Lifestyle now has a real pressure/selection effect.
+- Balance watch: pure Recovery can over-solve fitness in isolation, and the current hard Gen 1 potential cap can hide broader OVR differences. Long-term design should replace hard caps with soft growth pressure.
+
+### Potential Soft-Cap Direction
+
+- GDD and DESIGN now define potential as a soft growth curve instead of a hard attribute ceiling.
+- Potential should represent natural development pressure: progress is efficient below expectation, slower near the player's natural level, and very expensive beyond it.
+- Dynasty generation quality should improve starting floor and growth efficiency, not simply unlock a fixed higher max.
+- Natural obstacles should create the practical ceiling: rising XP requirements, club/facility quality, support investment, age curve, league level, performance and career choices.
+- Implemented first soft-cap progression pass in the playable app and season balance lab.
+- Attribute XP no longer stops at the V1 potential marker. Attributes can keep growing toward 100, but XP requirements increase when a stat moves beyond its growth profile.
+- Attribute rows now show a growth label: `Fast growth`, `Normal growth`, `Hard push` or `Elite push`.
+- OVR detail and Home/Base copy now describe growth profile markers instead of hard potential ceilings.
+- Season lab now reports `Growth profile OVR` and warns when the player exceeds the profile enough that soft-cap pressure should be visible.
+
+### Potential And Generation Model V1
+
+- Added persistent dynasty state with generation, legacy level, legacy points and potential tier.
+- Added generation profiles that raise starting attributes and attribute potential over future generations.
+- New games now create attributes through the generation model instead of reading the raw base table directly.
+- Home/Base originally showed generation and the active position's V1 potential OVR ceiling.
+- The tappable OVR modal originally included current OVR and V1 potential ceiling context; this has now started evolving toward growth-profile/trajectory explanation.
+- `npm run balance:season` now supports `--generations=N` to compare long-career outcomes across generation profiles.
+- First 20-run, 15-season, 6-generation lab read: the current V1 ceiling values scale from Gen 1 47 OVR to Gen 6 92 OVR, which confirms the data can support dynasty growth.
+- Balance warning: with development spending and club facilities, Gen 1 reaches its current 47 OVR cap, while Gen 6 reaches around 60 OVR against a 92 OVR ceiling. These hard caps are now considered temporary scaffolding; long-term progression should use soft growth curves, stronger late-career support, transfers, facilities, multi-focus training, age curve and retirement/legacy upgrades.
+
+### Career-Long Support Upgrade Direction
+
+- Expanded V1 Player Support tracks from short placeholder caps to longer career tracks.
+- Support upgrade prices now scale more steeply with level so higher wages matter later in the run.
+- Added helper curves for coach XP bonuses, nutrition training-fatigue relief, recovery support, boots action boosts, contract negotiation and lifestyle pressure relief.
+- Recovery and nutrition now use capped/diminishing effects so they help availability without removing fatigue as a tradeoff.
+- GDD now defines in-run upgrade families for 15-20 season careers: Core Support, Performance Gear, Private Training, Career Infrastructure and Repeatable Cash Sinks.
+
+### Season Balance Lab - Upgrade Scenarios
+
+- `npm run balance:season` now compares four spending scenarios:
+  - No upgrades
+  - Balanced spending
+  - Development spending
+  - Recovery spending
+- Added weekly wage, appearance bonus, goal bonus and assist bonus to the lab economy.
+- Added support-purchase simulation with cash reserves, spending priorities and long-run support levels.
+- Added optional long-horizon projection: `npm run balance:season -- --seasons=60 --career-seasons=15`.
+- Added warnings for low OVR gain, trust capping, low end fitness, slow support spending and extreme goals/assists per 90.
+- First read: support spending increases minutes and starts, but OVR gain is still far too low across both one-season and 15-season horizons.
+- First long-horizon read: 15 seasons only produces about +14 OVR, while assists/90 are too high, so the next tuning pass should focus on XP curve/output, trust soft caps and assist/chance weighting.
+
+### Progression Balance V1
+
+- Reworked attribute XP requirements so low attributes improve faster and high attributes become progressively more expensive.
+- Raised baseline training range from `5-40 XP` to `12-55 XP`.
+- Increased Personal Coach impact on training XP floor/ceiling.
+- Personal Coach now adds support XP to the weakest key attribute beside the chosen training focus.
+- Nutrition and Recovery support now provide a small weekly support recovery bonus after matches.
+- Season lab trust warning now reads as a same-club limitation because transfer trust reset is not modeled yet.
+- Current read: one-season no-upgrade progression is now around +3 OVR, while support spending improves minutes, starts, level-ups and first-season OVR slightly.
+- Current long-horizon read: spending scenarios reach around +29 OVR over 15 seasons, still below the intended full-career curve. This points to future club tier facilities, better contracts, multi-focus unlocks and dynasty upgrades as required progression layers.
+
+### Club Development Environment V1
+
+- Added a development environment model derived from league tier facility level.
+- Facilities now affect training XP multiplier, XP floor, recovery support and support-upgrade efficiency.
+- Training screen now shows facility level and XP multiplier so the modifier is visible to the player.
+- Matchweek recovery now receives a small facility/support adjusted recovery bonus.
+- Season lab now simulates a tier path across long career projections:
+  - seasons 1-3 Grassroots
+  - seasons 4-6 Semi-Pro
+  - seasons 7-9 Regional Pro
+  - seasons 10-12 National Pro
+  - seasons 13-15 Top Flight
+- Season lab currently reports Potential OVR and warns when the player has reached the temporary V1 position cap.
+- Current long-horizon read: support plus facilities can reach the current first-generation cap around 47 OVR. This now supports replacing hard caps with soft growth pressure from XP scaling, dynasty/generation quality, facilities, special development and age curve.
+
+### Position-Based OVR Explanation
+
+- OVR now uses only the active position's weighted attributes instead of giving every unweighted stat a hidden default contribution.
+- Player screen OVR is now tappable and opens an explanation modal.
+- The OVR modal explains that the number is role/position-based current ability and lists the weighted attributes with their current values and weight share.
+- GDD and DESIGN now define OVR as active-position ability, not a full-profile average.
+
+### Season Balance Lab V1
+
+- Added `npm run balance:season`.
+- The season lab simulates complete 12-match seasons instead of isolated fixture reruns.
+- Each simulated week now includes training, fitness cost, attribute XP, role selection, match minutes, player highlights, chained follow-ups, match XP, trust, rating and fitness changes.
+- The report outputs apps, starts, minutes, goals, assists, goals/90, assists/90, highlights/90, average rating, OVR gain, level-ups, end trust, end fitness and role distribution.
+- First 300-season read: 9.44 apps, 264 minutes, 1.28 goals, 2.01 assists, 6.88 average rating, 1.04 OVR gain and 1.85 level-ups on average.
+- Balance warning from the season lab: end trust reaches 100 too consistently, while end fitness trends low. This should guide the next tuning pass.
+
 ## 2026-06-17
+
+### Chained Match Moments V1
+
+- Added first support for chained player highlights.
+- Successful actions can now open one immediate follow-up decision in the same attacking move.
+- V1 follow-ups cover shooting lanes, byline/angle decisions, press turnovers and hold-up/link-up continuations.
+- Follow-ups are capped at one extra step for now, keeping most highlights quick.
+- Added UI copy for follow-up moments and a result note when an action keeps the move alive.
+- Added several new Forward moments: shoulder drop, near-post run, rebound read and channel chase.
+- Auto-simmed highlights can also resolve one follow-up action.
+- Updated match balance run after the expanded moment pool.
 
 ### League Context / Ability Scale V1
 
@@ -71,7 +195,8 @@
 - Personal coach raises training XP floor/ceiling slightly.
 - Nutrition plan reduces training fatigue.
 - Recovery kit reduces match fatigue.
-- Match boots and Lifestyle support add small match-rating support.
+- Match boots add concrete action attribute support for relevant match moments.
+- Lifestyle support reduces weekly pressure and can later feed fame/sponsor systems.
 - Video analyst adds a small visible selection-score factor.
 - Better agent improves contract wage and signing bonus negotiation.
 - GDD now defines Player Support as current-run only and separate from dynasty power.

@@ -114,6 +114,27 @@ Eksempel:
 - Hoj Strength + lav service = flere hold-up moments.
 - Hoj Work Rate + trailing late = flere pressing/defensive effort moments.
 
+### 3b. Chained Player Moments
+
+Not every player highlight should end after one click. Some successful or partially successful actions can create a follow-up decision in the same move.
+
+Example:
+
+1. Player beats a defender.
+2. The move continues immediately.
+3. Player chooses between shot, cutback, cross/pass or retaining the attack.
+
+Design rules:
+
+- Most highlights remain one-step, so match flow stays quick.
+- Good/Great outcomes have the best chance to create a follow-up.
+- Okay outcomes can rarely create a weaker follow-up.
+- Poor outcomes stop the chain.
+- V1 caps chains at one follow-up to avoid long or repetitive sequences.
+- Follow-ups should feel like the same move continuing, not a random new highlight.
+
+Chained moments make attributes feel richer: Dribbling, Strength, First Touch, Work Rate or Pace can create the platform for a later Finishing, Vision or Passing decision.
+
 ### 4. Resolution Engine
 
 Resolution engine afgoer outcome for et highlight.
@@ -686,6 +707,13 @@ This is essential for making the engine feel fair.
 ## Testing And Balancing
 
 We need a dev simulation harness.
+
+There are now two balance layers:
+
+- `npm run balance:match` tests isolated match outcomes and player highlight behavior.
+- `npm run balance:season` tests full-season progression across training, role selection, minutes, match output, XP, trust and fitness.
+
+The season lab should be used before major tuning decisions because player output must emerge from career progression, not from a static one-match snapshot.
 
 It should run batches like:
 

@@ -55,6 +55,7 @@ type Venue = "Home" | "Away";
 type ClubView = "overview" | "fixtures" | "table";
 type HomeView = "base" | "support" | "dynasty";
 type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
+type SupportTrackId = "training" | "recovery" | "performance" | "career" | "lifestyle";
 type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
 type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
 
@@ -64,6 +65,8 @@ type Attribute = {
   potential: number;
   xp: number;
 };
+
+type GrowthPressureTone = "fast" | "normal" | "hard" | "elite";
 
 type SeasonStats = {
   apps: number;
@@ -124,6 +127,15 @@ type LeagueTier = {
   description: string;
 };
 
+type DevelopmentEnvironment = {
+  label: string;
+  facilityLevel: number;
+  xpMultiplier: number;
+  xpFloorBonus: number;
+  recoveryBonus: number;
+  supportEfficiency: number;
+};
+
 type LeagueTableRow = {
   name: string;
   short: string;
@@ -141,6 +153,13 @@ type SeasonState = {
   fixtureIndex: number;
   fixtures: Fixture[];
   results: FixtureResult[];
+};
+
+type DynastyState = {
+  generation: number;
+  legacyLevel: number;
+  legacyPoints: number;
+  potentialTier: string;
 };
 
 type Contract = {
@@ -171,6 +190,16 @@ type SupportUpgradeDefinition = {
   effect: string;
 };
 
+type SupportTrackDefinition = {
+  id: SupportTrackId;
+  name: string;
+  category: string;
+  upgradeIds: SupportUpgradeId[];
+  breakpoints: number[];
+  breakthroughs: string[];
+  effect: string;
+};
+
 type GameState = {
   week: number;
   positionGroup: PositionGroup;
@@ -189,6 +218,7 @@ type GameState = {
   attributes: Attribute[];
   seasonStats: SeasonStats;
   season: SeasonState;
+  dynasty: DynastyState;
   dynastyHistory: DynastySeason[];
   contract: Contract;
   supportUpgrades: Record<SupportUpgradeId, number>;
@@ -313,6 +343,7 @@ type MatchMoment = {
   context: string;
   choices: MatchChoice[];
   result?: MatchResult;
+  chainDepth?: number;
 };
 
 type MatchChoice = {
@@ -331,6 +362,9 @@ type OutcomeTier = "Poor" | "Okay" | "Good" | "Great";
 type MatchResult = {
   title: string;
   detail: string;
+  choiceId: string;
+  choiceLabel: string;
+  choiceOutcome: MatchChoice["outcome"];
   success: boolean;
   outcomeTier: OutcomeTier;
   chanceQuality: ChanceQuality;
@@ -404,6 +438,54 @@ const initialAttributes: Attribute[] = [
   { label: "Marking", value: 9, potential: 32, xp: 7 },
   { label: "Positioning", value: 13, potential: 42, xp: 15 },
 ];
+
+type GenerationProfile = {
+  generation: number;
+  label: string;
+  startKeyBonus: number;
+  startGeneralBonus: number;
+  potentialKeyBonus: number;
+  potentialGeneralBonus: number;
+};
+
+const generationProfiles: GenerationProfile[] = [
+  { generation: 1, label: "Local bloodline", startKeyBonus: 0, startGeneralBonus: 0, potentialKeyBonus: 0, potentialGeneralBonus: 0 },
+  { generation: 2, label: "Known surname", startKeyBonus: 2, startGeneralBonus: 1, potentialKeyBonus: 8, potentialGeneralBonus: 5 },
+  { generation: 3, label: "Family prospect", startKeyBonus: 4, startGeneralBonus: 2, potentialKeyBonus: 16, potentialGeneralBonus: 10 },
+  { generation: 4, label: "Academy heir", startKeyBonus: 6, startGeneralBonus: 3, potentialKeyBonus: 25, potentialGeneralBonus: 16 },
+  { generation: 5, label: "Elite pathway", startKeyBonus: 8, startGeneralBonus: 4, potentialKeyBonus: 35, potentialGeneralBonus: 23 },
+  { generation: 6, label: "Dynasty talent", startKeyBonus: 10, startGeneralBonus: 5, potentialKeyBonus: 45, potentialGeneralBonus: 30 },
+];
+
+const initialDynasty: DynastyState = {
+  generation: 1,
+  legacyLevel: 0,
+  legacyPoints: 0,
+  potentialTier: generationProfiles[0].label,
+};
+
+function getGenerationProfile(generation: number) {
+  return generationProfiles.find((profile) => profile.generation === generation) ?? generationProfiles[generationProfiles.length - 1];
+}
+
+function createGenerationAttributes(generation: number, positionModule = positionModules.Forward): Attribute[] {
+  const profile = getGenerationProfile(generation);
+  return initialAttributes.map((attribute) => {
+    const isKey = positionModule.keyAttributes.includes(attribute.label);
+    const value = clamp(attribute.value + (isKey ? profile.startKeyBonus : profile.startGeneralBonus), 1, 99);
+    const potential = clamp(
+      Math.max(value + 8, attribute.potential + (isKey ? profile.potentialKeyBonus : profile.potentialGeneralBonus)),
+      1,
+      99,
+    );
+    return {
+      ...attribute,
+      value,
+      potential,
+      xp: Math.min(attribute.xp, getAttributeXpRequirement({ ...attribute, value, potential }) - 1),
+    };
+  });
+}
 
 const attributeInfo: Record<
   AttributeKey,
@@ -736,59 +818,114 @@ const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
     id: "boots",
     name: "Match boots",
     category: "Gear",
-    maxLevel: 3,
+    maxLevel: 12,
     baseCost: 180,
-    effect: "Small match execution boost for attacking moments.",
+    effect: "Boosts action attributes in relevant match moments.",
   },
   {
     id: "recovery",
     name: "Recovery kit",
     category: "Recovery",
-    maxLevel: 3,
+    maxLevel: 15,
     baseCost: 160,
-    effect: "Reduces match fatigue and helps you stay available.",
+    effect: "Reduces match fatigue with diminishing returns across the run.",
   },
   {
     id: "coach",
     name: "Personal coach",
     category: "Training",
-    maxLevel: 3,
+    maxLevel: 15,
     baseCost: 220,
-    effect: "Raises the floor of weekly training XP.",
+    effect: "Raises weekly training XP floor and ceiling over many seasons.",
   },
   {
     id: "nutrition",
     name: "Nutrition plan",
     category: "Recovery",
-    maxLevel: 3,
+    maxLevel: 15,
     baseCost: 140,
-    effect: "Softens training fatigue from higher intensity sessions.",
+    effect: "Softens training fatigue and improves recovery consistency.",
   },
   {
     id: "analyst",
     name: "Video analyst",
     category: "Match prep",
-    maxLevel: 2,
+    maxLevel: 10,
     baseCost: 260,
-    effect: "Adds a small selection and match-read bonus.",
+    effect: "Improves selection score, prep and match-read support.",
   },
   {
     id: "agent",
     name: "Better agent",
     category: "Career",
-    maxLevel: 3,
+    maxLevel: 10,
     baseCost: 300,
-    effect: "Improves contract packages and bonus negotiations.",
+    effect: "Improves contract packages and bonus negotiations over the run.",
   },
   {
     id: "lifestyle",
     name: "Lifestyle support",
     category: "Morale",
-    maxLevel: 2,
+    maxLevel: 12,
     baseCost: 150,
-    effect: "Boosts morale, but high status may add future pressure.",
+    effect: "Reduces weekly pressure and prepares future sponsor appeal.",
   },
 ];
+
+const supportTrackDefinitions: SupportTrackDefinition[] = [
+  {
+    id: "training",
+    name: "Training setup",
+    category: "Development",
+    upgradeIds: ["coach"],
+    breakpoints: [3, 7, 12, 15],
+    breakthroughs: ["Structured drills", "Specialist coach", "Elite sessions", "Master plan"],
+    effect: "Raises training XP output and adds support XP to weak key attributes.",
+  },
+  {
+    id: "recovery",
+    name: "Recovery setup",
+    category: "Availability",
+    upgradeIds: ["nutrition", "recovery"],
+    breakpoints: [4, 9, 15, 24, 30],
+    breakthroughs: ["Stable routine", "Better match recovery", "Sports science", "Elite recovery room", "Peak conditioning"],
+    effect: "Improves weekly recovery and reduces training and match fatigue.",
+  },
+  {
+    id: "performance",
+    name: "Performance setup",
+    category: "Match day",
+    upgradeIds: ["boots", "analyst"],
+    breakpoints: [4, 9, 15, 22],
+    breakthroughs: ["Match prep", "Better gear", "Tactical edge", "Elite execution"],
+    effect: "Boosts match action attributes and selection-score prep.",
+  },
+  {
+    id: "career",
+    name: "Career setup",
+    category: "Contracts",
+    upgradeIds: ["agent"],
+    breakpoints: [2, 5, 8, 10],
+    breakthroughs: ["Agent retained", "Better bonuses", "Transfer network", "Power broker"],
+    effect: "Improves contract packages, bonuses and long-run career leverage.",
+  },
+  {
+    id: "lifestyle",
+    name: "Lifestyle setup",
+    category: "Stability",
+    upgradeIds: ["lifestyle"],
+    breakpoints: [3, 6, 9, 12],
+    breakthroughs: ["Stable routine", "Pressure buffer", "Professional habits", "Balanced life"],
+    effect: "Reduces weekly pressure and can later feed sponsor appeal.",
+  },
+];
+
+const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade])) as Record<
+  SupportUpgradeId,
+  SupportUpgradeDefinition
+>;
+
+const bootsActionAttributes: AttributeKey[] = ["Finishing", "First Touch", "Dribbling", "Acceleration", "Pace"];
 
 const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
   boots: 0,
@@ -815,7 +952,7 @@ const initialState: GameState = {
   trainingFocuses: ["Finishing"],
   trainingCompletedWeek: 0,
   intensity: "Balanced",
-  attributes: initialAttributes,
+  attributes: createGenerationAttributes(1),
   seasonStats: {
     apps: 0,
     starts: 0,
@@ -829,6 +966,7 @@ const initialState: GameState = {
     fixtures: seasonFixtures,
     results: [],
   },
+  dynasty: initialDynasty,
   dynastyHistory: [],
   contract: initialContract,
   supportUpgrades: initialSupportUpgrades,
@@ -855,6 +993,7 @@ function cloneGameState(state: GameState): GameState {
       fixtures: state.season.fixtures.map((fixture) => ({ ...fixture })),
       results: state.season.results.map((result) => ({ ...result })),
     },
+    dynasty: { ...state.dynasty },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
     contract: { ...state.contract },
     supportUpgrades: { ...state.supportUpgrades },
@@ -926,6 +1065,7 @@ function normalizeSavedGame(saved: GameState): GameState {
       fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : fallback.season.fixtures,
       results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
     },
+    dynasty: { ...fallback.dynasty, ...(saved.dynasty ?? {}) },
     dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
     supportUpgrades: { ...fallback.supportUpgrades, ...(saved.supportUpgrades ?? {}) },
@@ -1193,10 +1333,35 @@ function App() {
         return state;
       }
 
+      const currentEvent = state.activeMatch.events[state.activeMatch.currentEventIndex];
+      const followUpEvent =
+        state.activeMatch.currentResult && currentEvent?.type === "player_moment"
+          ? createFollowUpMoment(state.activeMatch, currentEvent, state.activeMatch.currentResult)
+          : undefined;
       const results = state.activeMatch.currentResult
         ? [...state.activeMatch.results, state.activeMatch.currentResult]
         : state.activeMatch.results;
       const nextIndex = state.activeMatch.currentEventIndex + 1;
+
+      if (followUpEvent) {
+        const events = [
+          ...state.activeMatch.events.slice(0, nextIndex),
+          followUpEvent,
+          ...state.activeMatch.events.slice(nextIndex),
+        ];
+
+        return {
+          ...state,
+          activeMatch: {
+            ...state.activeMatch,
+            events,
+            currentEventIndex: nextIndex,
+            liveMinute: followUpEvent.minute,
+            results,
+            currentResult: undefined,
+          },
+        };
+      }
 
       if (nextIndex >= state.activeMatch.events.length) {
         return {
@@ -1608,7 +1773,11 @@ function ResourcePill({ icon, value }: { icon: ReactNode; value: string }) {
 }
 
 function CareerCard({ game }: { game: GameState }) {
-  const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+  const [showOvrDetails, setShowOvrDetails] = useState(false);
+  const positionModule = getPositionModule(game.positionGroup);
+  const ovr = calculateOvr(game.attributes, positionModule.ovrWeights);
+  const potentialOvr = calculatePotentialOvr(game.attributes, positionModule.ovrWeights);
+  const ovrBreakdown = getOvrBreakdown(game.attributes, positionModule);
   const seasonComplete = isSeasonComplete(game.season);
   const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
   const review = seasonComplete ? getSeasonReview(game) : undefined;
@@ -1624,12 +1793,12 @@ function CareerCard({ game }: { game: GameState }) {
 
   return (
     <section className="card career-card">
-      <div className="career-score">
+      <button className="career-score" type="button" aria-label="Open OVR details" onClick={() => setShowOvrDetails(true)}>
         <div>
           <span className="metric-label">OVR</span>
           <strong>{ovr}</strong>
         </div>
-      </div>
+      </button>
 
       <div className="career-details">
         <InfoRow label="Squad status" value={status} />
@@ -1638,6 +1807,46 @@ function CareerCard({ game }: { game: GameState }) {
         <ProgressRow label="Selection score" value={selection?.score ?? 0} display={`${selection?.score ?? 0}/100`} accent="gold" />
         <InfoRow label="Next role" value={nextRoleText} />
       </div>
+
+      {showOvrDetails && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setShowOvrDetails(false)}>
+          <div className="attribute-modal ovr-modal" role="dialog" aria-modal="true" aria-label="OVR details" onClick={(event) => event.stopPropagation()}>
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">{positionModule.displayName} rating</span>
+                <h2>OVR {ovr}</h2>
+              </div>
+              <button className="icon-button" type="button" aria-label="Close OVR details" onClick={() => setShowOvrDetails(false)}>
+                x
+              </button>
+            </div>
+            <p>
+              OVR is your role-based current ability. For {positionModule.shortCode}, only the weighted attributes below count, so a single
+              specialist stat will not inflate your full position rating.
+            </p>
+            <div className="readiness-modal-score">
+              <strong>{potentialOvr}</strong>
+              <span>Current growth profile marker</span>
+              <ProgressBar value={potentialOvr} />
+            </div>
+            <p>
+              This is not a hard cap. Progress above the marker is possible, but each level becomes more expensive unless better facilities,
+              support, performance or future dynasty advantages improve the growth curve.
+            </p>
+            <div className="ovr-weight-list" aria-label="OVR weighted attributes">
+              {ovrBreakdown.map((item) => (
+                <div className="ovr-weight-row" key={item.label}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.share}% weight</span>
+                  </div>
+                  <b>{item.value}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1796,6 +2005,16 @@ function getMoraleLabel(morale: number) {
   return "Frustrated";
 }
 
+function getPressureLabel(pressure: number) {
+  if (pressure > 70) {
+    return "High";
+  }
+  if (pressure > 40) {
+    return "Rising";
+  }
+  return "Low";
+}
+
 function NextActionCard({ game }: { game: GameState }) {
   const seasonComplete = isSeasonComplete(game.season);
   const isMatchDay = hasPlayableFixture(game.season);
@@ -1891,7 +2110,10 @@ function AttributesCard({
         {visibleAttributes.map((attribute) => {
           const info = attributeInfo[attribute.label];
           const recentGain = recentXp?.[attribute.label] ?? 0;
-          const xpToLevel = Math.max(0, 100 - attribute.xp);
+          const xpRequirement = getAttributeXpRequirement(attribute);
+          const growthPressure = getAttributeGrowthPressure(attribute);
+          const progressPercent = getAttributeProgressPercent(attribute);
+          const xpToLevel = Math.max(0, xpRequirement - attribute.xp);
           return (
             <div className="attribute-row" key={attribute.label}>
               <div className="attribute-topline">
@@ -1912,8 +2134,12 @@ function AttributesCard({
                 <span>Next level</span>
                 <em>{xpToLevel} XP</em>
               </div>
-              <div className="attribute-track" aria-label={`${attribute.label} ${attribute.xp}% XP to next level`}>
-                <span style={{ width: `${attribute.xp}%` }} />
+              <div className="attribute-growth-line">
+                <span className={`growth-pill tone-${growthPressure.tone}`}>{growthPressure.label}</span>
+                <em>{growthPressure.copy}</em>
+              </div>
+              <div className="attribute-track" aria-label={`${attribute.label} ${attribute.xp}/${xpRequirement} XP to next level`}>
+                <span style={{ width: `${progressPercent}%` }} />
               </div>
             </div>
           );
@@ -2065,6 +2291,7 @@ function TrainingScreen({
   const focusRange = projected.ranges[focus];
   const detailInfo = detailAttribute ? attributeInfo[detailAttribute] : undefined;
   const positionModule = getPositionModule(game.positionGroup);
+  const environment = getDevelopmentEnvironment(currentLeagueTier);
 
   return (
     <section className="simple-screen">
@@ -2077,6 +2304,7 @@ function TrainingScreen({
           </div>
           <Dumbbell size={19} />
         </div>
+        <InfoRow label="Facilities" value={`Lv ${environment.facilityLevel} - ${Math.round(environment.xpMultiplier * 100)}% XP`} />
         <ProgressRow label="Readiness" value={game.fitness} accent="lime" />
         <ProgressRow
           label={`${focus} XP range`}
@@ -2329,11 +2557,16 @@ function MatchMomentScreen({
   const completedResults = match.currentResult ? [...match.results, match.currentResult] : match.results;
   const processedEventIndex = isPlayerMoment ? match.currentEventIndex : match.currentEventIndex - 1;
   const simTotals = summarizeSimEvents(match.events, processedEventIndex);
-  const totals = summarizeMatchResults(completedResults, simTotals);
+  const rawTotals = summarizeMatchResults(completedResults, simTotals);
+  const totals = { ...rawTotals, fitnessDelta: getMatchFitnessDelta(match, completedResults) };
   const visibleScore = getTimelineScore(match, completedResults, processedEventIndex);
   const recentEvents = getRecentTimelineItems(match, completedResults);
   const nextEventMinute = event ? `${event.minute}'` : "FT";
   const pitchStatus = getPitchStatus(match);
+  const followUpQueued =
+    event?.type === "player_moment" && match.currentResult
+      ? Boolean(createFollowUpMoment(match, event, match.currentResult))
+      : false;
 
   return (
     <section className="simple-screen match-screen">
@@ -2346,7 +2579,13 @@ function MatchMomentScreen({
 
       <div className="match-progress-card">
         <span>
-          {isPlayerMoment ? "Player moment" : match.isComplete ? "Full time" : `Live - next ${nextEventMinute}`}
+          {isPlayerMoment
+            ? event.chainDepth
+              ? "Follow-up moment"
+              : "Player moment"
+            : match.isComplete
+              ? "Full time"
+              : `Live - next ${nextEventMinute}`}
         </span>
         <ProgressBar value={(match.liveMinute / 90) * 100} />
       </div>
@@ -2459,6 +2698,7 @@ function MatchMomentScreen({
             </div>
             <h2>{match.currentResult.title}</h2>
             <p>{match.currentResult.detail}</p>
+            {followUpQueued && <p className="result-follow-up-note">The action opens a follow-up decision.</p>}
             <div className="next-grid">
               <InfoTile label="Rating" value={match.currentResult.rating.toFixed(1)} tone="gold" />
               <InfoTile label="Trust" value={`${match.currentResult.trustDelta > 0 ? "+" : ""}${match.currentResult.trustDelta}`} />
@@ -2476,7 +2716,7 @@ function MatchMomentScreen({
               </ul>
             </div>
             <button className="primary-action" type="button" onClick={onContinue}>
-              Resume Match
+              {followUpQueued ? "Continue Move" : "Resume Match"}
             </button>
           </div>
         </div>
@@ -2505,14 +2745,28 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
     const currentAttribute = attributes.find((item) => item.label === key);
     const gain = value ?? 0;
     const currentXp = currentAttribute?.xp ?? 0;
-    const previousXp = ((currentXp - gain) % 100 + 100) % 100;
-    const completedLevel = previousXp + gain >= 100;
-    const meterEndXp = completedLevel ? 100 : currentXp;
-    const gainedMeterWidth = clamp(meterEndXp - previousXp, 0, 100 - previousXp);
-    const meterSplit = meterEndXp > 0 ? clamp((previousXp / meterEndXp) * 100, 0, 100) : 0;
+    const currentLevel = currentAttribute?.value ?? 1;
+    const completedLevel = gain > currentXp && currentLevel > 1;
+    const previousLevel = completedLevel ? currentLevel - 1 : currentLevel;
+    const previousRequirementAttribute: Attribute = currentAttribute
+      ? { ...currentAttribute, value: previousLevel }
+      : { label: key, value: previousLevel, potential: previousLevel + 8, xp: 0 };
+    const currentRequirementAttribute: Attribute = currentAttribute
+      ? { ...currentAttribute, value: currentLevel }
+      : { label: key, value: currentLevel, potential: currentLevel + 8, xp: 0 };
+    const xpRequirement = getAttributeXpRequirement(previousRequirementAttribute);
+    const currentRequirement = getAttributeXpRequirement(currentRequirementAttribute);
+    const previousXp = completedLevel
+      ? clamp(xpRequirement - Math.max(0, gain - currentXp), 0, xpRequirement)
+      : clamp(currentXp - gain, 0, xpRequirement);
+    const meterEndXp = completedLevel ? xpRequirement : currentXp;
+    const previousPercent = getXpPercent(previousXp, xpRequirement);
+    const meterEndPercent = getXpPercent(meterEndXp, xpRequirement);
+    const gainedMeterWidth = clamp(meterEndPercent - previousPercent, 0, 100 - previousPercent);
+    const meterSplit = meterEndPercent > 0 ? clamp((previousPercent / meterEndPercent) * 100, 0, 100) : 0;
     const meterStyle = {
-      "--xp-from": `${previousXp}%`,
-      "--xp-to": `${meterEndXp}%`,
+      "--xp-from": `${previousPercent}%`,
+      "--xp-to": `${meterEndPercent}%`,
       "--xp-gain": `${gainedMeterWidth}%`,
       "--xp-split": `${meterSplit}%`,
     } as CSSProperties;
@@ -2520,6 +2774,7 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
     return {
       attribute,
       currentXp,
+      currentRequirement,
       gain,
       meterStyle,
     };
@@ -2637,7 +2892,7 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
                 <div className="xp-meter-labels">
                   <span>{entry.attribute}</span>
                   <strong>
-                    {entry.currentXp}/100 XP
+                    {entry.currentXp}/{entry.currentRequirement} XP
                   </strong>
                 </div>
                 <div className="xp-meter-track" aria-label={`${entry.attribute} XP progress`}>
@@ -2886,15 +3141,27 @@ function TrainingSummaryScreen({
   const primaryGain = summary.xp[primaryFocus] ?? 0;
   const levelUp = summary.levelUps.find((item) => item.attribute === primaryFocus);
   const currentXp = primaryAttribute?.xp ?? 0;
-  const previousXp = levelUp ? ((currentXp - primaryGain) % 100 + 100) % 100 : clamp(currentXp - primaryGain, 0, 100);
-  const meterEndXp = levelUp ? 100 : currentXp;
-  const gainedMeterWidth = clamp(meterEndXp - previousXp, 0, 100 - previousXp);
   const currentLevel = primaryAttribute?.value ?? levelUp?.after ?? 0;
   const previousLevel = levelUp?.before ?? currentLevel;
-  const meterSplit = meterEndXp > 0 ? clamp((previousXp / meterEndXp) * 100, 0, 100) : 0;
+  const previousRequirementAttribute: Attribute = primaryAttribute
+    ? { ...primaryAttribute, value: previousLevel }
+    : { label: primaryFocus, value: previousLevel, potential: previousLevel + 8, xp: 0 };
+  const currentRequirementAttribute: Attribute = primaryAttribute
+    ? { ...primaryAttribute, value: currentLevel }
+    : { label: primaryFocus, value: currentLevel, potential: currentLevel + 8, xp: 0 };
+  const xpRequirement = getAttributeXpRequirement(previousRequirementAttribute);
+  const currentRequirement = getAttributeXpRequirement(currentRequirementAttribute);
+  const previousXp = levelUp
+    ? clamp(xpRequirement - Math.max(0, primaryGain - currentXp), 0, xpRequirement)
+    : clamp(currentXp - primaryGain, 0, xpRequirement);
+  const meterEndXp = levelUp ? xpRequirement : currentXp;
+  const previousPercent = getXpPercent(previousXp, xpRequirement);
+  const meterEndPercent = getXpPercent(meterEndXp, xpRequirement);
+  const gainedMeterWidth = clamp(meterEndPercent - previousPercent, 0, 100 - previousPercent);
+  const meterSplit = meterEndPercent > 0 ? clamp((previousPercent / meterEndPercent) * 100, 0, 100) : 0;
   const meterStyle = {
-    "--xp-from": `${previousXp}%`,
-    "--xp-to": `${meterEndXp}%`,
+    "--xp-from": `${previousPercent}%`,
+    "--xp-to": `${meterEndPercent}%`,
     "--xp-gain": `${gainedMeterWidth}%`,
     "--xp-split": `${meterSplit}%`,
   } as CSSProperties;
@@ -2922,7 +3189,7 @@ function TrainingSummaryScreen({
         <div className="training-xp-meter">
           <div className="xp-meter-labels">
             <span />
-            <strong>{currentXp}/100 XP</strong>
+            <strong>{currentXp}/{currentRequirement} XP</strong>
           </div>
           <div className="xp-meter-track" aria-label={`${primaryFocus} XP progress`}>
             <span className="xp-meter-fill" style={meterStyle} />
@@ -3263,6 +3530,8 @@ function HomeScreen({
   const [homeView, setHomeView] = useState<HomeView>("base");
   const currentSnapshot = createDynastySeasonSnapshot(game);
   const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
+  const positionModule = getPositionModule(game.positionGroup);
+  const potentialOvr = calculatePotentialOvr(game.attributes, positionModule.ovrWeights);
 
   return (
     <section className="simple-screen">
@@ -3296,13 +3565,13 @@ function HomeScreen({
           <div className="card split-card">
             <div>
               <span className="metric-label">Legacy</span>
-              <h2>Gen 1</h2>
-              <p>No heir yet</p>
+              <h2>Gen {game.dynasty.generation}</h2>
+              <p>{game.dynasty.potentialTier}</p>
             </div>
             <div>
-              <span className="metric-label">Prestige</span>
-              <h2>{game.prestige}</h2>
-              <p>Local name</p>
+              <span className="metric-label">Growth profile</span>
+              <h2>{potentialOvr}</h2>
+              <p>{positionModule.shortCode} marker</p>
             </div>
           </div>
           <div className="card save-card">
@@ -3395,13 +3664,13 @@ function SupportShopView({
       </div>
 
       <div className="support-shop-list">
-        {supportUpgradeDefinitions.map((upgrade) => (
-          <SupportUpgradeCard
-            key={upgrade.id}
+        {supportTrackDefinitions.map((track) => (
+          <SupportTrackCard
+            key={track.id}
             cash={game.cash}
-            level={game.supportUpgrades[upgrade.id] ?? 0}
-            upgrade={upgrade}
-            onBuy={() => onBuySupportUpgrade(upgrade.id)}
+            game={game}
+            track={track}
+            onBuySupportUpgrade={onBuySupportUpgrade}
           />
         ))}
       </div>
@@ -3409,37 +3678,51 @@ function SupportShopView({
   );
 }
 
-function SupportUpgradeCard({
+function SupportTrackCard({
   cash,
-  level,
-  upgrade,
-  onBuy,
+  game,
+  track,
+  onBuySupportUpgrade,
 }: {
   cash: number;
-  level: number;
-  upgrade: SupportUpgradeDefinition;
-  onBuy: () => void;
+  game: GameState;
+  track: SupportTrackDefinition;
+  onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
 }) {
-  const maxed = level >= upgrade.maxLevel;
-  const cost = getSupportUpgradeCost(upgrade, level);
-  const canBuy = !maxed && cash >= cost;
+  const progress = getSupportTrackProgress(game, track);
+  const nextPurchase = getNextSupportTrackPurchase(game, track);
+  const canBuy = Boolean(nextPurchase && cash >= nextPurchase.cost);
+  const impactLine = nextPurchase ? getSupportInvestmentImpactLine(game, track, nextPurchase.upgrade.id) : "All effects unlocked";
 
   return (
-    <div className={`card support-upgrade-card ${maxed ? "is-maxed" : ""}`}>
+    <div className={`card support-upgrade-card support-track-card ${progress.maxed ? "is-maxed" : ""}`}>
       <div className="support-upgrade-top">
         <div>
-          <span className="metric-label">{upgrade.category}</span>
-          <h2>{upgrade.name}</h2>
+          <span className="metric-label">{track.category}</span>
+          <h2>{track.name}</h2>
         </div>
         <div className="support-level-pill">
-          Lv {level}/{upgrade.maxLevel}
+          {progress.total}/{progress.maxTotal}
         </div>
       </div>
-      <p>{upgrade.effect}</p>
+      <p>{track.effect}</p>
+      <div className="support-impact-line">
+        <span>Next investment</span>
+        <strong>{impactLine}</strong>
+      </div>
+      <div className="support-breakthrough-row">
+        <span>{progress.nextName}</span>
+        <strong>{progress.maxed ? "Complete" : `${progress.current}/${progress.required}`}</strong>
+      </div>
+      <ProgressBar value={progress.percent} />
       <div className="support-upgrade-footer">
-        <span>{maxed ? "Max level reached" : `$${cost}`}</span>
-        <button type="button" disabled={!canBuy} onClick={onBuy}>
-          {maxed ? "Owned" : canBuy ? "Buy" : "Need cash"}
+        <span>{progress.maxed ? "Track complete" : nextPurchase ? `$${nextPurchase.cost}` : "Locked"}</span>
+        <button
+          type="button"
+          disabled={!canBuy || !nextPurchase}
+          onClick={() => nextPurchase && onBuySupportUpgrade(nextPurchase.upgrade.id)}
+        >
+          {progress.maxed ? "Complete" : canBuy ? "Invest" : "Need cash"}
         </button>
       </div>
     </div>
@@ -3679,20 +3962,161 @@ function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgradeId): 
     return state;
   }
 
+  const track = getSupportTrackForUpgrade(upgradeId);
+  const beforeBreakthroughs = track ? getSupportTrackBreakthroughCount(state, track.id) : 0;
   const nextLevel = currentLevel + 1;
+  const nextSupportUpgrades = {
+    ...state.supportUpgrades,
+    [upgradeId]: nextLevel,
+  };
+  const nextState = {
+    ...state,
+    supportUpgrades: nextSupportUpgrades,
+  };
+  const afterBreakthroughs = track ? getSupportTrackBreakthroughCount(nextState, track.id) : beforeBreakthroughs;
+  const breakthroughName =
+    track && afterBreakthroughs > beforeBreakthroughs
+      ? track.breakthroughs[Math.min(afterBreakthroughs - 1, track.breakthroughs.length - 1)]
+      : undefined;
+
   return {
     ...state,
     cash: state.cash - cost,
-    supportUpgrades: {
-      ...state.supportUpgrades,
-      [upgradeId]: nextLevel,
-    },
-    lastEvent: `${upgrade.name} upgraded to level ${nextLevel}.`,
+    supportUpgrades: nextSupportUpgrades,
+    lastEvent: breakthroughName
+      ? `${track?.name} breakthrough unlocked: ${breakthroughName}.`
+      : `${track?.name ?? upgrade.name} investment added. ${upgrade.name} is now level ${nextLevel}.`,
   };
 }
 
 function getSupportUpgradeCost(upgrade: SupportUpgradeDefinition, currentLevel: number) {
-  return Math.round(upgrade.baseCost * (1 + currentLevel * 0.72));
+  return Math.round(upgrade.baseCost * (1 + currentLevel * 0.62 + Math.pow(currentLevel, 2) * 0.16));
+}
+
+function getSupportTrackProgress(state: GameState, track: SupportTrackDefinition) {
+  const levels = track.upgradeIds.map((upgradeId) => state.supportUpgrades[upgradeId] ?? 0);
+  const total = levels.reduce((sum, level) => sum + level, 0);
+  const maxTotal = track.upgradeIds.reduce((sum, upgradeId) => sum + supportUpgradeMap[upgradeId].maxLevel, 0);
+  const nextBreakpoint = track.breakpoints.find((breakpoint) => total < breakpoint);
+  const previousBreakpoint = [...track.breakpoints].reverse().find((breakpoint) => total >= breakpoint) ?? 0;
+  const nextIndex = nextBreakpoint ? track.breakpoints.indexOf(nextBreakpoint) : track.breakpoints.length - 1;
+  const required = nextBreakpoint ? nextBreakpoint - previousBreakpoint : 0;
+  const current = nextBreakpoint ? total - previousBreakpoint : required;
+
+  return {
+    total,
+    maxTotal,
+    current,
+    required,
+    percent: nextBreakpoint ? (current / required) * 100 : 100,
+    nextName: nextBreakpoint ? track.breakthroughs[nextIndex] : track.breakthroughs[track.breakthroughs.length - 1],
+    maxed: total >= maxTotal,
+  };
+}
+
+function getSupportTrackForUpgrade(upgradeId: SupportUpgradeId) {
+  return supportTrackDefinitions.find((track) => track.upgradeIds.includes(upgradeId));
+}
+
+function getSupportTrackById(trackId: SupportTrackId) {
+  return supportTrackDefinitions.find((track) => track.id === trackId);
+}
+
+function getSupportTrackTotal(state: Pick<GameState, "supportUpgrades">, track: SupportTrackDefinition) {
+  return track.upgradeIds.reduce((sum, upgradeId) => sum + (state.supportUpgrades[upgradeId] ?? 0), 0);
+}
+
+function getSupportTrackBreakthroughCount(state: Pick<GameState, "supportUpgrades">, trackId: SupportTrackId) {
+  const track = getSupportTrackById(trackId);
+  if (!track) {
+    return 0;
+  }
+
+  const total = getSupportTrackTotal(state, track);
+  return track.breakpoints.filter((breakpoint) => total >= breakpoint).length;
+}
+
+function getRecoveryBreakthroughRelief(breakthroughs: number) {
+  return Math.floor(breakthroughs / 2);
+}
+
+function getNextSupportTrackPurchase(state: GameState, track: SupportTrackDefinition) {
+  const options = track.upgradeIds
+    .map((upgradeId) => {
+      const upgrade = supportUpgradeMap[upgradeId];
+      const level = state.supportUpgrades[upgradeId] ?? 0;
+      return {
+        upgrade,
+        level,
+        cost: getSupportUpgradeCost(upgrade, level),
+      };
+    })
+    .filter((option) => option.level < option.upgrade.maxLevel)
+    .sort((a, b) => a.cost - b.cost || a.level - b.level);
+
+  return options[0];
+}
+
+function getSupportInvestmentImpactLine(state: GameState, track: SupportTrackDefinition, upgradeId: SupportUpgradeId) {
+  const currentLevel = getSupportLevel(state, upgradeId);
+  const nextState = {
+    ...state,
+    supportUpgrades: {
+      ...state.supportUpgrades,
+      [upgradeId]: currentLevel + 1,
+    },
+  };
+  const beforeBreakthroughs = getSupportTrackBreakthroughCount(state, track.id);
+  const afterBreakthroughs = getSupportTrackBreakthroughCount(nextState, track.id);
+  const breakthroughDelta = afterBreakthroughs - beforeBreakthroughs;
+
+  if (upgradeId === "coach") {
+    const beforeFloor = getTrainingXpFloorBonus(currentLevel) + beforeBreakthroughs * 5;
+    const afterFloor = getTrainingXpFloorBonus(currentLevel + 1) + afterBreakthroughs * 5;
+    const beforeCeiling = getTrainingXpCeilingBonus(currentLevel) + beforeBreakthroughs * 9;
+    const afterCeiling = getTrainingXpCeilingBonus(currentLevel + 1) + afterBreakthroughs * 9;
+    return `+${afterFloor - beforeFloor} XP floor, +${afterCeiling - beforeCeiling} XP ceiling`;
+  }
+
+  if (upgradeId === "nutrition") {
+    const delta = getTrainingFatigueRelief(currentLevel + 1) - getTrainingFatigueRelief(currentLevel);
+    return delta > 0 ? `+${delta} training fatigue relief` : "Progress toward +1 training fatigue relief";
+  }
+
+  if (upgradeId === "recovery") {
+    const before = getMatchActionRecoveryRelief(currentLevel) + getRecoveryBreakthroughRelief(beforeBreakthroughs);
+    const after = getMatchActionRecoveryRelief(currentLevel + 1) + getRecoveryBreakthroughRelief(afterBreakthroughs);
+    return after > before ? `+${after - before} match fatigue relief` : "Progress toward +1 match fatigue relief";
+  }
+
+  if (upgradeId === "boots") {
+    const before = getBootsActionBoost(currentLevel);
+    const after = getBootsActionBoost(currentLevel + 1);
+    return after > before ? `+${after - before} action attribute boost` : "Progress toward +1 action attribute boost";
+  }
+
+  if (upgradeId === "analyst") {
+    const selectionDelta = 2 + breakthroughDelta * 2;
+    return `+${selectionDelta} selection score support`;
+  }
+
+  if (upgradeId === "agent") {
+    const wageDelta = 4 + breakthroughDelta * 3.5;
+    const signingDelta = 8 + breakthroughDelta * 6;
+    return `+${formatPercentDelta(wageDelta)} wage, +${formatPercentDelta(signingDelta)} signing bonus`;
+  }
+
+  if (upgradeId === "lifestyle") {
+    const before = getLifestylePressureRelief(currentLevel, beforeBreakthroughs);
+    const after = getLifestylePressureRelief(currentLevel + 1, afterBreakthroughs);
+    return after > before ? `-${after - before} weekly pressure` : "Progress toward -1 weekly pressure";
+  }
+
+  return "Small support improvement";
+}
+
+function formatPercentDelta(value: number) {
+  return `${Number(value.toFixed(1))}%`;
 }
 
 function getSupportUpgradeTotal(state: GameState) {
@@ -3701,6 +4125,52 @@ function getSupportUpgradeTotal(state: GameState) {
 
 function getSupportLevel(state: GameState, upgradeId: SupportUpgradeId) {
   return state.supportUpgrades[upgradeId] ?? 0;
+}
+
+function getTrainingXpFloorBonus(level: number) {
+  return Math.round(level * 8);
+}
+
+function getTrainingXpCeilingBonus(level: number) {
+  return Math.round(level * 7);
+}
+
+function getTrainingFatigueRelief(level: number) {
+  return Math.min(9, Math.round(level * 0.7));
+}
+
+function getRecoverySessionBonus(recoveryLevel: number, nutritionLevel: number) {
+  return Math.min(24, Math.round(recoveryLevel * 2 + nutritionLevel * 0.75));
+}
+
+function getWeeklySupportRecoveryBonus(recoveryLevel: number, nutritionLevel: number) {
+  return Math.min(7, Math.round(recoveryLevel * 0.45 + nutritionLevel * 0.65));
+}
+
+function getMatchActionRecoveryRelief(level: number) {
+  return Math.min(6, Math.round(level * 0.45));
+}
+
+function getBootsActionBoost(bootsLevel: number) {
+  return Math.min(6, Math.floor(bootsLevel / 2));
+}
+
+function getLifestylePressureRelief(lifestyleLevel: number, breakthroughs = 0) {
+  return Math.min(6, Math.floor(lifestyleLevel / 3) + breakthroughs);
+}
+
+function applyBootsActionBoost(attributeValues: Record<AttributeKey, number>, bootsLevel: number) {
+  const boost = getBootsActionBoost(bootsLevel);
+  if (boost <= 0) {
+    return attributeValues;
+  }
+
+  return {
+    ...attributeValues,
+    ...Object.fromEntries(
+      bootsActionAttributes.map((attribute) => [attribute, clamp((attributeValues[attribute] ?? 50) + boost, 1, 100)]),
+    ),
+  };
 }
 
 function applyTrainingWeek(state: GameState): GameState {
@@ -3770,13 +4240,23 @@ function addAttributeXpDetailed(
   const levelUps: AttributeLevelUp[] = [];
   const nextAttributes = attributes.map((attribute) => {
     const gain = xpGain[attribute.label] ?? 0;
-    if (gain <= 0 || attribute.value >= attribute.potential) {
+    if (gain <= 0 || attribute.value >= 100) {
       return attribute;
     }
 
-    const totalXp = attribute.xp + gain;
-    const levels = Math.floor(totalXp / 100);
-    const nextValue = Math.min(attribute.potential, attribute.value + levels);
+    let nextValue = attribute.value;
+    let remainingXp = attribute.xp + gain;
+
+    while (nextValue < 100) {
+      const xpRequirement = getAttributeXpRequirement({ ...attribute, value: nextValue });
+      if (remainingXp < xpRequirement) {
+        break;
+      }
+
+      remainingXp -= xpRequirement;
+      nextValue += 1;
+    }
+
     if (nextValue > attribute.value) {
       levelUps.push({
         attribute: attribute.label,
@@ -3788,7 +4268,7 @@ function addAttributeXpDetailed(
     return {
       ...attribute,
       value: nextValue,
-      xp: totalXp % 100,
+      xp: nextValue >= 100 ? 0 : remainingXp,
     };
   });
 
@@ -3798,13 +4278,25 @@ function addAttributeXpDetailed(
 function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const match = state.activeMatch;
   const simTotals = match ? summarizeSimEvents(match.events, match.events.length - 1) : undefined;
-  const totals = summarizeMatchResults(results, simTotals);
+  const rawTotals = summarizeMatchResults(results, simTotals);
+  const environment = getDevelopmentEnvironment(currentLeagueTier);
+  const weeklyRecoveryBonus =
+    environment.recoveryBonus +
+    getRecoveryBreakthroughRelief(getSupportTrackBreakthroughCount(state, "recovery")) +
+    getWeeklySupportRecoveryBonus(
+      getSupportLevel(state, "recovery") * environment.supportEfficiency,
+      getSupportLevel(state, "nutrition") * environment.supportEfficiency,
+    );
+  const totals = match
+    ? { ...rawTotals, fitnessDelta: getMatchFitnessDelta(match, results) + weeklyRecoveryBonus }
+    : { ...rawTotals, fitnessDelta: rawTotals.fitnessDelta + weeklyRecoveryBonus };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
-  const moraleDelta = totals.rating >= 7 ? 3 : -2;
   const playerAppeared = didPlayerAppear(match);
+  const moraleDelta = playerAppeared ? (totals.rating >= 7 ? 3 : -2) : 0;
   const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
   const cashDelta = contractEarnings.total;
   const prestigeDelta = Math.max(0, Math.round((totals.rating - 6) * 2));
+  const pressureDelta = totals.goals * 2 - getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), getSupportTrackBreakthroughCount(state, "lifestyle"));
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season));
   const postMatchState = {
     ...state,
@@ -3813,7 +4305,7 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     morale: clamp(state.morale + moraleDelta, 0, 100),
     seasonStats: {
       ...state.seasonStats,
-      ratings: [...state.seasonStats.ratings.slice(-4), totals.rating],
+      ratings: playerAppeared ? [...state.seasonStats.ratings.slice(-4), totals.rating] : state.seasonStats.ratings,
     },
   };
   const selectionAfter = getSelectionReport(postMatchState, getNextFixtureAfterMatch(state.season));
@@ -3848,7 +4340,7 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     fitness: clamp(state.fitness + totals.fitnessDelta, 0, 100),
     trust: trustAfter,
     morale: clamp(state.morale + moraleDelta, 0, 100),
-    pressure: clamp(state.pressure + totals.goals * 2, 0, 100),
+    pressure: clamp(state.pressure + pressureDelta, 0, 100),
     cash: state.cash + cashDelta,
     prestige: state.prestige + prestigeDelta,
     contract: advanceContractWeek(state.contract),
@@ -3875,6 +4367,29 @@ function didPlayerAppear(match?: MatchState) {
   }
 
   return match.entryMinute <= 90 && (!match.exitMinute || match.exitMinute > match.entryMinute);
+}
+
+function getPlayerMinutesPlayed(match?: MatchState) {
+  if (!didPlayerAppear(match) || !match) {
+    return 0;
+  }
+
+  const startMinute = clamp(match.entryMinute, 0, 90);
+  const endMinute = clamp(match.exitMinute ?? 90, startMinute, 90);
+  return Math.max(0, endMinute - startMinute);
+}
+
+function getMatchFitnessDelta(match: MatchState, results: MatchResult[]) {
+  const minutes = getPlayerMinutesPlayed(match);
+  if (minutes <= 0) {
+    return 0;
+  }
+
+  const minuteLoad = -Math.max(1, Math.round(minutes / 18));
+  const actionLoad = results.reduce((sum, result) => sum + Math.min(0, result.fitnessDelta), 0);
+  const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
+
+  return clamp(minuteLoad + scaledActionLoad, -12, 0);
 }
 
 function startNextSeasonState(state: GameState): GameState {
@@ -3964,9 +4479,10 @@ function contractFromOffer(offer: ContractOffer): Contract {
 function getSeasonContractOffer(game: GameState, review = getSeasonReview(game)): ContractOffer {
   const current = game.contract;
   const agentLevel = getSupportLevel(game, "agent");
+  const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const rolePromise = getPromisedRole(review.selection.score, current.rolePromise);
   const performanceWage = 90 + review.selection.score * 3 + Math.max(0, review.averageRating - 6.2) * 90 + game.seasonStats.goals * 14 + game.seasonStats.assists * 9;
-  const weeklyWage = roundToNearest(Math.max(current.weeklyWage, performanceWage) * (1 + agentLevel * 0.04), 10);
+  const weeklyWage = roundToNearest(Math.max(current.weeklyWage, performanceWage) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.035), 10);
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
   const title = weeklyWage > current.weeklyWage || rolePromise !== current.rolePromise ? "Improved terms" : "Contract extended";
 
@@ -3980,7 +4496,10 @@ function getSeasonContractOffer(game: GameState, review = getSeasonReview(game))
     appearanceBonus: roundToNearest(18 + weeklyWage * 0.16, 5),
     goalBonus: roundToNearest(30 + weeklyWage * 0.28, 5),
     assistBonus: roundToNearest(22 + weeklyWage * 0.22, 5),
-    signingBonus: roundToNearest(weeklyWage * (review.verdict.grade === "A" ? 2.2 : review.verdict.grade === "B" ? 1.5 : 0.8) * (1 + agentLevel * 0.08), 10),
+    signingBonus: roundToNearest(
+      weeklyWage * (review.verdict.grade === "A" ? 2.2 : review.verdict.grade === "B" ? 1.5 : 0.8) * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06),
+      10,
+    ),
     pressureModifier,
     summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
   };
@@ -4766,8 +5285,13 @@ function getSelectionReport(
   const fixtureGap = fixture.opponentStrength - currentClubStrength;
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
   const promiseImpact = Math.round(getRoleThreshold(state.contract.rolePromise) * 0.12);
-  const analystImpact = getSupportLevel(state, "analyst") * 2;
-  const score = clamp(22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact + abilityImpact, 0, 100);
+  const analystImpact = getSupportLevel(state, "analyst") * 2 + getSupportTrackBreakthroughCount(state, "performance") * 2;
+  const pressureImpact = -Math.round(state.pressure * 0.08);
+  const score = clamp(
+    22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact + abilityImpact + pressureImpact,
+    0,
+    100,
+  );
   const role = availability === "Out" ? "Bench" : getPlayerMatchRole(score);
   const nextRole = getNextRole(role);
   const nextThreshold = nextRole ? getRoleThreshold(nextRole) : 100;
@@ -4825,6 +5349,12 @@ function getSelectionReport(
         value: `Lv ${getSupportLevel(state, "analyst")}`,
         impact: analystImpact,
         tone: analystImpact > 0 ? "good" : "neutral",
+      },
+      {
+        label: "Pressure",
+        value: getPressureLabel(state.pressure),
+        impact: pressureImpact,
+        tone: pressureImpact < -4 ? "warn" : "neutral",
       },
     ],
     summary: getSelectionSummary(score, role, nextRole),
@@ -5168,7 +5698,7 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
 function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
-  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
+  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes), getSupportLevel(state, "boots"));
   const matchOpponentProfile = state.activeMatch
     ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile)
     : undefined;
@@ -5190,6 +5720,11 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
   const xp = buildChoiceXp(choice, supportAdjustedResult.outcomeTier, positionModule, moment);
   const positionLabel = positionModule.displayName.toLowerCase();
   const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
+  const choiceMeta = {
+    choiceId: choice.id,
+    choiceLabel: choice.label,
+    choiceOutcome: choice.outcome,
+  };
 
   if (choice.outcome === "goal") {
     return {
@@ -5200,6 +5735,7 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
           ? `${moment.minute}': ${choice.label} is the right idea and keeps the attack alive, but it does not become a clear finish.`
           : `${moment.minute}': ${choice.label} is the right idea, but the execution is not clean enough this time.`,
       ...supportAdjustedResult,
+      ...choiceMeta,
       performanceReasons,
       xp,
     };
@@ -5214,6 +5750,7 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
           ? `${moment.minute}': ${choice.label} helps the move, but the final chance never fully opens.`
           : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
       ...supportAdjustedResult,
+      ...choiceMeta,
       performanceReasons,
       xp,
     };
@@ -5227,29 +5764,136 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
         ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
         : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
     ...supportAdjustedResult,
+    ...choiceMeta,
     performanceReasons,
     xp,
   };
 }
 
+function createFollowUpMoment(match: MatchState, moment: PlayerMatchEvent, result: MatchResult): PlayerMatchEvent | undefined {
+  if (moment.chainDepth && moment.chainDepth >= 1) {
+    return undefined;
+  }
+  if (!result.success || result.goals > 0 || result.assists > 0) {
+    return undefined;
+  }
+
+  const tierChance: Record<OutcomeTier, number> = {
+    Poor: 0,
+    Okay: 0.12,
+    Good: 0.42,
+    Great: 0.78,
+  };
+  const roll = seededNoise(`${match.matchSeed}-${moment.id}-${result.choiceId}-${result.outcomeTier}-follow-up`);
+  if (roll > tierChance[result.outcomeTier]) {
+    return undefined;
+  }
+
+  const template = getFollowUpTemplate(moment, result);
+  if (!template) {
+    return undefined;
+  }
+
+  const followUpMinute = clamp(moment.minute + 1, moment.minute, Math.min(match.exitMinute ?? 90, 90));
+  return {
+    ...template,
+    id: `${moment.id}-${result.choiceId}-follow-up`,
+    type: "player_moment",
+    minute: followUpMinute,
+    opponent: moment.opponent,
+    chainDepth: (moment.chainDepth ?? 0) + 1,
+  };
+}
+
+function getFollowUpTemplate(moment: MatchMoment, result: MatchResult): Omit<PlayerMatchEvent, "id" | "type" | "minute" | "opponent"> | undefined {
+  if (result.choiceOutcome === "defense") {
+    return undefined;
+  }
+
+  if (moment.category === "counter" || result.choiceId.includes("drive") || result.choiceId.includes("carry")) {
+    return {
+      category: "shot",
+      situation: "The defender is beaten and the box opens",
+      context: "Your first action created separation. Now the final decision matters before the cover arrives.",
+      choices: [
+        { id: "chain-low-shot", label: "Low shot", uses: ["Finishing", "Composure"], risk: "Medium", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-cutback", label: "Cutback", uses: ["Vision", "Passing"], risk: "Low", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-draw-contact", label: "Draw contact", uses: ["Strength", "Composure"], risk: "Low", reward: "Keep pressure", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+
+  if (moment.category === "run_behind" || result.choiceId.includes("round") || result.choiceId.includes("behind")) {
+    return {
+      category: "first_time_finish",
+      situation: "You arrive at the angle before the defender recovers",
+      context: "The run worked, but the angle is tightening. You can force the finish or use the runner arriving centrally.",
+      choices: [
+        { id: "chain-tight-finish", label: "Tight-angle finish", uses: ["Finishing", "Composure"], risk: "High", reward: "Big goal", manager: "Risky", outcome: "goal" },
+        { id: "chain-square-ball", label: "Square ball", uses: ["Composure", "Vision"], risk: "Medium", reward: "Tap-in assist", manager: "Likes", outcome: "assist" },
+        { id: "chain-protect-ball", label: "Protect ball", uses: ["Strength", "First Touch"], risk: "Low", reward: "Retain attack", manager: "Neutral", outcome: "trust" },
+      ],
+    };
+  }
+
+  if (moment.category === "press" || result.choiceId.includes("press") || result.choiceId.includes("tackle")) {
+    return {
+      category: "late_pressure",
+      situation: "The press forces a loose ball near the area",
+      context: "You have turned effort into a dangerous second ball. The opponent is scrambling.",
+      choices: [
+        { id: "chain-snap-shot", label: "Snap shot", uses: ["Finishing", "Acceleration"], risk: "High", reward: "Sudden goal", manager: "Neutral", outcome: "goal" },
+        { id: "chain-slip-teammate", label: "Slip teammate", uses: ["Vision", "Passing"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-lock-in", label: "Lock them in", uses: ["Work Rate", "Positioning"], risk: "Low", reward: "Manager trust", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+
+  if (moment.category === "hold_up" || moment.category === "link_up" || result.choiceId.includes("layoff") || result.choiceId.includes("shield")) {
+    return {
+      category: "link_up",
+      situation: "The layoff comes back as the defense steps out",
+      context: "Your first action kept the attack alive. A quick second decision can turn possession into danger.",
+      choices: [
+        { id: "chain-spin-shot", label: "Spin and shoot", uses: ["First Touch", "Finishing"], risk: "High", reward: "Surprise finish", manager: "Risky", outcome: "goal" },
+        { id: "chain-release-runner", label: "Release runner", uses: ["Vision", "Passing"], risk: "Medium", reward: "Chance created", manager: "Likes", outcome: "assist" },
+        { id: "chain-set-tempo", label: "Set tempo", uses: ["Composure", "Passing"], risk: "Low", reward: "Sustain move", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+
+  if (result.choiceOutcome === "goal" || result.choiceOutcome === "assist") {
+    return {
+      category: result.choiceOutcome === "goal" ? "shot" : "link_up",
+      situation: result.choiceOutcome === "goal" ? "The ball sits up for one more action" : "A teammate returns the ball into your path",
+      context: "The first idea worked well enough to keep the move alive. You have one more decision before the defense resets.",
+      choices: [
+        { id: "chain-compose-finish", label: "Compose finish", uses: ["Finishing", "Composure"], risk: "Medium", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-final-pass", label: "Final pass", uses: ["Vision", "Passing"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-safe-touch", label: "Safe touch", uses: ["First Touch", "Composure"], risk: "Low", reward: "Good action", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+
+  return undefined;
+}
+
 function applyMatchSupportEffects<T extends { rating: number; fitnessDelta: number }>(state: GameState, result: T): T {
-  const bootsLevel = getSupportLevel(state, "boots");
   const recoveryLevel = getSupportLevel(state, "recovery");
-  const lifestyleLevel = getSupportLevel(state, "lifestyle");
+  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
 
   return {
     ...result,
-    rating: Number(clamp(result.rating + bootsLevel * 0.03 + lifestyleLevel * 0.02, 4, 10).toFixed(2)),
-    fitnessDelta: Math.min(0, result.fitnessDelta + recoveryLevel),
+    fitnessDelta: Math.min(0, result.fitnessDelta + getMatchActionRecoveryRelief(recoveryLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs)),
   };
 }
 
 function simulateRemainingPlayerMoments(state: GameState, match: MatchState): MatchResult[] {
-  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
+  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes), getSupportLevel(state, "boots"));
   return match.events
     .slice(match.currentEventIndex)
     .filter((event): event is PlayerMatchEvent => event.type === "player_moment")
-    .map((moment) => {
+    .flatMap((moment) => {
       const choice = chooseAutoSimChoice({
         moment,
         attributeValues: matchAttributeValues,
@@ -5257,7 +5901,21 @@ function simulateRemainingPlayerMoments(state: GameState, match: MatchState): Ma
         trust: state.trust,
         matchSeed: match.matchSeed,
       });
-      return { ...createMatchResult(state, moment, choice), source: "auto" as const };
+      const result = { ...createMatchResult(state, moment, choice), source: "auto" as const };
+      const followUp = createFollowUpMoment(match, moment, result);
+      if (!followUp) {
+        return [result];
+      }
+
+      const followUpChoice = chooseAutoSimChoice({
+        moment: followUp,
+        attributeValues: matchAttributeValues,
+        fitness: state.fitness,
+        trust: state.trust,
+        matchSeed: `${match.matchSeed}-follow-up`,
+      });
+
+      return [result, { ...createMatchResult(state, followUp, followUpChoice), source: "auto" as const }];
     });
 }
 
@@ -5430,15 +6088,21 @@ function getTrainingIntensityLabel(intensity: Intensity) {
 
 function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
+  const environment = getDevelopmentEnvironment(currentLeagueTier);
   const coachLevel = getSupportLevel(state, "coach");
   const nutritionLevel = getSupportLevel(state, "nutrition");
   const recoveryLevel = getSupportLevel(state, "recovery");
+  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+  const effectiveCoachLevel = coachLevel * environment.supportEfficiency;
+  const effectiveNutritionLevel = nutritionLevel * environment.supportEfficiency;
+  const effectiveRecoveryLevel = recoveryLevel * environment.supportEfficiency;
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
 
   if (state.fitness < 12) {
     return {
       ranges,
-      fitnessDelta: 14 + recoveryLevel * 3 + nutritionLevel,
+      fitnessDelta: 14 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel),
       moraleDelta: 1,
       trustDelta: -1,
     };
@@ -5447,16 +6111,43 @@ function getTrainingProjection(state: GameState) {
   getCurrentTrainingFocuses(state).forEach((focus) => {
     const baseRange = getBaseTrainingRange(state, focus);
     ranges[focus] = {
-      min: Math.max(1, Math.round(baseRange.min * intensity.xpFloor + coachLevel * 3)),
-      max: Math.max(1, Math.round(baseRange.max * intensity.xpCeiling + coachLevel * 2)),
+      min: Math.max(
+        1,
+        Math.round((baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveCoachLevel) + trainingBreakthroughs * 5) * environment.xpMultiplier),
+      ),
+      max: Math.max(
+        1,
+        Math.round((baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveCoachLevel) + trainingBreakthroughs * 9) * environment.xpMultiplier),
+      ),
+    };
+  });
+  getCoachSupportFocuses(state).forEach((focus) => {
+    ranges[focus] = {
+      min: Math.max(1, Math.round(effectiveCoachLevel * 2.5 * environment.xpMultiplier)),
+      max: Math.max(1, Math.round(effectiveCoachLevel * 6 * environment.xpMultiplier)),
     };
   });
 
   return {
     ranges,
-    fitnessDelta: intensity.fitnessDelta < 0 ? Math.min(0, intensity.fitnessDelta + nutritionLevel * 2) : intensity.fitnessDelta,
+    fitnessDelta:
+      intensity.fitnessDelta < 0
+        ? Math.min(0, intensity.fitnessDelta + environment.recoveryBonus + getTrainingFatigueRelief(effectiveNutritionLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs))
+        : intensity.fitnessDelta + environment.recoveryBonus + getRecoveryBreakthroughRelief(recoveryBreakthroughs),
     moraleDelta: intensity.moraleDelta,
     trustDelta: intensity.trustDelta,
+  };
+}
+
+function getDevelopmentEnvironment(tier: LeagueTier): DevelopmentEnvironment {
+  const level = tier.facilityLevel;
+  return {
+    label: tier.name,
+    facilityLevel: level,
+    xpMultiplier: 1 + (level - 1) * 0.18,
+    xpFloorBonus: (level - 1) * 4,
+    recoveryBonus: Math.floor((level - 1) / 3),
+    supportEfficiency: 1 + (level - 1) * 0.1,
   };
 }
 
@@ -5464,8 +6155,25 @@ function getCurrentTrainingFocuses(state: GameState): AttributeKey[] {
   return state.trainingFocuses.length > 0 ? state.trainingFocuses : ["Finishing"];
 }
 
+function getCoachSupportFocuses(state: GameState): AttributeKey[] {
+  const coachLevel = getSupportLevel(state, "coach");
+  if (coachLevel <= 0) {
+    return [];
+  }
+
+  const activeFocuses = new Set(getCurrentTrainingFocuses(state));
+  const positionModule = getPositionModule(state.positionGroup);
+  const focusCount = coachLevel >= 8 ? 2 : 1;
+  return positionModule.keyAttributes
+    .filter((attribute) => !activeFocuses.has(attribute))
+    .map((attribute) => ({ attribute, value: getAttributeValue(state.attributes, attribute) }))
+    .sort((a, b) => a.value - b.value)
+    .slice(0, focusCount)
+    .map((item) => item.attribute);
+}
+
 function getBaseTrainingRange(_state: GameState, _focus: AttributeKey) {
-  return { min: 5, max: 40 };
+  return { min: 12, max: 55 };
 }
 
 function getIntensityProfile(intensity: Intensity) {
@@ -5488,14 +6196,9 @@ function rollTrainingXp(
 ): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
 
-  getCurrentTrainingFocuses(state).forEach((focus) => {
-    const range = ranges[focus];
-    if (!range) {
-      return;
-    }
-
+  Object.entries(ranges).forEach(([focus, range]) => {
     const roll = seededNoise(`${trainingSeed}-${focus}`);
-    xp[focus] = Math.round(range.min + roll * (range.max - range.min));
+    xp[focus as AttributeKey] = Math.round(range.min + roll * (range.max - range.min));
   });
 
   return xp;
@@ -5529,7 +6232,7 @@ function createMatchSeed(state: GameState, context: UpcomingMatch) {
 function calculateOvr(attributes: Attribute[], weights: Partial<Record<AttributeKey, number>> = positionModules.Forward.ovrWeights) {
   const weighted = attributes.reduce(
     (sum, attribute) => {
-      const weight = weights[attribute.label] ?? 1;
+      const weight = weights[attribute.label] ?? 0;
       return {
         value: sum.value + attribute.value * weight,
         weight: sum.weight + weight,
@@ -5538,21 +6241,110 @@ function calculateOvr(attributes: Attribute[], weights: Partial<Record<Attribute
     { value: 0, weight: 0 },
   );
 
+  if (weighted.weight <= 0) {
+    return Math.round(attributes.reduce((sum, attribute) => sum + attribute.value, 0) / Math.max(1, attributes.length));
+  }
+
   return Math.round(weighted.value / weighted.weight);
+}
+
+function calculatePotentialOvr(attributes: Attribute[], weights: Partial<Record<AttributeKey, number>> = positionModules.Forward.ovrWeights) {
+  return calculateOvr(
+    attributes.map((attribute) => ({ ...attribute, value: attribute.potential })),
+    weights,
+  );
+}
+
+function getOvrBreakdown(attributes: Attribute[], positionModule: PositionModule) {
+  const entries = Object.entries(positionModule.ovrWeights)
+    .filter((entry): entry is [AttributeKey, number] => typeof entry[1] === "number" && entry[1] > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
+
+  return entries.map(([label, weight]) => ({
+    label,
+    value: getAttributeValue(attributes, label),
+    share: totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0,
+  }));
 }
 
 function getAttributeValue(attributes: Attribute[], key: AttributeKey) {
   return attributes.find((attribute) => attribute.label === key)?.value ?? 0;
 }
 
-function getAttributeValueMap(attributes: Attribute[]) {
-  return Object.fromEntries(attributes.map((attribute) => [attribute.label, attribute.value]));
+function getAttributeValueMap(attributes: Attribute[]): Record<AttributeKey, number> {
+  return Object.fromEntries(attributes.map((attribute) => [attribute.label, attribute.value])) as Record<AttributeKey, number>;
 }
 
-function getLeagueAdjustedAttributeValueMap(attributes: Attribute[], tier = currentLeagueTier) {
+function getAttributeXpRequirement(attribute: Attribute | number) {
+  const attributeValue = typeof attribute === "number" ? attribute : attribute.value;
+  const growthMultiplier = typeof attribute === "number" ? 1 : getAttributeGrowthPressure(attribute).multiplier;
+  return Math.round(getBaseAttributeXpRequirement(attributeValue) * growthMultiplier);
+}
+
+function getBaseAttributeXpRequirement(attributeValue: number) {
+  if (attributeValue < 30) {
+    return Math.round(24 + attributeValue * 1.25);
+  }
+  if (attributeValue < 50) {
+    return Math.round(60 + (attributeValue - 30) * 3.5);
+  }
+  if (attributeValue < 70) {
+    return Math.round(130 + (attributeValue - 50) * 6);
+  }
+  return Math.round(250 + (attributeValue - 70) * 10 + Math.pow(attributeValue - 70, 1.25) * 8);
+}
+
+function getAttributeProgressPercent(attribute: Attribute) {
+  return getXpPercent(attribute.xp, getAttributeXpRequirement(attribute));
+}
+
+function getAttributeGrowthPressure(attribute: Attribute): { label: string; copy: string; tone: GrowthPressureTone; multiplier: number } {
+  const distance = attribute.potential - attribute.value;
+  if (distance >= 10) {
+    return {
+      label: "Fast growth",
+      copy: "Below natural curve",
+      tone: "fast",
+      multiplier: 0.85,
+    };
+  }
+  if (distance >= 0) {
+    return {
+      label: "Normal growth",
+      copy: "Inside natural curve",
+      tone: "normal",
+      multiplier: 1,
+    };
+  }
+
+  const overProfile = Math.abs(distance);
+  const multiplier = 1 + overProfile * 0.18 + Math.pow(overProfile, 1.22) * 0.035;
+  if (overProfile < 8) {
+    return {
+      label: "Hard push",
+      copy: `+${overProfile} over curve`,
+      tone: "hard",
+      multiplier,
+    };
+  }
+
+  return {
+    label: "Elite push",
+    copy: `+${overProfile} over curve`,
+    tone: "elite",
+    multiplier,
+  };
+}
+
+function getXpPercent(xp: number, requirement: number) {
+  return requirement > 0 ? clamp((xp / requirement) * 100, 0, 100) : 0;
+}
+
+function getLeagueAdjustedAttributeValueMap(attributes: Attribute[], tier = currentLeagueTier): Record<AttributeKey, number> {
   return Object.fromEntries(
     attributes.map((attribute) => [attribute.label, getContextualAbilityScore(attribute.value, tier)]),
-  );
+  ) as Record<AttributeKey, number>;
 }
 
 function getLeagueAdjustedOpponentProfile(profile: OpponentProfile, tier = currentLeagueTier): OpponentProfile {

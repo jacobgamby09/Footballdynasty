@@ -28,10 +28,11 @@ src/
   utils.ts              // clamp (generic math leaf)                   [DONE — Phase 3]
   state/
     save.ts             // save/load, clone, normalize                 [planned — Phase 5]
+    initialState.ts     // initialContract, initialState                [DONE — Phase 4]
   systems/              // pure gameplay logic
     attributeXp.ts      // attribute XP requirement + growth pressure   [DONE — Phase 3]
-    generation.ts       // getGenerationProfile, createGenerationAttrs  [planned — Phase 4]
-    club.ts             // fixtures/league/club construction            [planned — Phase 4]
+    generation.ts       // getGenerationProfile, createGenerationAttrs  [DONE — Phase 4]
+    club.ts             // fixtures/league/club construction            [DONE — Phase 4]
     ovr.ts              // OVR, attribute value maps, league scaling    [planned — Phase 6]
     training.ts         // applyTrainingWeek, quality, focus            [planned — Phase 6]
     support.ts          // buySupportUpgradeState + support getters     [planned — Phase 6]
@@ -41,9 +42,9 @@ src/
     contracts.ts        // offers, accept, advance, status              [planned — Phase 6]
     formatting.ts       // formatSigned, labels                         [planned — Phase 6]
   components/
-    shared/             // ProgressBar, InfoRow, ChoiceRow, BottomNav…  [planned — Phase 5]
-    cards/              // *Card components                             [planned — Phase 5]
-    screens/            // Player/Training/Club/Home/Match/…            [planned — Phase 5]
+    shared/             // ProgressBar, InfoRow, ChoiceRow, BottomNav…  [planned — Phase 7]
+    cards/              // *Card components                             [planned — Phase 7]
+    screens/            // Player/Training/Club/Home/Match/…            [planned — Phase 7]
 ```
 
 ## Working conventions
@@ -66,6 +67,7 @@ Each phase follows the same discipline:
 | Phase 1 — types | 6,972 | −367 | `a41d3ef` |
 | Phase 2 — data | 6,459 | −513 | `06af327` |
 | Phase 3 — pure-logic core | 6,401 | −58 | `49fbd60` |
+| Phase 4 — construction + initial state | 6,261 | −140 | `1f5f727` |
 
 ---
 
@@ -229,15 +231,57 @@ through the imports.
 
 ---
 
+## Phase 4 — Move game construction + initial state out of `App.tsx`
+
+**Commit:** `1f5f727` — *Move game construction and initial state out of App.tsx*
+
+### What moved
+With `clamp` and the attribute-XP curve extracted in Phase 3, the construction
+helpers could finally leave `App.tsx`.
+
+**`src/systems/generation.ts`** (imports: `positionModules` from `../positionRoles`;
+`Attribute` from `../types`; `generationProfiles`, `initialAttributes` from
+`../data/attributes`; `getAttributeXpRequirement` from `./attributeXp`; `clamp` from `../utils`)
+- `getGenerationProfile`
+- `createGenerationAttributes`
+
+**`src/systems/club.ts`** (imports: club/fixture types from `../types`;
+`contractMarketClubs`, `leagueTiers` from `../data/leagues`; `baseLeagueTeams`,
+`seasonFixtures` from `../data/fixtures`; `clamp` from `../utils`)
+- `createSeasonFixtures`, `createLeagueTeams`
+- `createClubStateFromOffer`, `rebuildSeasonForClub`
+- `getClubStrengthForTier`, `getClubShortName`, `getClubShortCode`
+
+**`src/state/initialState.ts`** (imports: `positionModules` from `../positionRoles`;
+`Contract`, `GameState` from `../types`; `initialDynasty` from `../data/attributes`;
+`initialClub` from `../data/leagues`; `initialSupportUpgrades` from `../data/support`;
+`createGenerationAttributes` from `../systems/generation`; `createSeasonFixtures`
+from `../systems/club`)
+- `initialContract`
+- `initialState`
+
+### What changed in `App.tsx`
+Imported back only the symbols still referenced by code remaining in `App.tsx`:
+the seven `systems/club` helpers and `initialState`. A usage audit (grep for each
+symbol outside the moved block) confirmed `getGenerationProfile`,
+`createGenerationAttributes` and `initialContract` were used **only** inside the
+moved code, so they are not re-imported. `tsc` confirms this — a missing external
+reference would fail the build.
+
+### Verification
+- `npm run build` green.
+- Bundle 379.52 kB, functionally identical (1644 modules).
+- Confirmed all 11 declarations are gone from `App.tsx`.
+
+### Notes
+- `initialState.ts` is placed under `state/` (not `data/`) because it is no longer
+  pure data — it depends on the `systems/` construction functions. The DAG is
+  preserved: `data ← systems ← state(initialState)`.
+
+---
+
 ## Remaining phases (plan)
 
-- **Phase 4 — finish data/construction layer**: move the construction helpers out
-  of `App.tsx` now that their dependencies are extracted —
-  `getGenerationProfile`, `createGenerationAttributes` → `systems/generation.ts`;
-  `createSeasonFixtures`, `createLeagueTeams`, `createClubStateFromOffer`,
-  `rebuildSeasonForClub`, `getClubStrengthForTier`, `getClubShortName`,
-  `getClubShortCode` → `systems/club.ts`; `initialContract`, `initialState` →
-  `state/initialState.ts`.
 - **Phase 5 — `state/save.ts`**: `SAVE_KEY`, `SAVE_VERSION`, `loadSavedGame`,
   `normalizeSavedGame`, `normalizeSavedClub`, `mergeSavedAttributes`,
   `saveGameState`, `clearSavedGame`, `cloneGameState`, `cloneTrainingSummary`,

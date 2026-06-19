@@ -320,9 +320,9 @@ Stage-3 notes / future:
 
 # World v2 — Multi-country pyramid
 
-> Status: **Stage A done** on branch `feature/world-v2` (off `feature/transfers`).
-> Replaces the single 6-tier ladder with countries, each holding its own ladder of
-> divisions that map onto a shared global tier scale.
+> Status: **Stage A + B + C done** (Stages 1-3 + v2 A/B merged to `main`; Stage C on
+> branch `feature/world-v2-stage-c`). Replaces the single 6-tier ladder with countries,
+> each holding its own ladder of divisions that map onto a shared global tier scale.
 
 ## Why
 The single global pyramid can't express that the Danish Superliga ≈ the English
@@ -388,9 +388,17 @@ Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 �
 - **Stage B — promotion/relegation per country.** Rework `rolloverWorldSeason` to
   move clubs between adjacent levels *within each country* using the counts above,
   with strength drift toward the new tier.
-- **Stage C — player follows club + `clubId`.** Player's club becomes a real world
-  club referenced by `clubId`; it promotes/relegates with the world and `game.club`
-  mirrors it (un-pin). Folds in the old "Stage 4" clubId migration.
+- **Stage C — player follows club + `clubId`. ✅ DONE.** `ClubState` gained an optional
+  `clubId`; `initialState` links the player's club to its seeded world entity (Denmark,
+  tier 6) by short code and carries the clubId; `worldClubToClubState` (transfers) sets
+  it too. `rolloverWorldSeason` no longer special-cases the player — its club
+  promotes/relegates like any other. `startNextSeasonState` then re-syncs `game.club`
+  (and `contract.tierId`) from the world club after rollover, rebuilds the season
+  fixtures for the new division, and announces promotion/relegation in `lastEvent`.
+  `SAVE_VERSION` → 6. Verified in-browser: with the player's club forced to win its
+  division, the season rollover promoted it (Denmark Div 5 → Div 4) and the player
+  followed — same clubId, tier grassroots-dev → local-semi-pro, contract + fixtures +
+  renewal wage all reflecting the higher division, no console errors.
 - **Stage D — cross-country transfers by tier.** `getInterestedWorldClubs` already
   gates by tier; confirm/﻿tune interest across countries (a tier-2 player hears from
   tier-1/2 clubs in any country).

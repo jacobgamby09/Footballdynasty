@@ -7,7 +7,7 @@ import { createSeasonFixtures, getClubShortCode, getClubShortName, getClubStreng
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 function cloneWorld(world: World): World {
   return {

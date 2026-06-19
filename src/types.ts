@@ -77,6 +77,7 @@ export type LeagueTeam = {
 };
 
 export type ClubState = {
+  clubId?: ClubId; // links the player's club to its world entity (Stage C)
   name: string;
   shortName: string;
   shortCode: string;
@@ -283,7 +284,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 5;
+  version: 6;
   game: GameState;
 };
 

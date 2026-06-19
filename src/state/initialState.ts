@@ -1,11 +1,27 @@
 import { positionModules } from "../positionRoles";
-import type { Contract, GameState } from "../types";
+import type { ClubState, Contract, GameState } from "../types";
 import { initialDynasty } from "../data/attributes";
 import { initialClub } from "../data/leagues";
 import { initialSupportUpgrades } from "../data/support";
 import { seedWorld } from "../data/world";
 import { createGenerationAttributes } from "../systems/generation";
 import { createSeasonFixtures } from "../systems/club";
+
+// The player's club is a real world club from the start (Stage C): find the seeded
+// entry by short code and mirror it, carrying its clubId so the player can be
+// promoted/relegated with the club.
+const initialWorld = seedWorld();
+const playerWorldClub = Object.values(initialWorld.clubs).find((c) => c.shortCode === initialClub.shortCode);
+const initialPlayerClub: ClubState = playerWorldClub
+  ? {
+      clubId: playerWorldClub.id,
+      name: playerWorldClub.name,
+      shortName: playerWorldClub.shortName,
+      shortCode: playerWorldClub.shortCode,
+      tierId: playerWorldClub.tierId,
+      strength: playerWorldClub.strength,
+    }
+  : initialClub;
 
 export const initialContract: Contract = {
   club: initialClub.name,
@@ -48,11 +64,11 @@ export const initialState: GameState = {
   season: {
     season: 1,
     fixtureIndex: 0,
-    fixtures: createSeasonFixtures(initialClub),
+    fixtures: createSeasonFixtures(initialPlayerClub),
     results: [],
   },
-  club: initialClub,
-  world: seedWorld(),
+  club: initialPlayerClub,
+  world: initialWorld,
   dynasty: initialDynasty,
   dynastyHistory: [],
   contract: initialContract,

@@ -2,6 +2,50 @@
 
 ## 2026-06-18
 
+### Club State V1
+
+- Added saveable current club state with name, short name/code, league tier and squad strength.
+- Initial Northbridge data is now the starting club, not the permanent source of truth.
+- Accepting an external contract offer now updates the active club state.
+- Upcoming fixtures are regenerated for the new club/tier while already played fixtures/results are preserved.
+- Header club chip, Club tab title, league tier, league table preview/detail, season review, dynasty history and match/post-match score headers now read from the active club state.
+- Training facilities, selection comparison and match contextual ability scaling now use the active club's league tier instead of the starting league.
+- Match snapshots now store club name/short name, so post-match summaries remain stable even if the player changes club later.
+- Remaining limitation: this is still a tier-template fixture model, not a full persistent league/transfer ecosystem with promotion, relegation and club-specific schedules.
+
+### Contract Progression V2
+
+- Starting contract is now a short `Trial terms` deal, so contract progression appears early in a new career.
+- Added mid-season club-led contract offers when a deal is expiring or strong performance justifies improved terms.
+- Declining an offer no longer implies the same club will always return. If the contract runs out, the next offer can come from the external contract market.
+- Added a first contract market club pool with same-tier/lower-status bias and limited upward reach for strong OVR, form, prestige and agent leverage.
+- Accepted external offers now update the player's visible contract club and persist the offer tier for later contract cycles.
+- Added a dedicated `Club offer` screen showing current terms against the proposed weekly wage, role promise, length, signing bonus and match bonuses.
+- Main button now progresses through contract offers with `Accept Offer`; declining is a secondary in-screen action.
+- Player contract card now shows contract status such as `Review soon`, `Expiring`, `Expired` or `Offer ready`.
+- Weekly economy and match payouts continue to use the active contract after accepting an offer.
+- Season balance lab now mirrors contract offers, accepts meaningful upgrades and tracks `Contract offers`, so support-price tuning includes wage growth.
+- Verification: `npm run build` passes, and `npm run balance:season -- --seasons=3 --career-seasons=5 --generations=1` runs successfully.
+- Balance watch: contracts now make cash scale much faster in balanced/development spending scenarios, so support prices, bonus values and high-output match rates should be tuned with contract progression enabled.
+
+### Multi-Focus Training Unlocks V1
+
+- Training Setup breakthroughs now unlock more weekly focus capacity: one focus by default, two focus slots after the first Training breakthrough and three after the third Training breakthrough.
+- Training focus selection now supports multiple active stats while keeping at least one selected focus.
+- Secondary focus slots use reduced XP weights, so extra slots feel like better training capacity rather than a flat XP duplication.
+- Specialist programs can bonus multiple selected focuses when the active specialist covers those attributes.
+- Support cards now show focus-slot capacity as a concrete current Training Setup bonus.
+- Season balance lab now mirrors multi-focus training unlocks and weighted secondary focus XP.
+
+### Support Clarity And Scaling V1
+
+- Support track cards now show `Current bonuses` in compact chips, so the player can see what a track is already doing before buying again.
+- Training support was strengthened: Personal Coach now gives a larger XP floor/ceiling, and training breakthroughs add more visible range improvement.
+- Specialist program XP now scales more clearly with club facilities, coach level and training breakthroughs.
+- Recovery support was moderately strengthened through weekly recovery, training fatigue relief and match fatigue relief, while still keeping caps so fatigue remains relevant.
+- The season balance lab mirrors the same support, recovery, specialist and training-quality scaling as the playable app.
+- GDD and DESIGN now state that every support track should show both `Next investment` and `Current bonuses`.
+
 ### Support Tracks And Breakthroughs V1
 
 - Reworked the Support tab from seven separate shop cards into five broad investment tracks: Training, Recovery, Performance, Career and Lifestyle.
@@ -26,6 +70,51 @@
 - Early read: focused tracks now produce clearly different season profiles. Training drives development but can leave fitness low, Recovery protects availability strongly, Career produces a clearer cash edge, and Lifestyle now has a real pressure/selection effect.
 - Balance watch: pure Recovery can over-solve fitness in isolation, and the current hard Gen 1 potential cap can hide broader OVR differences. Long-term design should replace hard caps with soft growth pressure.
 
+### Career Balance Curve Lab V1
+
+- `npm run balance:season` now prints a compact per-season career curve when `--career-seasons` is greater than 1.
+- The curve reports tier, OVR movement, apps/starts, goals/assists/chances, goals/90, assists/90, chances/90, end fitness, net cash, support level and growth profile marker per season.
+- Added first curve target notes for Gen 1: final OVR range, early per-90 output, late-career fitness and support growth speed.
+- Initial reads show the lab can now pinpoint where balance breaks: early assists/90 can spike too high, no-upgrade careers run out of fitness, recovery protects availability strongly, and balanced/development spending can land inside the intended Gen 1 final OVR range.
+
+### Chance Created / Assist Conversion V1
+
+- Assist actions now separate chance creation from actual assists.
+- A successful assist-type action creates a chance, but the teammate still has to convert it before the player receives an assist.
+- Teammate conversion uses chance quality, outcome tier and opponent keeper/defense, so a good pass against a strong defensive side can still become a missed chance.
+- Match UI and post-match report now show `Chances`, making creative output visible without inflating assists.
+- Season balance lab now reports chances created, chances per 90 and assist conversion, and the career curve shows goals/assists/chances as `G/A/CC`.
+- Early read: assist conversion now sits closer to 20-30% in the career lab. Remaining high assists/90 spikes are more likely driven by highlight/chance volume in low-minute samples than by every good pass becoming an assist.
+
+### Realistic Highlight Volume V1
+
+- Player highlight count is now based on actual minutes played, role and involvement score instead of giving every selected player a fixed minimum number of moments.
+- Short sub appearances can now realistically produce zero or one player moments, while longer appearances can still generate multiple actions.
+- `selectPlayerHighlights` now returns no highlights when requested count is zero, fixing a lab/runtime mismatch where zero-count simulations could still receive a fallback moment.
+- The season lab mirrors the same minute-based moment-count model as the playable match engine.
+- Early read: assists/90, chances/90 and highlights/90 are much more realistic. OVR gain is now lower, which confirms that future progression tuning should come from training, support, facilities and XP curves rather than inflated match highlight volume.
+
+### Progression Budget Lab V1
+
+- Season balance lab now separates training XP from match XP.
+- The lab also separates training level-ups from match level-ups, so we can see which systems are actually driving attribute growth.
+- Career curve output now includes a target OVR column and a gap column for each season.
+- Added a first Gen 1 target curve: season 1 around 20 OVR, season 3 around 30, season 5 around 40, season 8 around 55, season 11 around 70, season 14 around 80, then gradual decline.
+- Balance warnings now flag when the career curve is more than 5 OVR ahead of or behind the current target.
+- Initial read after realistic highlight volume: match output is healthier, but progression is too slow. Most five-season scenarios finish 10-16 OVR behind target, so the next tuning pass should strengthen training/support/facility progression rather than increasing match highlight volume.
+
+### Specialist Programs And Training Quality V1
+
+- Added five active training specialist programs: Finishing coach, Movement coach, Technical coach, Strength coach and Mental coach.
+- The Training screen now lets the player choose one active specialist program before starting the weekly session.
+- Specialist programs add bonus XP when the selected training focus matches the specialist's attribute group.
+- Added weekly training quality: Poor, Solid, Sharp and Breakthrough.
+- Training quality is driven by fitness, morale, pressure, facility level, nutrition, recovery and support breakthroughs.
+- Training quality modifies the weekly XP range and is shown in both the Training screen and Development Summary.
+- Development Summary now shows specialist bonus XP as a separate feedback card when relevant.
+- Season balance lab now mirrors specialist programs and training quality, and reports specialist XP plus quality distribution.
+- First read: specialist programs help progression without breaking match realism. Training-track focus improved to roughly 30 OVR after five seasons, still about 10 OVR behind the first Gen 1 target curve, so the next pass should tune facility/support scaling and recovery quality rather than increasing match highlights.
+
 ### Potential Soft-Cap Direction
 
 - GDD and DESIGN now define potential as a soft growth curve instead of a hard attribute ceiling.
@@ -37,6 +126,7 @@
 - Attribute rows now show a growth label: `Fast growth`, `Normal growth`, `Hard push` or `Elite push`.
 - OVR detail and Home/Base copy now describe growth profile markers instead of hard potential ceilings.
 - Season lab now reports `Growth profile OVR` and warns when the player exceeds the profile enough that soft-cap pressure should be visible.
+- Attribute Growth Detail V1 added to Training: tapping a stat now shows current level, XP to next, growth status, base requirement, growth pressure multiplier, profile marker, selected training range, active modifiers and how to improve growth.
 
 ### Potential And Generation Model V1
 

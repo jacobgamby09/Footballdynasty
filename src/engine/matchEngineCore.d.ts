@@ -109,6 +109,7 @@ export function resolvePlayerChoice(input: {
   fitnessDelta: number;
   goals: number;
   assists: number;
+  chancesCreated: number;
   decisiveOutcome: boolean;
 };
 

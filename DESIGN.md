@@ -347,6 +347,8 @@ Important:
 
 - Attributes should show progress toward next point/level.
 - Primary role stats should be visually marked.
+- Tapping an attribute should open a growth detail popup with current level, XP to next level, base XP requirement, growth pressure multiplier, selected training range and active modifiers.
+- Growth details should explain what can improve the curve: training focus, support tracks, facilities and dynasty growth upgrades.
 
 #### 5. Season Snapshot Card
 
@@ -416,7 +418,9 @@ Content:
 
 - current wage
 - contract length
+- contract status
 - role promise
+- active bonuses
 - market value
 - transfer interest
 - release clause if relevant
@@ -424,7 +428,17 @@ Content:
 Design notes:
 
 - This card should become more important as the player rises.
-- Early game can show simple info only.
+- Early game can show simple info only, but the status must be clear: secure, review soon, expiring, expired or offer ready.
+- Contract offers should use a dedicated `Club offer` screen with current terms compared directly against the proposed terms.
+- External offers after contract expiry should use the same screen pattern but label the context as `Contract market`, so the player understands this is no longer a renewal.
+- The main progress button should become `Accept Offer` on the offer screen. Any secondary decline action belongs inside the screen content, not as the primary progression path.
+- Contract UI should always show weekly wage, weeks, role promise, signing bonus and match bonuses as numbers. Avoid vague value copy.
+
+Club identity UI:
+
+- Header club chip, Club tab title, match headers, post-match score headers, league table highlight and dynasty history should all read from current club state.
+- After an external contract offer is accepted, the player should immediately see the new club name in these surfaces.
+- If fixtures are regenerated after a club move, the UI should treat already played results as history and upcoming fixtures as the new club context.
 
 #### 9. Equipment and Facilities Card
 
@@ -526,6 +540,7 @@ Each card should show:
 
 - current invested levels
 - exact next investment effect
+- current concrete bonuses already active
 - next named breakthrough
 - one clear progress bar
 - one primary `Invest` action
@@ -533,6 +548,10 @@ Each card should show:
 The player should understand the strategic choice at a glance: train faster, recover better, perform better, negotiate better or stabilize the career.
 
 Avoid vague copy such as `improves performance` as the only payoff. Every support track should show a concrete number or transparent progress toward the next rounded number, for example `+8 XP floor`, `+2 selection score`, `+1 action attribute boost` or `Progress toward -1 weekly pressure`.
+
+`Current bonuses` should use compact chips so the player can see what the track is already doing without opening a tooltip. Keep the chips short: `+30 XP floor`, `+2 weekly recovery`, `+4 selection score`, `-1 weekly pressure`.
+
+When Training Setup unlocks more focus slots, the support card should state it directly as a current bonus, for example `2 focus slots`.
 
 ## Match Moment UI Direction
 
@@ -595,7 +614,9 @@ Training should feel like weekly preparation.
 Suggested screen sections:
 
 - weekly readiness
-- training focus slots
+- session quality
+- active specialist program
+- training focus slots, including current capacity
 - intensity selector
 - recovery impact
 - expected XP
@@ -607,6 +628,13 @@ Controls:
 - selectable focus chips/cards
 - sliders only if precision matters
 - clear warning when fatigue/injury risk rises
+
+Development Summary should explain why the session felt good or bad:
+
+- show quality label near the top
+- show specialist bonus separately from base XP when active
+- keep total XP and level-up progress visually primary
+- do not hide progression causes behind vague flavor text
 
 ## UI States
 

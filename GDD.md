@@ -176,6 +176,24 @@ Balance target:
 - Gen 1 should be capable of a meaningful but limited career.
 - Stronger generations should make higher leagues and higher long-term growth realistic.
 - A long career should need the full stack: generation growth profile, training choices, in-run support, recovery, club facilities, contracts and transfers.
+- Career balance should be measured as a season-by-season curve, not only as a final career total. The lab should track OVR, output, minutes, fitness, economy, support growth and league tier per season.
+
+Progression budget rule:
+
+- Training should be the main stable source of attribute growth.
+- Match XP should be meaningful feedback for good performances, but not the primary growth engine.
+- Support upgrades and club facilities should make training stronger, more reliable and less punishing on recovery.
+- If realistic match highlight volume makes progression too slow, tune training, support, facilities and XP requirements before increasing match moments.
+
+First Gen 1 calibration curve:
+
+- Season 1: around 20 OVR
+- Season 3: around 30 OVR
+- Season 5: around 40 OVR
+- Season 8: around 55 OVR
+- Season 11: around 70 OVR
+- Season 14: around 80 OVR
+- Late career: gradual plateau or decline depending on age, recovery and support.
 
 ### League Tiers
 
@@ -437,6 +455,42 @@ Training skal altid have tradeoffs:
 - forbedre svagheder vs specialisere styrker
 - risiko for skade vs hurtigere progression
 
+### Specialist Programs
+
+Specialist programs are active weekly training setups that make the player's development direction more intentional.
+
+V1 specialist groups:
+
+- Finishing coach: Finishing and Composure.
+- Movement coach: Off Ball, Acceleration and Pace.
+- Technical coach: First Touch, Dribbling and Passing.
+- Strength coach: Strength, Heading and Stamina.
+- Mental coach: Work Rate, Positioning and Composure.
+
+Core rule:
+
+`Specialists should make the chosen focus feel sharper, not replace the need for good facilities, recovery and repeated training.`
+
+### Training Quality
+
+Every weekly session should have a quality outcome:
+
+- Poor
+- Solid
+- Sharp
+- Breakthrough
+
+Training quality is influenced by:
+
+- fitness/readiness
+- morale
+- pressure
+- club facilities
+- nutrition/recovery support
+- training and recovery breakthroughs
+
+Quality modifies XP range and should be visible in the Training screen and Development Summary. This gives progression a weekly emotional beat without making match highlights unrealistic.
+
 ## Fitness, Fatigue and Injuries
 
 Stamina er en permanent attribute. Fitness/readiness er en dynamisk status fra 0-100.
@@ -623,6 +677,7 @@ When a track bar reaches a breakpoint, the player earns a named breakthrough. Br
 V1 breakthrough effects:
 
 - Training breakthroughs add extra training XP floor/ceiling on top of coach levels.
+- Training breakthroughs can unlock more weekly focus slots: early careers train one stat, the first Training breakthrough supports two, and later elite setup can support three.
 - Recovery breakthroughs improve weekly recovery, training fatigue and match-action fatigue.
 - Performance breakthroughs improve match prep/selection support.
 - Career breakthroughs improve wage and signing bonus negotiation.
@@ -630,13 +685,19 @@ V1 breakthrough effects:
 
 V1 concrete investment effects:
 
-- Personal Coach: `+8 XP floor`, `+7 XP ceiling`.
+- Personal Coach: `+10 XP floor`, `+9 XP ceiling`, with training breakthroughs adding extra floor/ceiling on top.
+- Specialist Coach scaling: specialist bonus starts from club facilities, coach level and training breakthroughs, so specialist programs become more meaningful as the player invests.
 - Nutrition Plan: progress toward `+1 training fatigue relief`, using rounded diminishing returns.
-- Recovery Kit: progress toward `+1 match fatigue relief`, using rounded diminishing returns.
+- Recovery Kit: progress toward `+1 match fatigue relief` and weekly recovery, using rounded diminishing returns.
 - Match Boots: progress toward `+1 action attribute boost`; every 2 levels adds `+1` to relevant match-moment attributes such as Finishing, First Touch, Dribbling, Acceleration and Pace.
 - Video Analyst: `+2 selection score support`.
 - Better Agent: `+4% wage negotiation`, `+8% signing bonus`.
 - Lifestyle Support: progress toward `-1 weekly pressure`; every 3 levels adds pressure relief, with breakthroughs adding more.
+
+Support cards should show both:
+
+- `Next investment`: the exact change bought by the next cash spend.
+- `Current bonuses`: the current concrete effects already active from that track.
 
 Core rule:
 
@@ -652,6 +713,14 @@ Support balance lab rules:
 - Performance should improve moment execution and selection prep without replacing attributes.
 - Career should show up primarily in cash/contract outcomes.
 - Lifestyle should show pressure relief now and remain the bridge into future fame/sponsor systems.
+
+Multi-focus training rule:
+
+- Extra focus slots should be unlocked through Training Setup, not available by default.
+- The first Training breakthrough should unlock the second focus slot so the system matters early enough in a career.
+- Primary focus receives full training value.
+- Secondary and third focus slots receive reduced XP value, so they represent better training capacity rather than multiplying the entire week.
+- Specialist programs can bonus multiple selected focuses only when the active specialist actually covers those attributes.
 
 ### In-Run Economy Scaling Direction
 
@@ -768,11 +837,40 @@ Hvert forsøg bør have cooldown eller konsekvens, så kontrakter ikke bliver sp
 
 Contract V1 direction:
 
+- The starting contract should be intentionally short, so the player meets contract offers early and understands the economy loop.
 - Wage is paid weekly, so the player has continuous cash flow during the active career.
 - Match bonuses are paid after games and should be tied to the current contract.
 - Role promise should affect selection context, but not remove performance pressure.
 - Better season performance should create better renewal packages: higher weekly wage, stronger bonuses, better role promise or larger signing bonus.
 - Contract money feeds in-run economy. It should make boots, recovery, coaching, agent services and other active-career purchases feel reachable.
+
+Contract V2 direction:
+
+- Contract offers should be club-led: the club presents an offer when the current deal is expiring, or when performances make an improved deal believable.
+- Offers should be shown as a dedicated `Club offer` screen before returning to the normal career loop.
+- The offer should compare current terms against new terms: weekly wage, role promise, length, signing bonus and match bonuses.
+- The player can accept immediately or decline for now. Declining should not end the career, but leaves the player on current/expired terms until another offer is triggered.
+- If a player declines and the contract expires, the next offer should come from the contract market rather than automatically from the same club.
+- Expired-contract market offers should usually come from same-tier or lower-status clubs, with higher-tier offers reserved for strong OVR, form, prestige or agent leverage.
+- Letting a contract run down should become a valid future strategy for forcing a move, but it should carry risk: worse wages, lower role/status or less prestigious clubs can be the fallback.
+- Better Agent and Career Setup upgrades should improve wage and signing bonus negotiation, not directly create permanent power.
+- Contract offers must be part of balance lab economy because higher wages determine how quickly in-run support upgrades become reachable.
+
+## Club State
+
+Club identity must be saveable simulation state, not hardcoded UI text.
+
+Club V1 state should include:
+
+- club name
+- short name/code
+- league tier
+- squad strength
+- facility context through the league tier
+
+When the player accepts an external contract offer, the active club should update immediately. Future fixtures, league table context, match headers, season history, training facilities and selection comparisons should use the new club state.
+
+V1 can regenerate the remaining fixture list from tier templates while preserving already played results. Later transfer/league versions should replace this with true club-specific divisions, promotion/relegation, transfer windows and persistent league memberships.
 
 ## End Week Summary
 

@@ -48,7 +48,7 @@ import {
 } from "./positionRoles";
 
 type NavKey = "player" | "training" | "club" | "home";
-type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "season-review";
+type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "season-review";
 type Intensity = "Light" | "Balanced" | "Hard";
 type MatchSpeed = 1 | 2 | 4;
 type Venue = "Home" | "Away";
@@ -116,6 +116,14 @@ type LeagueTeam = {
   strength: number;
 };
 
+type ClubState = {
+  name: string;
+  shortName: string;
+  shortCode: string;
+  tierId: LeagueTierId;
+  strength: number;
+};
+
 type LeagueTier = {
   id: LeagueTierId;
   name: string;
@@ -134,6 +142,24 @@ type DevelopmentEnvironment = {
   xpFloorBonus: number;
   recoveryBonus: number;
   supportEfficiency: number;
+};
+
+type TrainingSpecialistId = "finishing" | "movement" | "technical" | "strength" | "mental";
+type TrainingQuality = "Poor" | "Solid" | "Sharp" | "Breakthrough";
+
+type TrainingSpecialist = {
+  id: TrainingSpecialistId;
+  name: string;
+  category: string;
+  attributes: AttributeKey[];
+  description: string;
+};
+
+type TrainingQualityProfile = {
+  quality: TrainingQuality;
+  xpMultiplier: number;
+  label: string;
+  description: string;
 };
 
 type LeagueTableRow = {
@@ -164,6 +190,7 @@ type DynastyState = {
 
 type Contract = {
   club: string;
+  tierId?: LeagueTierId;
   label: string;
   weeklyWage: number;
   weeksRemaining: number;
@@ -179,6 +206,8 @@ type ContractOffer = Omit<Contract, "weeksRemaining"> & {
   weeks: number;
   signingBonus: number;
   summary: string;
+  source?: "current-club" | "external-club";
+  tierId?: LeagueTierId;
 };
 
 type SupportUpgradeDefinition = {
@@ -213,11 +242,13 @@ type GameState = {
   trust: number;
   selectedFocus: AttributeKey;
   trainingFocuses: AttributeKey[];
+  trainingSpecialist: TrainingSpecialistId;
   trainingCompletedWeek: number;
   intensity: Intensity;
   attributes: Attribute[];
   seasonStats: SeasonStats;
   season: SeasonState;
+  club: ClubState;
   dynasty: DynastyState;
   dynastyHistory: DynastySeason[];
   contract: Contract;
@@ -226,6 +257,7 @@ type GameState = {
   activeMatch?: MatchState;
   lastMatch?: LastMatchSummary;
   lastTraining?: TrainingSummary;
+  contractOffer?: ContractOffer;
 };
 
 type SavePayload = {
@@ -243,6 +275,10 @@ type TrainingSummary = {
   week: number;
   focuses: AttributeKey[];
   intensity: Intensity;
+  specialist: TrainingSpecialistId;
+  quality: TrainingQuality;
+  qualityLabel: string;
+  specialistXp: Partial<Record<AttributeKey, number>>;
   ranges: Partial<Record<AttributeKey, { min: number; max: number }>>;
   xp: Partial<Record<AttributeKey, number>>;
   fitnessDelta: number;
@@ -297,6 +333,8 @@ type MatchState = {
   fixtureId: string;
   matchNumber: number;
   seasonLength: number;
+  teamName: string;
+  teamShortName: string;
   opponent: string;
   venue: Venue;
   competition: string;
@@ -375,6 +413,7 @@ type MatchResult = {
   fitnessDelta: number;
   goals: number;
   assists: number;
+  chancesCreated: number;
   xp: Partial<Record<AttributeKey, number>>;
   source?: "manual" | "auto";
 };
@@ -385,6 +424,7 @@ type MatchTotals = {
   fitnessDelta: number;
   goals: number;
   assists: number;
+  chancesCreated: number;
   teamGoals: number;
   opponentGoals: number;
   chanceQualities: ChanceQuality[];
@@ -397,6 +437,8 @@ type LastMatchSummary = MatchTotals & {
   fixtureId: string;
   matchNumber: number;
   seasonLength: number;
+  clubName: string;
+  clubShortName: string;
   opponent: string;
   venue: Venue;
   competition: string;
@@ -662,6 +704,25 @@ const currentLeagueTier = leagueTiers["grassroots-dev"];
 const currentClubName = "Northbridge FC";
 const currentClubShortName = "Northbridge";
 const currentClubStrength = 15;
+const initialClub: ClubState = {
+  name: currentClubName,
+  shortName: currentClubShortName,
+  shortCode: "NBR",
+  tierId: currentLeagueTier.id,
+  strength: currentClubStrength,
+};
+
+const contractMarketClubs: Array<{ club: string; short: string; tierId: LeagueTierId; wageFactor: number; roleBias: number }> = [
+  { club: "Northbridge FC", short: "NBR", tierId: "grassroots-dev", wageFactor: 1, roleBias: 0 },
+  { club: "Kolding Borough", short: "KOL", tierId: "grassroots-dev", wageFactor: 0.92, roleBias: 5 },
+  { club: "Roskilde Athletic", short: "ROS", tierId: "grassroots-dev", wageFactor: 0.98, roleBias: 2 },
+  { club: "Aalborg United", short: "AAL", tierId: "grassroots-dev", wageFactor: 1.04, roleBias: -1 },
+  { club: "Esbjerg Works", short: "ESB", tierId: "local-semi-pro", wageFactor: 0.9, roleBias: 4 },
+  { club: "Viborg Town", short: "VIB", tierId: "local-semi-pro", wageFactor: 1, roleBias: 0 },
+  { club: "Silkeborg City", short: "SIL", tierId: "local-semi-pro", wageFactor: 1.08, roleBias: -3 },
+  { club: "Odense Crown", short: "ODE", tierId: "regional-pro", wageFactor: 0.95, roleBias: 2 },
+  { club: "Aarhus 1902", short: "AAR", tierId: "regional-pro", wageFactor: 1.06, roleBias: -2 },
+];
 
 const seasonFixtures: Fixture[] = [
   {
@@ -786,8 +847,7 @@ const seasonFixtures: Fixture[] = [
   },
 ];
 
-const leagueTeams: LeagueTeam[] = [
-  { name: currentClubName, short: "NBR", strength: currentClubStrength },
+const baseLeagueTeams: LeagueTeam[] = [
   { name: "Aalborg United", short: "AAL", strength: 17 },
   { name: "Roskilde Athletic", short: "ROS", strength: 14 },
   { name: "Viborg Reserves", short: "VIB", strength: 21 },
@@ -801,11 +861,84 @@ const leagueTeams: LeagueTeam[] = [
   { name: "Odense Prospects", short: "ODE", strength: 20 },
 ];
 
+function createSeasonFixtures(club: ClubState): Fixture[] {
+  const tier = leagueTiers[club.tierId];
+  const strengthOffset = tier.averageOvr - leagueTiers["grassroots-dev"].averageOvr;
+  return seasonFixtures.map((fixture, index) => {
+    const isClubOpponent = fixture.opponent === club.name || fixture.opponentShort === club.shortName || fixture.opponentShort === club.shortCode;
+    const fallbackOpponent = baseLeagueTeams[(index + 1) % baseLeagueTeams.length] ?? baseLeagueTeams[0];
+    return {
+      ...fixture,
+      opponent: isClubOpponent ? fallbackOpponent.name : fixture.opponent,
+      opponentShort: isClubOpponent ? fallbackOpponent.short : fixture.opponentShort,
+      competition: fixture.competition.includes("Cup") ? `${tier.name} Cup` : tier.name,
+      opponentStrength: clamp(fixture.opponentStrength + strengthOffset, tier.teamRange[0], tier.teamRange[1]),
+    };
+  });
+}
+
+function createLeagueTeams(club: ClubState): LeagueTeam[] {
+  const tier = leagueTiers[club.tierId];
+  const strengthOffset = tier.averageOvr - leagueTiers["grassroots-dev"].averageOvr;
+  const playerTeam = {
+    name: club.name,
+    short: club.shortCode,
+    strength: club.strength,
+  };
+  const opponents = baseLeagueTeams
+    .filter((team) => team.name !== club.name && team.short !== club.shortCode)
+    .map((team) => ({
+      ...team,
+      strength: clamp(team.strength + strengthOffset, tier.teamRange[0], tier.teamRange[1]),
+    }));
+
+  return [playerTeam, ...opponents].slice(0, 12);
+}
+
+function createClubStateFromOffer(offer: ContractOffer, fallback: ClubState): ClubState {
+  const marketClub = contractMarketClubs.find((club) => club.club === offer.club);
+  const tierId = offer.tierId ?? marketClub?.tierId ?? fallback.tierId;
+  return {
+    name: offer.club,
+    shortName: getClubShortName(offer.club),
+    shortCode: marketClub?.short ?? getClubShortCode(offer.club),
+    tierId,
+    strength: getClubStrengthForTier(tierId, marketClub?.roleBias ?? 0),
+  };
+}
+
+function rebuildSeasonForClub(season: SeasonState, club: ClubState): SeasonState {
+  const nextFixtures = createSeasonFixtures(club);
+  return {
+    ...season,
+    fixtures: nextFixtures.map((fixture, index) => (index < season.fixtureIndex ? season.fixtures[index] ?? fixture : fixture)),
+  };
+}
+
+function getClubStrengthForTier(tierId: LeagueTierId, bias = 0) {
+  const tier = leagueTiers[tierId];
+  return clamp(Math.round(tier.averageOvr + bias), tier.teamRange[0], tier.teamRange[1]);
+}
+
+function getClubShortName(name: string) {
+  return name.replace(/\s+(FC|United|Athletic|Borough|Works|Town|City|Crown|1902)$/i, "").split(" ")[0] || name;
+}
+
+function getClubShortCode(name: string) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+}
+
 const initialContract: Contract = {
-  club: currentClubName,
-  label: "Grassroots terms",
+  club: initialClub.name,
+  tierId: initialClub.tierId,
+  label: "Trial terms",
   weeklyWage: 45,
-  weeksRemaining: 12,
+  weeksRemaining: 4,
   rolePromise: "Impact Sub",
   appearanceBonus: 8,
   goalBonus: 18,
@@ -927,6 +1060,49 @@ const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgr
 
 const bootsActionAttributes: AttributeKey[] = ["Finishing", "First Touch", "Dribbling", "Acceleration", "Pace"];
 
+const trainingSpecialists: TrainingSpecialist[] = [
+  {
+    id: "finishing",
+    name: "Finishing coach",
+    category: "Scoring",
+    attributes: ["Finishing", "Composure"],
+    description: "Extra finishing and calmness work for chances inside the box.",
+  },
+  {
+    id: "movement",
+    name: "Movement coach",
+    category: "Separation",
+    attributes: ["Off Ball", "Acceleration", "Pace"],
+    description: "Builds timing, first steps and runs that create better attacking positions.",
+  },
+  {
+    id: "technical",
+    name: "Technical coach",
+    category: "Touch",
+    attributes: ["First Touch", "Dribbling", "Passing"],
+    description: "Improves control, carrying and link play under pressure.",
+  },
+  {
+    id: "strength",
+    name: "Strength coach",
+    category: "Duels",
+    attributes: ["Strength", "Heading", "Stamina"],
+    description: "Develops physical contests, aerial work and durability.",
+  },
+  {
+    id: "mental",
+    name: "Mental coach",
+    category: "Decision",
+    attributes: ["Work Rate", "Positioning", "Composure"],
+    description: "Sharpens habits, defensive awareness and pressure decisions.",
+  },
+];
+
+const trainingSpecialistMap = Object.fromEntries(trainingSpecialists.map((specialist) => [specialist.id, specialist])) as Record<
+  TrainingSpecialistId,
+  TrainingSpecialist
+>;
+
 const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
   boots: 0,
   recovery: 0,
@@ -950,6 +1126,7 @@ const initialState: GameState = {
   trust: 38,
   selectedFocus: "Finishing",
   trainingFocuses: ["Finishing"],
+  trainingSpecialist: "finishing",
   trainingCompletedWeek: 0,
   intensity: "Balanced",
   attributes: createGenerationAttributes(1),
@@ -963,9 +1140,10 @@ const initialState: GameState = {
   season: {
     season: 1,
     fixtureIndex: 0,
-    fixtures: seasonFixtures,
+    fixtures: createSeasonFixtures(initialClub),
     results: [],
   },
+  club: initialClub,
   dynasty: initialDynasty,
   dynastyHistory: [],
   contract: initialContract,
@@ -993,9 +1171,11 @@ function cloneGameState(state: GameState): GameState {
       fixtures: state.season.fixtures.map((fixture) => ({ ...fixture })),
       results: state.season.results.map((result) => ({ ...result })),
     },
+    club: { ...state.club },
     dynasty: { ...state.dynasty },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
     contract: { ...state.contract },
+    contractOffer: state.contractOffer ? { ...state.contractOffer } : undefined,
     supportUpgrades: { ...state.supportUpgrades },
     activeMatch: undefined,
     lastMatch: state.lastMatch ? cloneLastMatchSummary(state.lastMatch) : undefined,
@@ -1009,6 +1189,10 @@ function cloneTrainingSummary(summary: TrainingSummary): TrainingSummary {
     focuses: [...summary.focuses],
     ranges: { ...summary.ranges },
     xp: { ...summary.xp },
+    specialistXp: { ...(summary.specialistXp ?? {}) },
+    specialist: summary.specialist ?? "finishing",
+    quality: summary.quality ?? "Solid",
+    qualityLabel: summary.qualityLabel ?? "Solid session",
     levelUps: summary.levelUps.map((levelUp) => ({ ...levelUp })),
   };
 }
@@ -1048,6 +1232,7 @@ function loadSavedGame(): GameState {
 
 function normalizeSavedGame(saved: GameState): GameState {
   const fallback = createInitialState();
+  const savedClub = normalizeSavedClub(saved.club, saved.contract);
   return {
     ...fallback,
     ...saved,
@@ -1062,18 +1247,47 @@ function normalizeSavedGame(saved: GameState): GameState {
     season: {
       ...fallback.season,
       ...saved.season,
-      fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : fallback.season.fixtures,
+      fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : createSeasonFixtures(savedClub),
       results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
     },
+    club: savedClub,
     dynasty: { ...fallback.dynasty, ...(saved.dynasty ?? {}) },
     dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
+    contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
     supportUpgrades: { ...fallback.supportUpgrades, ...(saved.supportUpgrades ?? {}) },
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
+    trainingSpecialist: saved.trainingSpecialist ?? fallback.trainingSpecialist,
     activeMatch: undefined,
     lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
     lastTraining: saved.lastTraining ? cloneTrainingSummary(saved.lastTraining) : undefined,
   };
+}
+
+function normalizeSavedClub(savedClub?: ClubState, savedContract?: Contract): ClubState {
+  if (savedClub?.name && savedClub?.tierId) {
+    return {
+      ...initialClub,
+      ...savedClub,
+      shortName: savedClub.shortName ?? getClubShortName(savedClub.name),
+      shortCode: savedClub.shortCode ?? getClubShortCode(savedClub.name),
+      strength: savedClub.strength ?? leagueTiers[savedClub.tierId].averageOvr,
+    };
+  }
+
+  if (savedContract?.club) {
+    const marketClub = contractMarketClubs.find((club) => club.club === savedContract.club);
+    const tierId = savedContract.tierId ?? marketClub?.tierId ?? initialClub.tierId;
+    return {
+      name: savedContract.club,
+      shortName: getClubShortName(savedContract.club),
+      shortCode: marketClub?.short ?? getClubShortCode(savedContract.club),
+      tierId,
+      strength: getClubStrengthForTier(tierId, marketClub?.roleBias ?? 0),
+    };
+  }
+
+  return { ...initialClub };
 }
 
 function mergeSavedAttributes(savedAttributes: Attribute[]) {
@@ -1122,6 +1336,7 @@ function App() {
     activeScreen === "summary" ||
     activeScreen === "training-summary" ||
     activeScreen === "week-summary" ||
+    activeScreen === "contract-offer" ||
     activeScreen === "season-review"
       ? undefined
       : activeScreen;
@@ -1140,9 +1355,13 @@ function App() {
       : activeScreen === "training-summary"
         ? "Continue Career"
       : activeScreen === "week-summary"
-        ? seasonComplete
-          ? "Season Review"
-          : "Next Week"
+        ? game.contractOffer
+          ? "Contract"
+          : seasonComplete
+            ? "Season Review"
+            : "Next Week"
+      : activeScreen === "contract-offer"
+        ? "Accept Offer"
       : activeScreen === "season-review"
         ? "Next Season"
         : activeScreen === "training" && needsTraining
@@ -1218,12 +1437,28 @@ function App() {
   }, [activeScreen, game.activeMatch, matchSpeed]);
 
   function setTrainingFocus(focus: AttributeKey) {
-    setGame((state) => ({
-      ...state,
-      trainingFocuses: [focus],
-      selectedFocus: focus,
-      lastEvent: `${focus} selected for this week's training.`,
-    }));
+    setGame((state) => {
+      const capacity = getTrainingFocusCapacity(state);
+      const currentFocuses = getCurrentTrainingFocuses(state);
+      const alreadySelected = currentFocuses.includes(focus);
+      const nextFocuses = alreadySelected
+        ? currentFocuses.length > 1
+          ? currentFocuses.filter((item) => item !== focus)
+          : currentFocuses
+        : capacity <= 1
+          ? [focus]
+          : [...currentFocuses, focus].slice(0, capacity);
+
+      return {
+        ...state,
+        trainingFocuses: nextFocuses,
+        selectedFocus: nextFocuses[0] ?? focus,
+        lastEvent:
+          capacity > 1
+            ? `${nextFocuses.join(", ")} selected for this week's training.`
+            : `${focus} selected for this week's training.`,
+      };
+    });
   }
 
   function setIntensity(intensity: Intensity) {
@@ -1231,6 +1466,14 @@ function App() {
       ...state,
       intensity,
       lastEvent: `${intensity} intensity selected.`,
+    }));
+  }
+
+  function setTrainingSpecialist(specialist: TrainingSpecialistId) {
+    setGame((state) => ({
+      ...state,
+      trainingSpecialist: specialist,
+      lastEvent: `${trainingSpecialistMap[specialist].name} assigned to this week's training.`,
     }));
   }
 
@@ -1267,6 +1510,11 @@ function App() {
 
     if (activeScreen === "season-review") {
       startNextSeason();
+      return;
+    }
+
+    if (activeScreen === "contract-offer") {
+      acceptContractOffer();
       return;
     }
 
@@ -1492,7 +1740,7 @@ function App() {
   }
 
   function closeWeekSummary() {
-    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
+    setActiveScreen(game.contractOffer ? "contract-offer" : isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
   function closeTrainingSummary() {
@@ -1502,6 +1750,20 @@ function App() {
   function startNextSeason() {
     setGame((state) => startNextSeasonState(state));
     setActiveScreen("player");
+  }
+
+  function acceptContractOffer() {
+    setGame((state) => acceptContractOfferState(state));
+    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
+  }
+
+  function declineContractOffer() {
+    setGame((state) => ({
+      ...state,
+      contractOffer: undefined,
+      lastEvent: "Contract offer declined. The club may return with terms later.",
+    }));
+    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
   function buySupportUpgrade(upgradeId: SupportUpgradeId) {
@@ -1534,6 +1796,7 @@ function App() {
               game={game}
               onIntensityChange={setIntensity}
               onFocusChange={setTrainingFocus}
+              onSpecialistChange={setTrainingSpecialist}
             />
           )}
           {activeScreen === "club" && <ClubScreen game={game} />}
@@ -1569,6 +1832,13 @@ function App() {
             />
           )}
           {activeScreen === "week-summary" && <WeekSummaryScreen game={game} />}
+          {activeScreen === "contract-offer" && game.contractOffer && (
+            <ContractOfferScreen
+              current={game.contract}
+              offer={game.contractOffer}
+              onDecline={declineContractOffer}
+            />
+          )}
           {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}
         </div>
 
@@ -1751,7 +2021,7 @@ function Header({ game }: { game: GameState }) {
         </div>
         <div className="club-chip">
           <span className="club-dot" />
-          {currentClubName}
+          {game.club.name}
         </div>
       </div>
 
@@ -2033,7 +2303,7 @@ function NextActionCard({ game }: { game: GameState }) {
             {seasonComplete
               ? "Review season"
               : !needsTraining && isMatchDay && upcomingMatch
-              ? formatFixtureTitle(upcomingMatch.venue, upcomingMatch.opponentShort)
+              ? formatFixtureTitle(upcomingMatch.venue, upcomingMatch.opponentShort, game.club.shortName)
               : needsTraining
                 ? "Complete weekly training"
                 : "Ready for next week"}
@@ -2217,6 +2487,7 @@ function RelationshipsCard({ game }: { game: GameState }) {
 function ContractMarketCard({ game }: { game: GameState }) {
   const marketValue = 18 + Math.round((calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights) - 50) * 2.5) + game.seasonStats.goals * 2;
   const contract = game.contract;
+  const status = getContractStatusLabel(game);
 
   return (
     <section className="card contract-card">
@@ -2240,14 +2511,83 @@ function ContractMarketCard({ game }: { game: GameState }) {
       <div className="next-grid">
         <InfoTile label="Left" value={`${contract.weeksRemaining} wks`} />
         <InfoTile label="Goal bonus" value={`+$${contract.goalBonus}`} tone="gold" />
+        <InfoTile label="Status" value={status} tone={game.contractOffer ? "good" : contract.weeksRemaining <= 1 ? "warn" : undefined} />
+      </div>
+      <div className="next-grid">
+        <InfoTile label="Appearance" value={`+$${contract.appearanceBonus}`} />
+        <InfoTile label="Assist" value={`+$${contract.assistBonus}`} />
         <InfoTile label="Market" value={`$${marketValue}k`} />
       </div>
       <div className="match-hint">
         <Activity size={16} />
         <span>
-          {game.prestige > 20 ? "Regional interest is building." : "Local interest. Strong output can improve the next package."}
+          {game.contractOffer
+            ? game.contractOffer.source === "external-club"
+              ? `${game.contractOffer.club} has made an offer.`
+              : "The club has new terms ready for you."
+            : game.prestige > 20
+              ? "Regional interest is building."
+              : "Local interest. Strong output can improve the next package."}
         </span>
       </div>
+    </section>
+  );
+}
+
+function ContractOfferScreen({
+  current,
+  offer,
+  onDecline,
+}: {
+  current: Contract;
+  offer: ContractOffer;
+  onDecline: () => void;
+}) {
+  return (
+    <section className="simple-screen contract-offer-screen">
+      <ScreenTitle label={offer.source === "external-club" ? "Contract market" : "Club offer"} title={offer.title} />
+
+      <div className="card contract-offer-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">{offer.club}</span>
+            <h2>{offer.label}</h2>
+          </div>
+          <BadgeDollarSign size={19} />
+        </div>
+        <div className="contract-hero">
+          <div>
+            <span>Weekly wage</span>
+            <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
+          </div>
+          <div>
+            <span>Role promise</span>
+            <strong>{offer.rolePromise}</strong>
+          </div>
+        </div>
+        <div className="stat-grid">
+          <InfoTile label="Length" value={`${offer.weeks} wks`} />
+          <InfoTile label="Signing" value={`+$${offer.signingBonus}`} tone="good" />
+          <InfoTile label="Appearance" value={`+$${offer.appearanceBonus}`} />
+          <InfoTile label="Goal" value={`+$${offer.goalBonus}`} tone="gold" />
+          <InfoTile label="Assist" value={`+$${offer.assistBonus}`} />
+          <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
+        </div>
+        <p>{offer.summary}</p>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Current deal</span>
+        <div className="next-grid">
+          <InfoTile label="Wage" value={`$${current.weeklyWage}`} />
+          <InfoTile label="Left" value={`${current.weeksRemaining} wks`} />
+          <InfoTile label="Role" value={current.rolePromise} />
+        </div>
+      </div>
+
+      <button className="secondary-action" type="button" onClick={onDecline}>
+        Decline for now
+      </button>
     </section>
   );
 }
@@ -2280,18 +2620,26 @@ function TrainingScreen({
   game,
   onIntensityChange,
   onFocusChange,
+  onSpecialistChange,
 }: {
   game: GameState;
   onIntensityChange: (intensity: Intensity) => void;
   onFocusChange: (focus: AttributeKey) => void;
+  onSpecialistChange: (specialist: TrainingSpecialistId) => void;
 }) {
   const [detailAttribute, setDetailAttribute] = useState<AttributeKey | undefined>(undefined);
   const projected = getTrainingProjection(game);
-  const focus = getCurrentTrainingFocuses(game)[0];
+  const focuses = getCurrentTrainingFocuses(game);
+  const focus = focuses[0];
   const focusRange = projected.ranges[focus];
+  const activeSpecialist = trainingSpecialistMap[game.trainingSpecialist] ?? trainingSpecialistMap.finishing;
+  const specialistBonusTotal = sumXp(projected.specialistXp);
   const detailInfo = detailAttribute ? attributeInfo[detailAttribute] : undefined;
+  const detailStat = detailAttribute ? game.attributes.find((attribute) => attribute.label === detailAttribute) : undefined;
+  const detailGrowth = detailStat ? getAttributeGrowthDetail(game, detailStat) : undefined;
   const positionModule = getPositionModule(game.positionGroup);
-  const environment = getDevelopmentEnvironment(currentLeagueTier);
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(game.club));
+  const focusCapacity = getTrainingFocusCapacity(game);
 
   return (
     <section className="simple-screen">
@@ -2305,6 +2653,9 @@ function TrainingScreen({
           <Dumbbell size={19} />
         </div>
         <InfoRow label="Facilities" value={`Lv ${environment.facilityLevel} - ${Math.round(environment.xpMultiplier * 100)}% XP`} />
+        <InfoRow label="Focus slots" value={`${focuses.length}/${focusCapacity} active`} />
+        <InfoRow label="Session quality" value={projected.qualityLabel} />
+        <InfoRow label="Specialist" value={specialistBonusTotal > 0 ? `+${specialistBonusTotal} XP` : activeSpecialist.name} />
         <ProgressRow label="Readiness" value={game.fitness} accent="lime" />
         <ProgressRow
           label={`${focus} XP range`}
@@ -2316,14 +2667,40 @@ function TrainingScreen({
       </div>
 
       <div className="card training-slot-card">
-        <span className="metric-label">Stat focus</span>
+        <span className="metric-label">Specialist program</span>
+        <div className="specialist-grid">
+          {trainingSpecialists.map((specialist) => {
+            const isActive = game.trainingSpecialist === specialist.id;
+            const isRelevant = specialist.attributes.includes(focus);
+            return (
+              <button
+                className={`specialist-button ${isActive ? "is-active" : ""}`}
+                key={specialist.id}
+                type="button"
+                onClick={() => onSpecialistChange(specialist.id)}
+              >
+                <span>{specialist.name}</span>
+                <strong>{isRelevant ? "Bonus active" : specialist.category}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="card training-slot-card">
+        <div className="training-focus-heading">
+          <span className="metric-label">Stat focus</span>
+          <strong>{getTrainingFocusUnlockLabel(game)}</strong>
+        </div>
         <div className="training-stat-grid">
           {game.attributes.map((attribute) => {
             const info = attributeInfo[attribute.label];
             const isKeyAttribute = positionModule.keyAttributes.includes(attribute.label);
+            const focusIndex = focuses.indexOf(attribute.label);
+            const isFocused = focusIndex >= 0;
             return (
               <div
-                className={`stat-focus-button ${focus === attribute.label ? "is-active" : ""} ${isKeyAttribute ? "is-key" : ""}`}
+                className={`stat-focus-button ${isFocused ? "is-active" : ""} ${isKeyAttribute ? "is-key" : ""}`}
                 key={attribute.label}
                 role="button"
                 tabIndex={0}
@@ -2338,6 +2715,7 @@ function TrainingScreen({
                 <span className="stat-focus-name">{attribute.label}</span>
                 <span className="stat-focus-value">{attribute.value}</span>
                 <small>{info.group}</small>
+                {isFocused && <em className="focus-slot-pill">{focusIndex === 0 ? "Main" : `Slot ${focusIndex + 1}`}</em>}
                 <button
                   className="stat-info-button"
                   type="button"
@@ -2355,7 +2733,7 @@ function TrainingScreen({
         </div>
       </div>
 
-      {detailAttribute && detailInfo && (
+      {detailAttribute && detailInfo && detailStat && detailGrowth && (
         <div className="modal-backdrop" role="presentation" onClick={() => setDetailAttribute(undefined)}>
           <div className="attribute-modal" role="dialog" aria-modal="true" aria-label={`${detailAttribute} details`} onClick={(event) => event.stopPropagation()}>
             <div className="section-heading">
@@ -2367,10 +2745,47 @@ function TrainingScreen({
                 x
               </button>
             </div>
+            <div className="attribute-detail-hero">
+              <div>
+                <span>Current level</span>
+                <strong>{detailStat.value}</strong>
+              </div>
+              <div>
+                <span>XP to next</span>
+                <strong>{detailGrowth.xpToNext}</strong>
+              </div>
+              <div>
+                <span>Growth</span>
+                <b className={`growth-pill tone-${detailGrowth.pressure.tone}`}>{detailGrowth.pressure.label}</b>
+              </div>
+            </div>
             <p>{detailInfo.description}</p>
+            <div className="attribute-detail-meter">
+              <div className="xp-meter-labels">
+                <span>{detailStat.xp}/{detailGrowth.requirement} XP</span>
+                <strong>{Math.round(detailGrowth.progress)}%</strong>
+              </div>
+              <div className="xp-meter-track" aria-label={`${detailAttribute} XP to next level`}>
+                <span className="xp-meter-fill" style={{ "--xp-to": `${detailGrowth.progress}%`, "--xp-from": "0%", "--xp-gain": "0%", "--xp-split": "100%" } as CSSProperties} />
+              </div>
+            </div>
+            <div className="attribute-breakdown-grid">
+              <InfoTile label="Base requirement" value={`${detailGrowth.baseRequirement} XP`} />
+              <InfoTile label="Growth pressure" value={`x${detailGrowth.pressure.multiplier.toFixed(2)}`} tone={detailGrowth.pressure.tone === "fast" ? "good" : detailGrowth.pressure.tone === "normal" ? undefined : "gold"} />
+              <InfoTile label="Profile marker" value={`${detailStat.potential}`} />
+              <InfoTile label="Selected range" value={detailGrowth.trainingRange} tone={detailGrowth.isSelected ? "good" : undefined} />
+            </div>
             <div className="attribute-modal-impact">
               <span>Affects</span>
               <strong>{detailInfo.affects}</strong>
+            </div>
+            <div className="attribute-modal-impact">
+              <span>Active modifiers</span>
+              <strong>{detailGrowth.modifiers.join(" / ")}</strong>
+            </div>
+            <div className="attribute-modal-impact">
+              <span>How to improve growth</span>
+              <strong>{detailGrowth.improvementTips.join(" / ")}</strong>
             </div>
           </div>
         </div>
@@ -2407,8 +2822,8 @@ function MatchScoreHeader({
   teamGoals: number;
   opponentGoals: number;
 }) {
-  const homeName = match.venue === "Home" ? currentClubShortName : match.opponent;
-  const awayName = match.venue === "Home" ? match.opponent : currentClubShortName;
+  const homeName = match.venue === "Home" ? match.teamShortName : match.opponent;
+  const awayName = match.venue === "Home" ? match.opponent : match.teamShortName;
   const homeGoals = match.venue === "Home" ? teamGoals : opponentGoals;
   const awayGoals = match.venue === "Home" ? opponentGoals : teamGoals;
 
@@ -2428,8 +2843,8 @@ function MatchScoreHeader({
 }
 
 function SummaryScoreHeader({ summary }: { summary: LastMatchSummary }) {
-  const homeName = summary.venue === "Home" ? currentClubShortName : summary.opponent;
-  const awayName = summary.venue === "Home" ? summary.opponent : currentClubShortName;
+  const homeName = summary.venue === "Home" ? summary.clubShortName : summary.opponent;
+  const awayName = summary.venue === "Home" ? summary.opponent : summary.clubShortName;
   const homeGoals = summary.venue === "Home" ? summary.teamGoals : summary.opponentGoals;
   const awayGoals = summary.venue === "Home" ? summary.opponentGoals : summary.teamGoals;
 
@@ -2661,7 +3076,7 @@ function MatchMomentScreen({
           ) : (
               <div className="timeline-item">
                 <strong>0'</strong>
-                <span>Kickoff. {currentClubShortName} settle into shape.</span>
+                <span>Kickoff. {match.teamShortName} settle into shape.</span>
               </div>
             )}
           </div>
@@ -2727,6 +3142,7 @@ function MatchMomentScreen({
         <div className="stat-grid">
           <InfoTile label="Goals" value={`${totals.goals}`} tone={totals.goals > 0 ? "gold" : undefined} />
           <InfoTile label="Assists" value={`${totals.assists}`} />
+          <InfoTile label="Chances" value={`${totals.chancesCreated}`} tone={totals.chancesCreated > 0 ? "good" : undefined} />
           <InfoTile label="Trust" value={`${totals.trustDelta > 0 ? "+" : ""}${totals.trustDelta}`} />
           <InfoTile label="Rating" value={totals.rating.toFixed(1)} tone="gold" />
         </div>
@@ -2816,6 +3232,7 @@ function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute
         <div className="summary-output">
           <InfoTile label="Goals" value={`${summary.goals}`} tone={summary.goals > 0 ? "gold" : undefined} />
           <InfoTile label="Assists" value={`${summary.assists}`} />
+          <InfoTile label="Chances" value={`${summary.chancesCreated}`} tone={summary.chancesCreated > 0 ? "good" : undefined} />
         </div>
       </div>
 
@@ -3027,7 +3444,7 @@ function SeasonReviewScreen({ game }: { game: GameState }) {
 
       <div className="card season-review-hero">
         <div>
-          <span className="metric-label">{currentClubName}</span>
+          <span className="metric-label">{game.contract.club}</span>
           <h2>{review.tablePosition}. place</h2>
           <p>
             {review.record.wins}-{review.record.draws}-{review.record.losses}, {review.record.points} pts
@@ -3201,6 +3618,8 @@ function TrainingSummaryScreen({
         <span className="metric-label">Session completed</span>
         <div className="chip-row">
           <span className="soft-chip">{summary.intensity} intensity</span>
+          <span className="soft-chip">{summary.qualityLabel}</span>
+          <span className="soft-chip">{trainingSpecialistMap[summary.specialist]?.name ?? "Specialist program"}</span>
           {summary.focuses.map((focus) => {
             const range = summary.ranges[focus];
             return (
@@ -3217,6 +3636,28 @@ function TrainingSummaryScreen({
           ))}
         </div>
       </div>
+
+      {sumXp(summary.specialistXp) > 0 && (
+        <div className="card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Specialist bonus</span>
+              <h2>{trainingSpecialistMap[summary.specialist]?.name ?? "Program impact"}</h2>
+            </div>
+            <Sparkles size={19} />
+          </div>
+          <div className="xp-list">
+            {Object.entries(summary.specialistXp)
+              .filter(([, value]) => (value ?? 0) > 0)
+              .map(([attribute, value]) => (
+                <div className="xp-item" key={`${attribute}-specialist`}>
+                  <span>{attribute}</span>
+                  <strong>+{value}</strong>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="section-heading">
@@ -3261,21 +3702,22 @@ function ClubScreen({ game }: { game: GameState }) {
   const outlook = strengthGap >= 4 ? "Favorable" : strengthGap <= -4 ? "Difficult" : "Balanced";
   const record = getSeasonRecord(game.season.results);
   const goals = getSeasonGoals(game.season.results);
-  const table = getLeagueTable(game.season);
+  const table = getLeagueTable(game);
+  const leagueTier = getClubLeagueTier(game.club);
 
   if (clubView === "fixtures") {
     return <ClubFixturesView game={game} onBack={() => setClubView("overview")} />;
   }
 
   if (clubView === "table") {
-    return <ClubTableView season={game.season} onBack={() => setClubView("overview")} />;
+    return <ClubTableView game={game} onBack={() => setClubView("overview")} />;
   }
 
   return (
     <section className="simple-screen">
-      <ScreenTitle label="Club" title={currentClubName} />
+      <ScreenTitle label="Club" title={game.club.name} />
       <div className="card">
-        <InfoRow label="League tier" value={currentLeagueTier.name} />
+        <InfoRow label="League tier" value={leagueTier.name} />
         <InfoRow label="Squad role" value={upcomingMatch?.playerRole ?? "Season Review"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
         <ProgressRow label="Team form" value={getTeamFormScore(game.season.results)} display={getRecentFormText(game.season.results)} accent="neutral" />
@@ -3310,11 +3752,11 @@ function ClubScreen({ game }: { game: GameState }) {
         <div className="section-heading">
           <div>
             <span className="metric-label">League table</span>
-            <h2>{currentLeagueTier.name}</h2>
+            <h2>{leagueTier.name}</h2>
           </div>
           <Trophy size={19} />
         </div>
-        <LeagueTablePreview table={table} />
+        <LeagueTablePreview table={table} playerClubShort={game.club.shortCode} />
       </button>
       <div className="card split-card">
         <div>
@@ -3397,15 +3839,15 @@ function FixturePreviewList({ season }: { season: SeasonState }) {
   );
 }
 
-function LeagueTablePreview({ table }: { table: LeagueTableRow[] }) {
-  const northbridgeIndex = table.findIndex((row) => row.short === "NBR");
-  const start = clamp(northbridgeIndex - 1, 0, Math.max(0, table.length - 4));
+function LeagueTablePreview({ table, playerClubShort }: { table: LeagueTableRow[]; playerClubShort: string }) {
+  const playerClubIndex = table.findIndex((row) => row.short === playerClubShort);
+  const start = clamp(playerClubIndex - 1, 0, Math.max(0, table.length - 4));
   const rows = table.slice(start, start + 4);
 
   return (
     <div className="league-table mini-table">
       {rows.map((row) => (
-        <LeagueTableRowView compact key={row.short} row={row} />
+        <LeagueTableRowView compact key={row.short} row={row} playerClubShort={playerClubShort} />
       ))}
     </div>
   );
@@ -3449,8 +3891,8 @@ function ClubFixturesView({ game, onBack }: { game: GameState; onBack: () => voi
   );
 }
 
-function ClubTableView({ season, onBack }: { season: SeasonState; onBack: () => void }) {
-  const table = getLeagueTable(season);
+function ClubTableView({ game, onBack }: { game: GameState; onBack: () => void }) {
+  const table = getLeagueTable(game);
 
   return (
     <section className="simple-screen club-detail-screen">
@@ -3465,7 +3907,7 @@ function ClubTableView({ season, onBack }: { season: SeasonState; onBack: () => 
         </div>
         <div className="league-table">
           {table.map((row) => (
-            <LeagueTableRowView key={row.short} row={row} />
+            <LeagueTableRowView key={row.short} row={row} playerClubShort={game.club.shortCode} />
           ))}
         </div>
       </div>
@@ -3504,9 +3946,9 @@ function DetailHeader({ label, title, onBack }: { label: string; title: string; 
   );
 }
 
-function LeagueTableRowView({ row, compact = false }: { row: LeagueTableRow; compact?: boolean }) {
+function LeagueTableRowView({ row, compact = false, playerClubShort = initialClub.shortCode }: { row: LeagueTableRow; compact?: boolean; playerClubShort?: string }) {
   return (
-    <div className={`table-row ${row.short === "NBR" ? "is-player-club" : ""} ${compact ? "compact" : ""}`}>
+    <div className={`table-row ${row.short === playerClubShort ? "is-player-club" : ""} ${compact ? "compact" : ""}`}>
       <span>{row.position}</span>
       <strong>{compact ? row.short : row.name}</strong>
       {!compact && <em>{row.played}</em>}
@@ -3693,6 +4135,7 @@ function SupportTrackCard({
   const nextPurchase = getNextSupportTrackPurchase(game, track);
   const canBuy = Boolean(nextPurchase && cash >= nextPurchase.cost);
   const impactLine = nextPurchase ? getSupportInvestmentImpactLine(game, track, nextPurchase.upgrade.id) : "All effects unlocked";
+  const currentBonuses = getSupportTrackCurrentBonusLines(game, track);
 
   return (
     <div className={`card support-upgrade-card support-track-card ${progress.maxed ? "is-maxed" : ""}`}>
@@ -3709,6 +4152,14 @@ function SupportTrackCard({
       <div className="support-impact-line">
         <span>Next investment</span>
         <strong>{impactLine}</strong>
+      </div>
+      <div className="support-current-bonuses">
+        <span>Current bonuses</span>
+        <div>
+          {currentBonuses.map((bonus) => (
+            <strong key={bonus}>{bonus}</strong>
+          ))}
+        </div>
       </div>
       <div className="support-breakthrough-row">
         <span>{progress.nextName}</span>
@@ -4071,10 +4522,15 @@ function getSupportInvestmentImpactLine(state: GameState, track: SupportTrackDef
   const breakthroughDelta = afterBreakthroughs - beforeBreakthroughs;
 
   if (upgradeId === "coach") {
-    const beforeFloor = getTrainingXpFloorBonus(currentLevel) + beforeBreakthroughs * 5;
-    const afterFloor = getTrainingXpFloorBonus(currentLevel + 1) + afterBreakthroughs * 5;
-    const beforeCeiling = getTrainingXpCeilingBonus(currentLevel) + beforeBreakthroughs * 9;
-    const afterCeiling = getTrainingXpCeilingBonus(currentLevel + 1) + afterBreakthroughs * 9;
+    const beforeCapacity = getTrainingFocusCapacity(state);
+    const afterCapacity = getTrainingFocusCapacity(nextState);
+    if (afterCapacity > beforeCapacity) {
+      return `Unlock ${afterCapacity} training focus slots`;
+    }
+    const beforeFloor = getTrainingXpFloorBonus(currentLevel) + beforeBreakthroughs * 8;
+    const afterFloor = getTrainingXpFloorBonus(currentLevel + 1) + afterBreakthroughs * 8;
+    const beforeCeiling = getTrainingXpCeilingBonus(currentLevel) + beforeBreakthroughs * 12;
+    const afterCeiling = getTrainingXpCeilingBonus(currentLevel + 1) + afterBreakthroughs * 12;
     return `+${afterFloor - beforeFloor} XP floor, +${afterCeiling - beforeCeiling} XP ceiling`;
   }
 
@@ -4115,6 +4571,45 @@ function getSupportInvestmentImpactLine(state: GameState, track: SupportTrackDef
   return "Small support improvement";
 }
 
+function getSupportTrackCurrentBonusLines(state: GameState, track: SupportTrackDefinition) {
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const breakthroughs = getSupportTrackBreakthroughCount(state, track.id);
+
+  if (track.id === "training") {
+    const coachLevel = getSupportLevel(state, "coach") * environment.supportEfficiency;
+    const floor = getTrainingXpFloorBonus(coachLevel) + breakthroughs * 8;
+    const ceiling = getTrainingXpCeilingBonus(coachLevel) + breakthroughs * 12;
+    const specialist = getSpecialistBaseXpBonus(state, environment);
+    return [`${getTrainingFocusCapacity(state)} focus slot${getTrainingFocusCapacity(state) > 1 ? "s" : ""}`, `+${floor} XP floor`, `+${ceiling} XP ceiling`, `+${specialist} specialist XP`];
+  }
+
+  if (track.id === "recovery") {
+    const recoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
+    const nutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+    return [
+      `+${getWeeklySupportRecoveryBonus(recoveryLevel, nutritionLevel)} weekly recovery`,
+      `+${getTrainingFatigueRelief(nutritionLevel)} training relief`,
+      `+${getMatchActionRecoveryRelief(recoveryLevel) + getRecoveryBreakthroughRelief(breakthroughs)} match relief`,
+    ];
+  }
+
+  if (track.id === "performance") {
+    const analystSupport = getSupportLevel(state, "analyst") * 2 + breakthroughs * 2;
+    return [`+${getBootsActionBoost(getSupportLevel(state, "boots"))} action attributes`, `+${analystSupport} selection score`];
+  }
+
+  if (track.id === "career") {
+    const agentLevel = getSupportLevel(state, "agent");
+    return [`+${formatPercentDelta(agentLevel * 4 + breakthroughs * 3.5)} wage`, `+${formatPercentDelta(agentLevel * 8 + breakthroughs * 6)} signing bonus`];
+  }
+
+  if (track.id === "lifestyle") {
+    return [`-${getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), breakthroughs)} weekly pressure`, "Sponsor-ready later"];
+  }
+
+  return ["No active bonus yet"];
+}
+
 function formatPercentDelta(value: number) {
   return `${Number(value.toFixed(1))}%`;
 }
@@ -4128,31 +4623,31 @@ function getSupportLevel(state: GameState, upgradeId: SupportUpgradeId) {
 }
 
 function getTrainingXpFloorBonus(level: number) {
-  return Math.round(level * 8);
+  return Math.round(level * 10);
 }
 
 function getTrainingXpCeilingBonus(level: number) {
-  return Math.round(level * 7);
+  return Math.round(level * 9);
 }
 
 function getTrainingFatigueRelief(level: number) {
-  return Math.min(9, Math.round(level * 0.7));
+  return Math.min(10, Math.round(level * 0.78));
 }
 
 function getRecoverySessionBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(24, Math.round(recoveryLevel * 2 + nutritionLevel * 0.75));
+  return Math.min(26, Math.round(recoveryLevel * 2.2 + nutritionLevel * 0.9));
 }
 
 function getWeeklySupportRecoveryBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(7, Math.round(recoveryLevel * 0.45 + nutritionLevel * 0.65));
+  return Math.min(9, Math.round(recoveryLevel * 0.55 + nutritionLevel * 0.75));
 }
 
 function getMatchActionRecoveryRelief(level: number) {
-  return Math.min(6, Math.round(level * 0.45));
+  return Math.min(7, Math.round(level * 0.5));
 }
 
 function getBootsActionBoost(bootsLevel: number) {
-  return Math.min(6, Math.floor(bootsLevel / 2));
+  return Math.min(7, Math.floor(bootsLevel / 2));
 }
 
 function getLifestylePressureRelief(lifestyleLevel: number, breakthroughs = 0) {
@@ -4176,8 +4671,9 @@ function applyBootsActionBoost(attributeValues: Record<AttributeKey, number>, bo
 function applyTrainingWeek(state: GameState): GameState {
   const projection = getTrainingProjection(state);
   const rolledXp = rollTrainingXp(state, projection.ranges, createTrainingSeed(state));
+  const combinedXp = mergeAttributeXp(rolledXp, projection.specialistXp);
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season)).score;
-  const attributeResult = addAttributeXpDetailed(state.attributes, rolledXp);
+  const attributeResult = addAttributeXpDetailed(state.attributes, combinedXp);
   const fitness = clamp(state.fitness + projection.fitnessDelta, 0, 100);
   const morale = clamp(state.morale + projection.moraleDelta, 0, 100);
   const trust = clamp(state.trust + projection.trustDelta, 0, 100);
@@ -4193,8 +4689,12 @@ function applyTrainingWeek(state: GameState): GameState {
     week: state.week,
     focuses: getCurrentTrainingFocuses(state),
     intensity: state.intensity,
+    specialist: state.trainingSpecialist,
+    quality: projection.quality,
+    qualityLabel: projection.qualityLabel,
+    specialistXp: projection.specialistXp,
     ranges: projection.ranges,
-    xp: rolledXp,
+    xp: combinedXp,
     fitnessDelta: projection.fitnessDelta,
     moraleDelta: projection.moraleDelta,
     trustDelta: projection.trustDelta,
@@ -4224,6 +4724,16 @@ function getTrainingSummaryText(summary: TrainingSummary) {
 
   const levelText = summary.levelUps.length > 0 ? `${summary.levelUps.length} level-up.` : "No level-up yet.";
   return `Training complete: ${topXp?.[0] ?? "Attributes"} +${topXp?.[1] ?? 0} XP. ${levelText}`;
+}
+
+function mergeAttributeXp(...xpSources: Partial<Record<AttributeKey, number>>[]) {
+  return xpSources.reduce<Partial<Record<AttributeKey, number>>>((merged, source) => {
+    Object.entries(source).forEach(([key, value]) => {
+      const attribute = key as AttributeKey;
+      merged[attribute] = (merged[attribute] ?? 0) + (value ?? 0);
+    });
+    return merged;
+  }, {});
 }
 
 function addAttributeXp(
@@ -4279,7 +4789,7 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const match = state.activeMatch;
   const simTotals = match ? summarizeSimEvents(match.events, match.events.length - 1) : undefined;
   const rawTotals = summarizeMatchResults(results, simTotals);
-  const environment = getDevelopmentEnvironment(currentLeagueTier);
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
   const weeklyRecoveryBonus =
     environment.recoveryBonus +
     getRecoveryBreakthroughRelief(getSupportTrackBreakthroughCount(state, "recovery")) +
@@ -4333,8 +4843,18 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const fixtureResult = match
     ? createFixtureResult(match, totals)
     : undefined;
-
-  return {
+  const updatedSeasonStats = {
+    apps: state.seasonStats.apps + (playerAppeared ? 1 : 0),
+    starts: state.seasonStats.starts + (playerAppeared && match && isStartingRole(match.playerRole) ? 1 : 0),
+    goals: state.seasonStats.goals + totals.goals,
+    assists: state.seasonStats.assists + totals.assists,
+    ratings: postMatchState.seasonStats.ratings,
+  };
+  const nextContract = advanceContractWeek(state.contract);
+  const updatedSeason = fixtureResult
+    ? advanceSeasonFixture(state.season, fixtureResult)
+    : state.season;
+  const stateForOffer: GameState = {
     ...state,
     week: state.week + 1,
     fitness: clamp(state.fitness + totals.fitnessDelta, 0, 100),
@@ -4343,18 +4863,18 @@ function finishMatchState(state: GameState, results: MatchResult[]): GameState {
     pressure: clamp(state.pressure + pressureDelta, 0, 100),
     cash: state.cash + cashDelta,
     prestige: state.prestige + prestigeDelta,
-    contract: advanceContractWeek(state.contract),
+    contract: nextContract,
     attributes: addAttributeXp(state.attributes, totals.xp),
-    seasonStats: {
-      apps: state.seasonStats.apps + (playerAppeared ? 1 : 0),
-      starts: state.seasonStats.starts + (playerAppeared && match && isStartingRole(match.playerRole) ? 1 : 0),
-      goals: state.seasonStats.goals + totals.goals,
-      assists: state.seasonStats.assists + totals.assists,
-      ratings: postMatchState.seasonStats.ratings,
-    },
-    season: fixtureResult
-      ? advanceSeasonFixture(state.season, fixtureResult)
-      : state.season,
+    seasonStats: updatedSeasonStats,
+    season: updatedSeason,
+  };
+  const contractOffer = isSeasonComplete(updatedSeason)
+    ? state.contractOffer
+    : state.contractOffer ?? getClubContractOffer(stateForOffer, lastMatch);
+
+  return {
+    ...stateForOffer,
+    contractOffer,
     lastEvent: getMatchSummaryText(results, totals),
     lastMatch,
     activeMatch: undefined,
@@ -4416,11 +4936,12 @@ function startNextSeasonState(state: GameState): GameState {
     season: {
       season: nextSeason,
       fixtureIndex: 0,
-      fixtures: seasonFixtures,
+      fixtures: createSeasonFixtures(state.club),
       results: [],
     },
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
+    contractOffer: undefined,
     activeMatch: undefined,
     lastEvent: `Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`,
   };
@@ -4429,7 +4950,7 @@ function startNextSeasonState(state: GameState): GameState {
 function createDynastySeasonSnapshot(state: GameState, review = getSeasonReview(state)): DynastySeason {
   return {
     season: state.season.season,
-    club: currentClubName,
+    club: state.contract.club,
     leaguePosition: review.tablePosition,
     record: `${review.record.wins}-${review.record.draws}-${review.record.losses}`,
     apps: state.seasonStats.apps,
@@ -4465,6 +4986,7 @@ function advanceContractWeek(contract: Contract): Contract {
 function contractFromOffer(offer: ContractOffer): Contract {
   return {
     club: offer.club,
+    tierId: offer.tierId,
     label: offer.label,
     weeklyWage: offer.weeklyWage,
     weeksRemaining: offer.weeks,
@@ -4474,6 +4996,176 @@ function contractFromOffer(offer: ContractOffer): Contract {
     assistBonus: offer.assistBonus,
     pressureModifier: offer.pressureModifier,
   };
+}
+
+function acceptContractOfferState(state: GameState): GameState {
+  const offer = state.contractOffer;
+  if (!offer) {
+    return state;
+  }
+  const nextClub = offer.source === "external-club" ? createClubStateFromOffer(offer, state.club) : state.club;
+
+  return {
+    ...state,
+    cash: state.cash + offer.signingBonus,
+    club: nextClub,
+    season: offer.source === "external-club" ? rebuildSeasonForClub(state.season, nextClub) : state.season,
+    contract: contractFromOffer(offer),
+    contractOffer: undefined,
+    lastEvent: `${offer.title} accepted. ${offer.club} now pays $${offer.weeklyWage}/wk.`,
+  };
+}
+
+function getClubContractOffer(game: GameState, lastMatch?: LastMatchSummary): ContractOffer | undefined {
+  const current = game.contract;
+  if (current.weeksRemaining <= 0) {
+    return getExpiredContractMarketOffer(game, lastMatch);
+  }
+
+  const selection = getSelectionReport(game, getCurrentFixture(game.season));
+  const averageRating = getAverageRating(game.seasonStats.ratings);
+  const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+  const agentLevel = getSupportLevel(game, "agent");
+  const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
+  const rolePromise = getPromisedRole(selection.score, current.rolePromise);
+  const expiringSoon = current.weeksRemaining <= 1;
+  const performanceSpike = Boolean(
+    lastMatch &&
+      lastMatch.rating >= 7.4 &&
+      (lastMatch.goals > 0 || lastMatch.assists > 0 || lastMatch.selectionAfter >= lastMatch.selectionBefore + 6),
+  );
+  const roleBase: Record<MatchRole, number> = {
+    Bench: 45,
+    "Impact Sub": 75,
+    "Rotation Starter": 130,
+    Starter: 220,
+  };
+  const formBonus = Math.max(0, averageRating - 6.2) * 55;
+  const outputBonus = game.seasonStats.goals * 8 + game.seasonStats.assists * 6;
+  const selectionWage = 40 + selection.score * 0.9 + ovr * 0.85 + formBonus + outputBonus;
+  const rawWage = Math.max(current.weeklyWage + (expiringSoon ? 20 : 0), roleBase[rolePromise], selectionWage);
+  const weeklyWage = roundToNearest(rawWage * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.035), 5);
+  const meaningfulUpgrade = weeklyWage >= current.weeklyWage + 15 || rolePromise !== current.rolePromise;
+
+  if (!expiringSoon && (!performanceSpike || !meaningfulUpgrade)) {
+    return undefined;
+  }
+
+  const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
+  const title = current.weeksRemaining <= 0 ? "New club terms" : meaningfulUpgrade ? "Improved club offer" : "Extension offer";
+  const weeks = rolePromise === "Starter" ? 12 : rolePromise === "Rotation Starter" ? 10 : 8;
+  const contractTier = getContractLeagueTier(current);
+
+  return {
+    club: current.club,
+    label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Development deal",
+    title,
+    weeklyWage,
+    weeks,
+    rolePromise,
+    appearanceBonus: roundToNearest(10 + weeklyWage * 0.14, 5),
+    goalBonus: roundToNearest(18 + weeklyWage * 0.26, 5),
+    assistBonus: roundToNearest(14 + weeklyWage * 0.2, 5),
+    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 1.1 : 0.7) * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06), 10),
+    pressureModifier,
+    summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
+    source: "current-club",
+    tierId: contractTier.id,
+  };
+}
+
+function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastMatchSummary): ContractOffer | undefined {
+  const currentTier = getContractLeagueTier(game.contract);
+  const currentTierIndex = getLeagueTierIndex(currentTier.id);
+  const selection = getSelectionReport(game, getCurrentFixture(game.season));
+  const averageRating = getAverageRating(game.seasonStats.ratings);
+  const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+  const agentLevel = getSupportLevel(game, "agent");
+  const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
+  const formSignal = Math.max(0, averageRating - 6.4) * 8 + game.seasonStats.goals * 1.6 + game.seasonStats.assists * 1.2 + (lastMatch?.rating ?? 6.5) - 6.5;
+  const maxReachableTierIndex = clamp(
+    currentTierIndex + (ovr >= currentTier.averageOvr + 8 || formSignal >= 12 ? 1 : 0),
+    0,
+    Object.keys(leagueTiers).length - 1,
+  );
+  const seed = `${game.week}-${game.season.season}-${game.contract.club}-${selection.score}-${game.prestige}-expired-market`;
+  const candidates = contractMarketClubs
+    .filter((club) => club.club !== game.contract.club)
+    .filter((club) => getLeagueTierIndex(club.tierId) <= maxReachableTierIndex)
+    .map((club) => {
+      const tierIndex = getLeagueTierIndex(club.tierId);
+      const tierGap = tierIndex - currentTierIndex;
+      const lowerTierBias = tierGap < 0 ? 16 : tierGap === 0 ? 9 : -10;
+      const interest =
+        selection.score * 0.42 +
+        ovr * 0.4 +
+        game.prestige * 0.24 +
+        formSignal +
+        club.roleBias +
+        lowerTierBias +
+        seededNoise(`${seed}-${club.short}`) * 18;
+      return { ...club, interest };
+    })
+    .filter((club) => club.interest >= 28)
+    .sort((a, b) => b.interest - a.interest);
+
+  const club = candidates[0] ?? contractMarketClubs.find((candidate) => candidate.tierId === "grassroots-dev" && candidate.club !== game.contract.club);
+  if (!club) {
+    return undefined;
+  }
+
+  const tier = leagueTiers[club.tierId];
+  const rolePromise = getPromisedRole(selection.score + club.roleBias + (getLeagueTierIndex(club.tierId) < currentTierIndex ? 8 : 0), "Bench");
+  const leverage = 1 + agentLevel * 0.04 + careerBreakthroughs * 0.035;
+  const roleWage: Record<MatchRole, number> = {
+    Bench: tier.wageRange[0],
+    "Impact Sub": tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.28,
+    "Rotation Starter": tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.52,
+    Starter: tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.78,
+  };
+  const rawWage = roleWage[rolePromise] + Math.max(0, ovr - tier.averageOvr) * 5 + formSignal * 3;
+  const weeklyWage = roundToNearest(clamp(rawWage * club.wageFactor * leverage, tier.wageRange[0], tier.wageRange[1]), 5);
+  const pressureModifier = rolePromise === "Starter" ? 7 : rolePromise === "Rotation Starter" ? 4 : rolePromise === "Impact Sub" ? 1 : -1;
+
+  return {
+    club: club.club,
+    label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Fresh start deal",
+    title: "Free agent offer",
+    weeklyWage,
+    weeks: rolePromise === "Starter" ? 12 : 8,
+    rolePromise,
+    appearanceBonus: roundToNearest(8 + weeklyWage * 0.12, 5),
+    goalBonus: roundToNearest(14 + weeklyWage * 0.24, 5),
+    assistBonus: roundToNearest(10 + weeklyWage * 0.18, 5),
+    signingBonus: roundToNearest(weeklyWage * 0.45 * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06), 10),
+    pressureModifier,
+    summary: getExternalContractOfferSummary(club.club, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
+    source: "external-club",
+    tierId: club.tierId,
+  };
+}
+
+function getLeagueTierIndex(tierId: LeagueTierId) {
+  return Object.keys(leagueTiers).indexOf(tierId);
+}
+
+function getContractLeagueTier(contract: Pick<Contract, "tierId">) {
+  return contract.tierId ? leagueTiers[contract.tierId] : currentLeagueTier;
+}
+
+function getClubLeagueTier(club: Pick<ClubState, "tierId">) {
+  return leagueTiers[club.tierId] ?? currentLeagueTier;
+}
+
+function getExternalContractOfferSummary(club: string, tier: LeagueTier, currentTier: LeagueTier, rolePromise: MatchRole, weeklyWage: number, currentWage: number) {
+  const wageText =
+    weeklyWage > currentWage
+      ? `The wage improves to $${weeklyWage}/wk`
+      : weeklyWage === currentWage
+        ? `The wage matches your old $${currentWage}/wk`
+        : `The wage drops to $${weeklyWage}/wk`;
+  const tierText = tier.id === currentTier.id ? "at your current level" : `in ${tier.name}`;
+  return `${club} offers a ${rolePromise} path ${tierText}. ${wageText}, but this is a fresh start after letting the deal run down.`;
 }
 
 function getSeasonContractOffer(game: GameState, review = getSeasonReview(game)): ContractOffer {
@@ -4502,7 +5194,25 @@ function getSeasonContractOffer(game: GameState, review = getSeasonReview(game))
     ),
     pressureModifier,
     summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
+    source: "current-club",
+    tierId: getContractLeagueTier(current).id,
   };
+}
+
+function getContractStatusLabel(game: GameState) {
+  if (game.contractOffer) {
+    return "Offer ready";
+  }
+  if (game.contract.weeksRemaining <= 0) {
+    return "Expired";
+  }
+  if (game.contract.weeksRemaining <= 1) {
+    return "Expiring";
+  }
+  if (game.contract.weeksRemaining <= 3) {
+    return "Review soon";
+  }
+  return "Secure";
 }
 
 function getPromisedRole(selectionScore: number, currentRole: MatchRole): MatchRole {
@@ -4601,6 +5311,8 @@ function buildLastMatchSummary({
     fixtureId: match.fixtureId,
     matchNumber: match.matchNumber,
     seasonLength: match.seasonLength,
+    clubName: match.teamName,
+    clubShortName: match.teamShortName,
     opponent: match.opponent,
     venue: match.venue,
     competition: match.competition,
@@ -4631,6 +5343,7 @@ function summarizeMatchResults(results: MatchResult[], simTotals = createEmptySi
     fitnessDelta: simTotals.fitnessDelta,
     goals: 0,
     assists: 0,
+    chancesCreated: 0,
     teamGoals: simTotals.teamGoals,
     opponentGoals: simTotals.opponentGoals,
     chanceQualities: [] as ChanceQuality[],
@@ -4659,6 +5372,7 @@ function summarizeMatchResults(results: MatchResult[], simTotals = createEmptySi
         fitnessDelta: summary.fitnessDelta + result.fitnessDelta,
         goals: summary.goals + result.goals,
         assists: summary.assists + result.assists,
+        chancesCreated: summary.chancesCreated + result.chancesCreated,
         teamGoals: summary.teamGoals,
         opponentGoals: summary.opponentGoals,
         chanceQualities: [...summary.chanceQualities, result.chanceQuality],
@@ -4755,6 +5469,9 @@ function getResultPopupTone(result: MatchResult) {
   if (result.goals > 0 || result.assists > 0) {
     return "is-goal-involvement";
   }
+  if (result.chancesCreated > 0) {
+    return "is-success";
+  }
   if (result.outcomeTier === "Poor") {
     return "is-failure";
   }
@@ -4771,6 +5488,9 @@ function getResultPopupLabel(result: MatchResult) {
   if (result.assists > 0) {
     return "Goal involvement";
   }
+  if (result.chancesCreated > 0) {
+    return "Chance created";
+  }
   return "Result";
 }
 
@@ -4780,6 +5500,9 @@ function getResultVerdictText(result: MatchResult) {
   }
   if (result.assists > 0) {
     return "ASSIST";
+  }
+  if (result.chancesCreated > 0) {
+    return "CHANCE CREATED";
   }
   return result.outcomeTier;
 }
@@ -4902,7 +5625,7 @@ function getRecentTimelineItems(match: MatchState, results: MatchResult[]) {
     if (event.type !== "player_moment") {
       const goalText =
         event.teamGoalDelta > 0
-          ? ` Goal for ${currentClubShortName}.`
+          ? ` Goal for ${match.teamShortName}.`
           : event.opponentGoalDelta > 0
             ? ` Goal for ${match.opponent}.`
             : "";
@@ -4954,8 +5677,8 @@ function getRecentTimelineItems(match: MatchState, results: MatchResult[]) {
   return [...processed, ...playerStatusEvents].sort((a, b) => a.minute - b.minute).slice(-4);
 }
 
-function formatFixtureTitle(venue: Venue, opponent: string) {
-  return venue === "Home" ? `${currentClubShortName} - ${opponent}` : `${opponent} - ${currentClubShortName}`;
+function formatFixtureTitle(venue: Venue, opponent: string, clubShortName = currentClubShortName) {
+  return venue === "Home" ? `${clubShortName} - ${opponent}` : `${opponent} - ${clubShortName}`;
 }
 
 function getAppearanceText(match: MatchState) {
@@ -5032,13 +5755,14 @@ function getPitchStatus(match: MatchState) {
 function getUpcomingMatch(state: GameState): UpcomingMatch {
   const fixture = getCurrentFixture(state.season);
   const positionModule = getPositionModule(state.positionGroup);
+  const club = state.club;
   const opponentProfile = buildOpponentProfile({
     opponentStrength: fixture.opponentStrength,
     opponentForm: fixture.opponentForm,
     serviceLevel: fixture.serviceLevel,
     seed: fixture.id,
   });
-  const teamStrength = currentClubStrength + Math.round((getFormScore(state.seasonStats.ratings) - 50) / 18);
+  const teamStrength = club.strength + Math.round((getFormScore(state.seasonStats.ratings) - 50) / 18);
   const matchImportance = fixture.competition.includes("Cup")
     ? "High"
     : Math.abs(teamStrength - fixture.opponentStrength) <= 3
@@ -5127,27 +5851,29 @@ function getTeamFormScore(results: FixtureResult[]) {
   return Math.round((points / maxPoints) * 100);
 }
 
-function getLeagueTable(season: SeasonState): LeagueTableRow[] {
-  const northbridgeRecord = getSeasonRecord(season.results);
-  const northbridgeGoals = getSeasonGoals(season.results);
+function getLeagueTable(game: GameState): LeagueTableRow[] {
+  const season = game.season;
+  const clubRecord = getSeasonRecord(season.results);
+  const clubGoals = getSeasonGoals(season.results);
   const played = season.results.length;
-  const table = leagueTeams.map((team) => {
-    if (team.short === "NBR") {
+  const tier = getClubLeagueTier(game.club);
+  const table = createLeagueTeams(game.club).map((team) => {
+    if (team.short === game.club.shortCode) {
       return {
         name: team.name,
         short: team.short,
         position: 0,
         played,
-        wins: northbridgeRecord.wins,
-        draws: northbridgeRecord.draws,
-        losses: northbridgeRecord.losses,
-        goalDifference: northbridgeGoals.for - northbridgeGoals.against,
-        points: northbridgeRecord.points,
+        wins: clubRecord.wins,
+        draws: clubRecord.draws,
+        losses: clubRecord.losses,
+        goalDifference: clubGoals.for - clubGoals.against,
+        points: clubRecord.points,
       };
     }
 
     const teamPlayed = played;
-    const strengthGap = team.strength - currentLeagueTier.averageOvr;
+    const strengthGap = team.strength - tier.averageOvr;
     const wins = clamp(Math.floor(teamPlayed * 0.32 + strengthGap / 8), 0, teamPlayed);
     const draws = clamp(Math.round(teamPlayed * 0.22 + ((team.short.charCodeAt(0) + played) % 2)), 0, teamPlayed - wins);
     const losses = Math.max(0, teamPlayed - wins - draws);
@@ -5174,14 +5900,14 @@ function getLeagueTable(season: SeasonState): LeagueTableRow[] {
 function getSeasonReview(game: GameState) {
   const record = getSeasonRecord(game.season.results);
   const goals = getSeasonGoals(game.season.results);
-  const table = getLeagueTable(game.season);
-  const northbridge = table.find((row) => row.short === "NBR");
+  const table = getLeagueTable(game);
+  const clubRow = table.find((row) => row.short === game.club.shortCode);
   const averageRating = getAverageRating(game.seasonStats.ratings);
   const selection = getSelectionReport(game, getCurrentFixture(game.season));
   const goalDifference = goals.for - goals.against;
   const outputBonus = game.seasonStats.goals * 45 + game.seasonStats.assists * 30;
   const ratingBonus = Math.max(0, Math.round((averageRating - 6.3) * 120));
-  const tableBonus = Math.max(0, 9 - (northbridge?.position ?? 8)) * 15;
+  const tableBonus = Math.max(0, 9 - (clubRow?.position ?? 8)) * 15;
   const cashReward = 180 + game.seasonStats.apps * 25 + outputBonus + ratingBonus + tableBonus;
   const prestigeReward = Math.max(
     1,
@@ -5190,15 +5916,15 @@ function getSeasonReview(game: GameState) {
         game.seasonStats.assists * 0.6 +
         Math.max(0, averageRating - 6.2) * 4 +
         Math.max(0, goalDifference) * 0.15 +
-        Math.max(0, 8 - (northbridge?.position ?? 8)) * 0.7,
+        Math.max(0, 8 - (clubRow?.position ?? 8)) * 0.7,
     ),
   );
-  const verdict = getSeasonVerdict(game, northbridge?.position ?? table.length, averageRating);
+  const verdict = getSeasonVerdict(game, clubRow?.position ?? table.length, averageRating);
 
   return {
     record,
     goals,
-    tablePosition: northbridge?.position ?? table.length,
+    tablePosition: clubRow?.position ?? table.length,
     averageRating,
     selection,
     cashReward,
@@ -5275,14 +6001,15 @@ function getSelectionReport(
   const form = getFormScore(state.seasonStats.ratings);
   const lastRating = state.seasonStats.ratings[state.seasonStats.ratings.length - 1] ?? 6.4;
   const availability = getFitnessAvailability(state.fitness);
+  const leagueTier = getClubLeagueTier(state.club);
   const trustImpact = Math.round(state.trust * 0.45);
   const fitnessImpact = getFitnessSelectionImpact(state.fitness);
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
   const playerOvr = calculateOvr(state.attributes, getPositionModule(state.positionGroup).ovrWeights);
-  const abilityImpact = clamp(Math.round((playerOvr - currentLeagueTier.averageOvr) * 0.8), -8, 10);
-  const fixtureGap = fixture.opponentStrength - currentClubStrength;
+  const abilityImpact = clamp(Math.round((playerOvr - leagueTier.averageOvr) * 0.8), -8, 10);
+  const fixtureGap = fixture.opponentStrength - state.club.strength;
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
   const promiseImpact = Math.round(getRoleThreshold(state.contract.rolePromise) * 0.12);
   const analystImpact = getSupportLevel(state, "analyst") * 2 + getSupportTrackBreakthroughCount(state, "performance") * 2;
@@ -5334,7 +6061,7 @@ function getSelectionReport(
       },
       {
         label: "Level fit",
-        value: `${playerOvr}/${currentLeagueTier.averageOvr}`,
+        value: `${playerOvr}/${leagueTier.averageOvr}`,
         impact: abilityImpact,
         tone: abilityImpact >= 2 ? "good" : abilityImpact < -2 ? "warn" : "neutral",
       },
@@ -5496,16 +6223,25 @@ function getManagerInstruction(role: MatchRole, serviceLevel: UpcomingMatch["ser
   return serviceLevel === "Low" && instruction.lowService ? instruction.lowService : instruction.default;
 }
 
-function getPlayerMomentCount(role: UpcomingMatch["playerRole"], involvementScore: number) {
-  const roleBase: Record<UpcomingMatch["playerRole"], number> = {
-    Bench: 0,
-    "Impact Sub": 1,
-    "Rotation Starter": 2,
-    Starter: 2,
-  };
-  const bonus = involvementScore > 68 ? 1 : involvementScore > 54 && role !== "Bench" ? 1 : 0;
+function getPlayerMomentCount(role: UpcomingMatch["playerRole"], involvementScore: number, minutes: number, matchSeed: string) {
+  if (role === "Bench" || minutes <= 0) {
+    return 0;
+  }
 
-  return clamp(roleBase[role] + bonus, role === "Bench" ? 0 : 1, role === "Starter" ? 4 : 3);
+  const roleRatesPer90: Record<UpcomingMatch["playerRole"], number> = {
+    Bench: 0,
+    "Impact Sub": 3.0,
+    "Rotation Starter": 3.6,
+    Starter: 4.0,
+  };
+  const involvementModifier = clamp((involvementScore - 50) / 38, -0.55, 0.8);
+  const expectedMoments = Math.max(0, (minutes / 90) * roleRatesPer90[role] * (1 + involvementModifier));
+  const baseMoments = Math.floor(expectedMoments);
+  const extraMoment = seededNoise(`${matchSeed}-${role}-${minutes}-moment-volume`) < expectedMoments - baseMoments ? 1 : 0;
+  const lateSubCeiling = minutes < 18 ? 1 : minutes < 32 ? 2 : 3;
+  const roleCeiling = role === "Starter" ? 5 : role === "Rotation Starter" ? 4 : lateSubCeiling;
+
+  return clamp(baseMoments + extraMoment, 0, roleCeiling);
 }
 
 function getRoleMinuteWindow(role: UpcomingMatch["playerRole"]) {
@@ -5574,12 +6310,12 @@ function getAppearanceWindow(
   return { entryMinute: 0 };
 }
 
-function getEventLabel(type: MatchEvent["type"]) {
+function getEventLabel(type: MatchEvent["type"], teamShortName = currentClubShortName) {
   const labels: Record<MatchEvent["type"], string> = {
     player_moment: "Your moment",
-    team_goal: currentClubShortName,
+    team_goal: teamShortName,
     opponent_goal: "Opponent",
-    team_chance: `${currentClubShortName} chance`,
+    team_chance: `${teamShortName} chance`,
     opponent_chance: "Opponent chance",
     tempo: "Match tempo",
     substitution: "Tactical change",
@@ -5599,9 +6335,10 @@ function formatDelta(value: number) {
 function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   const matchSeed = createMatchSeed(state, context);
   const positionModule = getPositionModule(state.positionGroup);
-  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes);
-  const matchOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile);
-  const contextualOvr = getContextualAbilityScore(calculateOvr(state.attributes, positionModule.ovrWeights));
+  const leagueTier = getClubLeagueTier(state.club);
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes, leagueTier);
+  const matchOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile, leagueTier);
+  const contextualOvr = getContextualAbilityScore(calculateOvr(state.attributes, positionModule.ovrWeights), leagueTier);
   const matchPool = createPositionMatchPool({
     opponentShort: context.opponentShort,
     managerInstruction: context.managerInstruction,
@@ -5609,13 +6346,6 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     fitness: state.fitness,
     momentPools: positionModule.momentPools,
   }) as MatchMoment[];
-  const involvementScore =
-    state.trust * 0.35 +
-    state.fitness * 0.25 +
-    getFormScore(state.seasonStats.ratings) * 0.2 +
-    contextualOvr * 0.2 +
-    positionModule.matchTendencies.involvementBias[context.playerRole] * 10;
-  const playerMomentCount = context.isInSquad ? getPlayerMomentCount(context.playerRole, involvementScore) : 0;
   const minuteWindow = getRoleMinuteWindow(context.playerRole);
   const teamMatchModel = createTeamMatchModel({
     matchSeed,
@@ -5635,6 +6365,17 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   const appearanceWindow = getAppearanceWindow(context.playerRole, state, context, simEvents, matchSeed);
   const playerWindowStart = Math.max(minuteWindow.start, appearanceWindow.entryMinute);
   const playerWindowEnd = Math.max(playerWindowStart, appearanceWindow.exitMinute ?? minuteWindow.end);
+  const appearanceMinutes =
+    context.isInSquad && context.fitnessAvailability !== "Out" && appearanceWindow.entryMinute <= 90
+      ? Math.max(0, clamp(appearanceWindow.exitMinute ?? 90, appearanceWindow.entryMinute, 90) - clamp(appearanceWindow.entryMinute, 0, 90))
+      : 0;
+  const involvementScore =
+    state.trust * 0.35 +
+    state.fitness * 0.25 +
+    getFormScore(state.seasonStats.ratings) * 0.2 +
+    contextualOvr * 0.2 +
+    positionModule.matchTendencies.involvementBias[context.playerRole] * 10;
+  const playerMomentCount = context.isInSquad ? getPlayerMomentCount(context.playerRole, involvementScore, appearanceMinutes, matchSeed) : 0;
   const selectedMoments = selectPlayerHighlights({
     moments: matchPool,
     matchSeed,
@@ -5648,7 +6389,7 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     attributeValues: matchAttributeValues,
     preferredCategories: positionModule.matchTendencies.preferredForwardCategories,
   });
-  const playerEvents: PlayerMatchEvent[] = Array.from({ length: playerMomentCount }, (_, index) => {
+  const playerEvents: PlayerMatchEvent[] = playerMomentCount <= 0 || selectedMoments.length === 0 ? [] : Array.from({ length: playerMomentCount }, (_, index) => {
     const moment = selectedMoments[index % selectedMoments.length];
     const spread = playerMomentCount === 1 ? 0.5 : index / (playerMomentCount - 1);
     const roleMinute = Math.round(playerWindowStart + (playerWindowEnd - playerWindowStart) * spread);
@@ -5666,6 +6407,8 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
     fixtureId: context.id,
     matchNumber: state.season.fixtureIndex + 1,
     seasonLength: state.season.fixtures.length,
+    teamName: state.club.name,
+    teamShortName: state.club.shortName,
     opponent: context.opponentShort,
     venue: context.venue,
     competition: context.competition,
@@ -5698,9 +6441,10 @@ function createMatch(state: GameState, context: UpcomingMatch): MatchState {
 function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
-  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes), getSupportLevel(state, "boots"));
+  const leagueTier = getClubLeagueTier(state.club);
+  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes, leagueTier), getSupportLevel(state, "boots"));
   const matchOpponentProfile = state.activeMatch
-    ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile)
+    ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile, leagueTier)
     : undefined;
   const coreResult = resolvePlayerChoice({
     moment,
@@ -5743,9 +6487,11 @@ function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchC
 
   if (choice.outcome === "assist") {
     return {
-      title: supportAdjustedResult.decisiveOutcome ? "Chance created" : supportAdjustedResult.success ? "Attack connected" : "Move breaks down",
-      detail: supportAdjustedResult.decisiveOutcome
+      title: supportAdjustedResult.assists > 0 ? "Assist" : supportAdjustedResult.chancesCreated > 0 ? "Chance created" : supportAdjustedResult.success ? "Attack connected" : "Move breaks down",
+      detail: supportAdjustedResult.assists > 0
         ? `${moment.minute}': ${choice.label} opens the defense and gives a teammate the clean finish.`
+        : supportAdjustedResult.chancesCreated > 0
+          ? `${moment.minute}': ${choice.label} opens the defense, but the finish does not come.`
         : supportAdjustedResult.success
           ? `${moment.minute}': ${choice.label} helps the move, but the final chance never fully opens.`
           : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
@@ -5889,7 +6635,7 @@ function applyMatchSupportEffects<T extends { rating: number; fitnessDelta: numb
 }
 
 function simulateRemainingPlayerMoments(state: GameState, match: MatchState): MatchResult[] {
-  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes), getSupportLevel(state, "boots"));
+  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes, getClubLeagueTier(state.club)), getSupportLevel(state, "boots"));
   return match.events
     .slice(match.currentEventIndex)
     .filter((event): event is PlayerMatchEvent => event.type === "player_moment")
@@ -6088,7 +6834,8 @@ function getTrainingIntensityLabel(intensity: Intensity) {
 
 function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
-  const environment = getDevelopmentEnvironment(currentLeagueTier);
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const qualityProfile = getTrainingQualityProfile(state, createTrainingSeed(state), environment);
   const coachLevel = getSupportLevel(state, "coach");
   const nutritionLevel = getSupportLevel(state, "nutrition");
   const recoveryLevel = getSupportLevel(state, "recovery");
@@ -6102,34 +6849,53 @@ function getTrainingProjection(state: GameState) {
   if (state.fitness < 12) {
     return {
       ranges,
+      quality: "Poor" as TrainingQuality,
+      qualityLabel: "Recovery session",
+      qualityProfile: getTrainingQualityProfileByQuality("Poor"),
+      specialistXp: {} as Partial<Record<AttributeKey, number>>,
       fitnessDelta: 14 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel),
       moraleDelta: 1,
       trustDelta: -1,
     };
   }
 
-  getCurrentTrainingFocuses(state).forEach((focus) => {
+  getCurrentTrainingFocuses(state).forEach((focus, index) => {
     const baseRange = getBaseTrainingRange(state, focus);
+    const focusWeight = getTrainingFocusWeight(index);
     ranges[focus] = {
       min: Math.max(
         1,
-        Math.round((baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveCoachLevel) + trainingBreakthroughs * 5) * environment.xpMultiplier),
+        Math.round(
+          (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveCoachLevel) + trainingBreakthroughs * 8) *
+            focusWeight *
+            environment.xpMultiplier *
+            qualityProfile.xpMultiplier,
+        ),
       ),
       max: Math.max(
         1,
-        Math.round((baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveCoachLevel) + trainingBreakthroughs * 9) * environment.xpMultiplier),
+        Math.round(
+          (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveCoachLevel) + trainingBreakthroughs * 12) *
+            focusWeight *
+            environment.xpMultiplier *
+            qualityProfile.xpMultiplier,
+        ),
       ),
     };
   });
   getCoachSupportFocuses(state).forEach((focus) => {
     ranges[focus] = {
-      min: Math.max(1, Math.round(effectiveCoachLevel * 2.5 * environment.xpMultiplier)),
-      max: Math.max(1, Math.round(effectiveCoachLevel * 6 * environment.xpMultiplier)),
+      min: Math.max(1, Math.round(effectiveCoachLevel * 2.5 * environment.xpMultiplier * qualityProfile.xpMultiplier)),
+      max: Math.max(1, Math.round(effectiveCoachLevel * 6 * environment.xpMultiplier * qualityProfile.xpMultiplier)),
     };
   });
 
   return {
     ranges,
+    quality: qualityProfile.quality,
+    qualityLabel: qualityProfile.label,
+    qualityProfile,
+    specialistXp: getProjectedSpecialistXp(state, environment, qualityProfile),
     fitnessDelta:
       intensity.fitnessDelta < 0
         ? Math.min(0, intensity.fitnessDelta + environment.recoveryBonus + getTrainingFatigueRelief(effectiveNutritionLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs))
@@ -6151,8 +6917,128 @@ function getDevelopmentEnvironment(tier: LeagueTier): DevelopmentEnvironment {
   };
 }
 
+function getTrainingQualityProfile(state: GameState, seed: string, environment = getDevelopmentEnvironment(currentLeagueTier)): TrainingQualityProfile {
+  const nutritionLevel = getSupportLevel(state, "nutrition");
+  const recoveryLevel = getSupportLevel(state, "recovery");
+  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+  const readinessScore =
+    state.fitness * 0.42 +
+    state.morale * 0.18 +
+    (100 - state.pressure) * 0.12 +
+    environment.facilityLevel * 5 +
+    nutritionLevel * 1.7 +
+    recoveryLevel * 1.1 +
+    trainingBreakthroughs * 7 +
+    recoveryBreakthroughs * 4 +
+    (state.intensity === "Hard" ? -6 : state.intensity === "Light" ? 4 : 0);
+  const roll = seededNoise(`${seed}-quality`);
+  const qualityScore = readinessScore + Math.round(roll * 34) - 17;
+
+  if (qualityScore >= 88) {
+    return getTrainingQualityProfileByQuality("Breakthrough");
+  }
+  if (qualityScore >= 68) {
+    return getTrainingQualityProfileByQuality("Sharp");
+  }
+  if (qualityScore >= 42) {
+    return getTrainingQualityProfileByQuality("Solid");
+  }
+  return getTrainingQualityProfileByQuality("Poor");
+}
+
+function getTrainingQualityProfileByQuality(quality: TrainingQuality): TrainingQualityProfile {
+  const profiles: Record<TrainingQuality, TrainingQualityProfile> = {
+    Poor: {
+      quality: "Poor",
+      xpMultiplier: 0.72,
+      label: "Poor session",
+      description: "Low readiness limited the work.",
+    },
+    Solid: {
+      quality: "Solid",
+      xpMultiplier: 1,
+      label: "Solid session",
+      description: "A normal development week.",
+    },
+    Sharp: {
+      quality: "Sharp",
+      xpMultiplier: 1.18,
+      label: "Sharp session",
+      description: "Good readiness lifted the session.",
+    },
+    Breakthrough: {
+      quality: "Breakthrough",
+      xpMultiplier: 1.42,
+      label: "Breakthrough session",
+      description: "Everything clicked in training.",
+    },
+  };
+
+  return profiles[quality];
+}
+
+function getProjectedSpecialistXp(
+  state: GameState,
+  environment = getDevelopmentEnvironment(currentLeagueTier),
+  qualityProfile = getTrainingQualityProfile(state, createTrainingSeed(state), environment),
+): Partial<Record<AttributeKey, number>> {
+  const specialist = trainingSpecialistMap[state.trainingSpecialist] ?? trainingSpecialistMap.finishing;
+  const focuses = getCurrentTrainingFocuses(state);
+  const matchingFocuses = focuses.filter((focus) => specialist.attributes.includes(focus));
+  if (matchingFocuses.length === 0) {
+    return {};
+  }
+
+  const coachLevel = getSupportLevel(state, "coach");
+  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  const baseBonus = getSpecialistBaseXpBonus(state, environment);
+  const bonus = Math.max(2, Math.round(baseBonus * environment.supportEfficiency * qualityProfile.xpMultiplier));
+  return Object.fromEntries(matchingFocuses.map((focus) => [focus, bonus])) as Partial<Record<AttributeKey, number>>;
+}
+
+function getSpecialistBaseXpBonus(state: GameState, environment = getDevelopmentEnvironment(currentLeagueTier)) {
+  const coachLevel = getSupportLevel(state, "coach");
+  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  return Math.round(10 + environment.facilityLevel * 3 + coachLevel * 2.8 + trainingBreakthroughs * 7);
+}
+
 function getCurrentTrainingFocuses(state: GameState): AttributeKey[] {
-  return state.trainingFocuses.length > 0 ? state.trainingFocuses : ["Finishing"];
+  const capacity = getTrainingFocusCapacity(state);
+  const uniqueFocuses = Array.from(new Set(state.trainingFocuses.length > 0 ? state.trainingFocuses : ["Finishing"]));
+  return uniqueFocuses.slice(0, capacity) as AttributeKey[];
+}
+
+function getTrainingFocusCapacity(state: Pick<GameState, "supportUpgrades">) {
+  const breakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  if (breakthroughs >= 3) {
+    return 3;
+  }
+  if (breakthroughs >= 1) {
+    return 2;
+  }
+  return 1;
+}
+
+function getTrainingFocusWeight(index: number) {
+  if (index === 0) {
+    return 1;
+  }
+  if (index === 1) {
+    return 0.62;
+  }
+  return 0.42;
+}
+
+function getTrainingFocusUnlockLabel(state: Pick<GameState, "supportUpgrades">) {
+  const capacity = getTrainingFocusCapacity(state);
+  if (capacity >= 3) {
+    return "3 focus slots";
+  }
+  if (capacity >= 2) {
+    return "2 focus slots";
+  }
+  return "1 focus slot";
 }
 
 function getCoachSupportFocuses(state: GameState): AttributeKey[] {
@@ -6297,6 +7183,47 @@ function getBaseAttributeXpRequirement(attributeValue: number) {
 
 function getAttributeProgressPercent(attribute: Attribute) {
   return getXpPercent(attribute.xp, getAttributeXpRequirement(attribute));
+}
+
+function getAttributeGrowthDetail(state: GameState, attribute: Attribute) {
+  const projection = getTrainingProjection(state);
+  const range = projection.ranges[attribute.label];
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const pressure = getAttributeGrowthPressure(attribute);
+  const baseRequirement = getBaseAttributeXpRequirement(attribute.value);
+  const requirement = getAttributeXpRequirement(attribute);
+  const isSelected = getCurrentTrainingFocuses(state).includes(attribute.label);
+  const isCoachSupported = getCoachSupportFocuses(state).includes(attribute.label);
+  const modifiers = [
+    `Facilities x${environment.xpMultiplier.toFixed(2)}`,
+    `Facility floor +${environment.xpFloorBonus}`,
+    `Coach Lv ${getSupportLevel(state, "coach")}`,
+  ];
+
+  if (isCoachSupported) {
+    modifiers.push("Coach support XP");
+  }
+
+  if (getSupportTrackBreakthroughCount(state, "training") > 0) {
+    modifiers.push(`Training breakthroughs +${getSupportTrackBreakthroughCount(state, "training")}`);
+  }
+
+  return {
+    pressure,
+    baseRequirement,
+    requirement,
+    progress: getXpPercent(attribute.xp, requirement),
+    xpToNext: Math.max(0, requirement - attribute.xp),
+    isSelected,
+    trainingRange: range ? `${range.min}-${range.max} XP` : isCoachSupported ? "Support XP" : "Not focused",
+    modifiers,
+    improvementTips: [
+      "Train this stat",
+      "Improve Training setup",
+      "Move to better facilities",
+      "Build dynasty growth upgrades",
+    ],
+  };
 }
 
 function getAttributeGrowthPressure(attribute: Attribute): { label: string; copy: string; tone: GrowthPressureTone; multiplier: number } {

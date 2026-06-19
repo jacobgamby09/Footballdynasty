@@ -822,6 +822,38 @@ button {
   line-height: 1.2;
 }
 
+.support-current-bonuses {
+  display: grid;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.support-current-bonuses > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.support-current-bonuses div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.support-current-bonuses strong {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .support-breakthrough-row {
   display: flex;
   align-items: flex-end;
@@ -1007,10 +1039,68 @@ button {
   gap: 9px;
 }
 
+.training-focus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.training-focus-heading strong {
+  flex: 0 0 auto;
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 950;
+}
+
 .training-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.specialist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.specialist-button {
+  min-height: 60px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+  text-align: left;
+}
+
+.specialist-button span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.specialist-button strong {
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.specialist-button.is-active {
+  border-color: var(--border-strong);
+  background: rgba(200, 243, 95, 0.11);
+}
+
+.specialist-button.is-active span,
+.specialist-button.is-active strong {
+  color: var(--lime);
 }
 
 .stat-focus-button {
@@ -1055,6 +1145,25 @@ button {
   font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.focus-slot-pill {
+  position: absolute;
+  right: 34px;
+  bottom: 9px;
+  max-width: 62px;
+  overflow: hidden;
+  padding: 4px 6px;
+  border-radius: 999px;
+  color: #10140d;
+  background: var(--lime);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .stat-info-button {
@@ -1113,6 +1222,51 @@ button {
   color: var(--text);
   font-size: 14px;
   line-height: 1.45;
+}
+
+.attribute-detail-hero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.attribute-detail-hero > div {
+  display: grid;
+  gap: 5px;
+  min-height: 76px;
+  align-content: center;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.attribute-detail-hero span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.attribute-detail-hero strong {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.attribute-detail-hero b {
+  width: fit-content;
+}
+
+.attribute-detail-meter {
+  display: grid;
+  gap: 8px;
+}
+
+.attribute-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .attribute-modal-impact {

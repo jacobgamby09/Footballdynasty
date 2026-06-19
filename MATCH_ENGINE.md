@@ -114,6 +114,18 @@ Eksempel:
 - Hoj Strength + lav service = flere hold-up moments.
 - Hoj Work Rate + trailing late = flere pressing/defensive effort moments.
 
+### 3a. Highlight Volume
+
+Player moments must scale with actual minutes played. A player who enters in the 78th minute should not receive the same action volume as a starter.
+
+V1 rule:
+
+- Moment count is based on minutes played, role and involvement score.
+- Short sub appearances can produce zero moments.
+- Impact subs should usually get zero to two moments depending on entry time and match context.
+- Starters and long rotation appearances can get several moments, but still within a believable per-90 range.
+- Progression balance should not rely on inflated match volume. If development is too slow, training, support, facilities and XP curves should carry that weight.
+
 ### 3b. Chained Player Moments
 
 Not every player highlight should end after one click. Some successful or partially successful actions can create a follow-up decision in the same move.
@@ -165,6 +177,19 @@ Output:
 - explanation tags
 
 Resolution skal ikke bare returnere "success". Den skal returnere hvorfor.
+
+### Chance Creation vs Assists
+
+Assist-type choices should not become assists directly.
+
+V1 rule:
+
+- A successful assist action creates a chance.
+- The player only receives an assist if the teammate converts that chance.
+- Conversion is based on chance quality, outcome tier and opponent keeper/defense.
+- Created chances are tracked separately in match UI, post-match report and balance labs.
+
+This keeps creative play rewarding without making early-career assists unrealistically high. A good pass can still improve rating, trust and XP even if the teammate misses.
 
 ## Attribute Mapping
 

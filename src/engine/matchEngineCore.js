@@ -72,6 +72,10 @@ export function getSimScoreAtMinute(events, minute) {
 }
 
 export function selectPlayerHighlights(input) {
+  if (input.count <= 0) {
+    return [];
+  }
+
   const available = [...input.moments];
   const selected = [];
 
@@ -143,6 +147,10 @@ export function resolvePlayerChoice(input) {
   const outcomeTier = getOutcomeTier(resultScore, threshold);
   const success = outcomeTier !== "Poor";
   const decisiveOutcome = isDecisiveOutcome(outcomeTier, chanceContext.quality, input.choice.outcome, input.resultSeed);
+  const chancesCreated = input.choice.outcome === "assist" && success ? 1 : 0;
+  const assistConverted = input.choice.outcome === "assist" && decisiveOutcome
+    ? isAssistConverted(outcomeTier, chanceContext.quality, input.opponentProfile, input.resultSeed)
+    : false;
   const fatigueCost = input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4;
   const explanationTags = buildResultExplanationTags(input.moment, input.choice, success, opponentModifier, chanceContext.quality, input.fitness);
 
@@ -157,6 +165,7 @@ export function resolvePlayerChoice(input) {
       fitnessDelta: fatigueCost,
       goals: decisiveOutcome ? 1 : 0,
       assists: 0,
+      chancesCreated: 0,
       decisiveOutcome,
     };
   }
@@ -167,12 +176,13 @@ export function resolvePlayerChoice(input) {
       outcomeTier,
       chanceQuality: chanceContext.quality,
       explanationTags,
-      rating: Number((decisiveOutcome ? 7.3 + ratingVariance : success ? 6.8 + ratingVariance : 6.6 + ratingVariance).toFixed(1)),
-      trustDelta: decisiveOutcome ? 5 : success ? 3 : 2,
+      rating: Number((assistConverted ? 7.3 + ratingVariance : chancesCreated ? 6.9 + ratingVariance : success ? 6.75 + ratingVariance : 6.6 + ratingVariance).toFixed(1)),
+      trustDelta: assistConverted ? 5 : chancesCreated ? 4 : success ? 3 : 2,
       fitnessDelta: fatigueCost,
       goals: 0,
-      assists: decisiveOutcome ? 1 : 0,
-      decisiveOutcome,
+      assists: assistConverted ? 1 : 0,
+      chancesCreated,
+      decisiveOutcome: assistConverted,
     };
   }
 
@@ -186,6 +196,7 @@ export function resolvePlayerChoice(input) {
     fitnessDelta: fatigueCost,
     goals: 0,
     assists: 0,
+    chancesCreated: 0,
     decisiveOutcome,
   };
 }
@@ -507,6 +518,21 @@ function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") 
 
   const halfChanceRate = outcome === "assist" ? 0.14 : 0.1;
   return chanceQuality === "Half chance" && seededNoise(`${resultSeed}-decisive`) < halfChanceRate;
+}
+
+function isAssistConverted(tier, chanceQuality, opponentProfile = {}, resultSeed = "result") {
+  const keeper = opponentProfile.keeper ?? 50;
+  const defense = opponentProfile.defense ?? 50;
+  const resistance = (keeper * 0.65 + defense * 0.35 - 50) * 0.004;
+  const tierBonus = tier === "Great" ? 0.14 : tier === "Good" ? 0.03 : tier === "Okay" ? -0.1 : -0.24;
+  const qualityBase = {
+    "Clear chance": 0.45,
+    "Good chance": 0.3,
+    "Half chance": 0.12,
+    "Difficult chance": 0.04,
+  }[chanceQuality] ?? 0.2;
+  const conversionRate = clamp(qualityBase + tierBonus - resistance, 0.03, 0.62);
+  return seededNoise(`${resultSeed}-teammate-finish`) < conversionRate;
 }
 
 function getRoleConfidenceModifier(role) {

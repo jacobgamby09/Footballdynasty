@@ -131,6 +131,7 @@ import {
   rebuildSeasonForClub,
 } from "./systems/club";
 import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
+import { formatFixtureTitle, formatPercentDelta, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getPressureLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, roundToNearest, sumXp } from "./systems/formatting";
 
 const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },
@@ -1059,45 +1060,6 @@ function getReadinessDetails(game: GameState, label: string) {
     { label: "Importance", value: upcomingMatch.matchImportance },
     { label: "Selection fight", value: upcomingMatch.selection.nextRole ? `${upcomingMatch.selection.pointsToNextRole} pts to ${upcomingMatch.selection.nextRole}` : "Starter secured" },
   ];
-}
-
-function formatSigned(value: number) {
-  return value > 0 ? `+${value}` : `${value}`;
-}
-
-function sumXp(xp: Partial<Record<AttributeKey, number>>) {
-  return Object.values(xp).reduce((sum, value) => sum + (value ?? 0), 0);
-}
-
-function getTopXpEntry(xp: Partial<Record<AttributeKey, number>>) {
-  const [attribute, value] = Object.entries(xp)
-    .filter(([, xpValue]) => (xpValue ?? 0) > 0)
-    .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0] ?? [];
-
-  return attribute && value ? { attribute: attribute as AttributeKey, value } : undefined;
-}
-
-function getMoraleLabel(morale: number) {
-  if (morale >= 75) {
-    return "Happy";
-  }
-  if (morale >= 55) {
-    return "Stable";
-  }
-  if (morale >= 40) {
-    return "Low";
-  }
-  return "Frustrated";
-}
-
-function getPressureLabel(pressure: number) {
-  if (pressure > 70) {
-    return "High";
-  }
-  if (pressure > 40) {
-    return "Rising";
-  }
-  return "Low";
 }
 
 function NextActionCard({ game }: { game: GameState }) {
@@ -3425,10 +3387,6 @@ function getSupportTrackCurrentBonusLines(state: GameState, track: SupportTrackD
   return ["No active bonus yet"];
 }
 
-function formatPercentDelta(value: number) {
-  return `${Number(value.toFixed(1))}%`;
-}
-
 function getSupportUpgradeTotal(state: GameState) {
   return Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0);
 }
@@ -4045,10 +4003,6 @@ function getContractOfferSummary(rolePromise: MatchRole, weeklyWage: number, cur
   return "The club keeps you on the pathway, but wants another season before a bigger promise.";
 }
 
-function roundToNearest(value: number, step: number) {
-  return Math.round(value / step) * step;
-}
-
 function createFixtureResult(match: MatchState, totals: MatchTotals): FixtureResult {
   const outcome = totals.teamGoals > totals.opponentGoals ? "W" : totals.teamGoals < totals.opponentGoals ? "L" : "D";
 
@@ -4276,10 +4230,6 @@ function getReadableExplanations(tags: string[], limit = 3) {
   return sortedTags.slice(0, limit).map((tag) => getExplanationCopy(tag));
 }
 
-function getUniqueItems(items: string[], limit: number) {
-  return Array.from(new Set(items)).slice(0, limit);
-}
-
 function getResultPopupTone(result: MatchResult) {
   if (result.goals > 0 || result.assists > 0) {
     return "is-goal-involvement";
@@ -4492,10 +4442,6 @@ function getRecentTimelineItems(match: MatchState, results: MatchResult[]) {
   return [...processed, ...playerStatusEvents].sort((a, b) => a.minute - b.minute).slice(-4);
 }
 
-function formatFixtureTitle(venue: Venue, opponent: string, clubShortName = currentClubShortName) {
-  return venue === "Home" ? `${clubShortName} - ${opponent}` : `${opponent} - ${clubShortName}`;
-}
-
 function getAppearanceText(match: MatchState) {
   if (match.isInSquad === false || match.fitnessAvailability === "Out" || match.entryMinute > 90) {
     return "Not selected";
@@ -4510,26 +4456,6 @@ function getAppearanceText(match: MatchState) {
     return match.isComplete ? `${match.entryMinute}'-${match.exitMinute}'` : "Bench shift";
   }
   return match.isComplete ? `On ${match.entryMinute}'` : match.expectedMinutes;
-}
-
-function getMatchupText(delta: number) {
-  if (delta >= 7) {
-    return "Favourable";
-  }
-
-  if (delta >= 3) {
-    return "Slight edge";
-  }
-
-  if (delta <= -7) {
-    return "Very tough";
-  }
-
-  if (delta <= -3) {
-    return "Tough";
-  }
-
-  return "Even";
 }
 
 function getPitchStatus(match: MatchState) {
@@ -5125,28 +5051,6 @@ function getAppearanceWindow(
   return { entryMinute: 0 };
 }
 
-function getEventLabel(type: MatchEvent["type"], teamShortName = currentClubShortName) {
-  const labels: Record<MatchEvent["type"], string> = {
-    player_moment: "Your moment",
-    team_goal: teamShortName,
-    opponent_goal: "Opponent",
-    team_chance: `${teamShortName} chance`,
-    opponent_chance: "Opponent chance",
-    tempo: "Match tempo",
-    substitution: "Tactical change",
-  };
-
-  return labels[type];
-}
-
-function formatDelta(value: number) {
-  if (value > 0) {
-    return `+${Number(value.toFixed(2))}`;
-  }
-
-  return `${Number(value.toFixed(2))}`;
-}
-
 function createMatch(state: GameState, context: UpcomingMatch): MatchState {
   const matchSeed = createMatchSeed(state, context);
   const positionModule = getPositionModule(state.positionGroup);
@@ -5637,16 +5541,6 @@ function getChoiceAttributeAverage(attributes: Attribute[], choice: MatchChoice)
   return Math.round(total / choice.uses.length);
 }
 
-function getTrainingIntensityLabel(intensity: Intensity) {
-  if (intensity === "Light") {
-    return "Light session";
-  }
-  if (intensity === "Hard") {
-    return "Hard session";
-  }
-  return "Balanced session";
-}
-
 function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
   const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
@@ -6050,45 +5944,6 @@ function getLeagueAdjustedOpponentProfile(profile: OpponentProfile, tier = curre
 
 function getContextualAbilityScore(value: number, tier = currentLeagueTier) {
   return clamp(Math.round(50 + (value - tier.averageOvr) * 1.15), 1, 99);
-}
-
-function getAverageRating(ratings: number[]) {
-  if (ratings.length === 0) {
-    return 6.4;
-  }
-
-  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
-}
-
-function getFormScore(ratings: number[]) {
-  return clamp(Math.round((getAverageRating(ratings) - 5) * 35), 0, 100);
-}
-
-function getFormLabel(ratings: number[]) {
-  const average = getAverageRating(ratings);
-  if (average >= 7.2) {
-    return "Hot";
-  }
-  if (average >= 6.7) {
-    return "Good";
-  }
-  if (average >= 6.2) {
-    return "Mixed";
-  }
-  return "Cold";
-}
-
-function getTrustStatus(trust: number) {
-  if (trust >= 70) {
-    return "Trusted";
-  }
-  if (trust >= 55) {
-    return "Rotation";
-  }
-  if (trust >= 35) {
-    return "Warming";
-  }
-  return "Distant";
 }
 
 export default App;

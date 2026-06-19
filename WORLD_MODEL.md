@@ -218,10 +218,12 @@ Known Stage-1 limitations (by design, addressed later):
 - **2b (commit `2def55b`)** — promotion/relegation + strength drift.
   `systems/world.ts`: `rolloverWorldSeason(world, playerShortCode)` +
   `sortedClubIdsByRecord`. `systems/season.ts`: `startNextSeasonState` calls it.
-  Player club pinned; league sizes preserved. **Not yet playtested through a full
-  12-match season in-browser** — verified by build + code review only; recommended
-  manual check: play one full season and confirm the table finalises and a club
-  swaps tier on rollover.
+  Player club pinned; league sizes preserved. **Playtested end-to-end** (full
+  12-match season driven in-browser to season 2): the two strongest grassroots
+  clubs (Viborg Reserves, Vejle Juniors) were promoted to local-semi-pro with
+  strength drifting up (21→23, 22→24), two clubs (Esbjerg Works, Viborg Town) were
+  relegated in with strength drifting down, both leagues stayed at 12 clubs, and the
+  player's club (Northbridge) was correctly pinned. No console errors across the run.
 
 Known Stage-2 limitations (addressed later):
 - Non-player results are a light deterministic sim, not real fixtures.

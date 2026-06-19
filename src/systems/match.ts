@@ -9,6 +9,7 @@ import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFi
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { applyBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
+import { advanceWorldMatchweek } from "./world";
 import type { AttributeKey, PositionModule } from "../positionRoles";
 import type { Attribute, ChanceQuality, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
@@ -108,6 +109,16 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const updatedSeason = fixtureResult
     ? advanceSeasonFixture(state.season, fixtureResult)
     : state.season;
+  // Advance the persistent world by one matchweek: the player's club takes its real
+  // result, every other club gets a deterministic light-sim result (see WORLD_MODEL.md).
+  const updatedWorld = fixtureResult
+    ? advanceWorldMatchweek(
+        state.world,
+        state.club.shortCode,
+        { outcome: fixtureResult.outcome, goalsFor: fixtureResult.teamGoals, goalsAgainst: fixtureResult.opponentGoals },
+        state.season.results.length,
+      )
+    : state.world;
   const stateForOffer: GameState = {
     ...state,
     week: state.week + 1,
@@ -121,6 +132,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     attributes: addAttributeXp(state.attributes, totals.xp),
     seasonStats: updatedSeasonStats,
     season: updatedSeason,
+    world: updatedWorld,
   };
   const contractOffer = isSeasonComplete(updatedSeason)
     ? state.contractOffer

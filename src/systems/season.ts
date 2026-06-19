@@ -6,7 +6,7 @@ import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
-import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable } from "./world";
+import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, resetWorldSeason } from "./world";
 import type { Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
 export function getDynastyTotals(seasons: DynastySeason[]) {
@@ -56,6 +56,7 @@ export function startNextSeasonState(state: GameState): GameState {
       fixtures: createSeasonFixtures(state.club),
       results: [],
     },
+    world: resetWorldSeason(state.world),
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,
@@ -118,19 +119,11 @@ export function getLeagueTable(game: GameState): LeagueTableRow[] {
   const clubGoals = getSeasonGoals(season.results);
   const played = season.results.length;
 
-  // Stage 1: read standings from the persistent world when present.
+  // Read standings from the persistent world when present (Stage 2: accumulated).
   if (game.world) {
     const league = findLeagueByClubShortCode(game.world, game.club.shortCode) ?? findLeagueByTier(game.world, game.club.tierId);
     if (league) {
-      return getWorldLeagueTable(game.world, league.id, {
-        shortCode: game.club.shortCode,
-        played,
-        wins: clubRecord.wins,
-        draws: clubRecord.draws,
-        losses: clubRecord.losses,
-        points: clubRecord.points,
-        goalDifference: clubGoals.for - clubGoals.against,
-      });
+      return getWorldLeagueTable(game.world, league.id);
     }
   }
 

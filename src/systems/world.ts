@@ -1,6 +1,6 @@
 import { leagueTiers } from "../data/leagues";
-import { clamp } from "../utils";
-import type { LeagueId, LeagueTableRow, LeagueTierId, World, WorldLeague } from "../types";
+import { emptyClubSeasonRecord } from "../data/world";
+import type { ClubSeasonRecord, LeagueId, LeagueTableRow, LeagueTierId, World, WorldLeague } from "../types";
 
 // Stage 1 links the player's embedded club to the world by shortCode; the clubId
 // migration is Stage 4 (see WORLD_MODEL.md).
@@ -13,62 +13,100 @@ export function findLeagueByTier(world: World, tierId: LeagueTierId): WorldLeagu
   return Object.values(world.leagues).find((league) => league.tierId === tierId);
 }
 
-export type PlayerLeagueEntry = {
-  shortCode: string;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  points: number;
-  goalDifference: number;
-};
-
-// Build a league table from the persistent world clubs in `leagueId`. The player's
-// club row uses real results; other clubs are still derived deterministically (the
-// same formula as the legacy table) — Stage 2 replaces this with stored, accumulated
-// records.
-export function getWorldLeagueTable(world: World, leagueId: LeagueId, player: PlayerLeagueEntry): LeagueTableRow[] {
+// Build the table for a league directly from its stored, accumulated records.
+export function getWorldLeagueTable(world: World, leagueId: LeagueId): LeagueTableRow[] {
   const league = world.leagues[leagueId];
-  if (!league) return [];
-  const tier = leagueTiers[league.tierId];
-  const played = player.played;
+  const season = world.leagueSeasons[leagueId];
+  if (!league || !season) return [];
 
   const rows = league.clubIds.map((clubId) => {
     const club = world.clubs[clubId];
-    if (club.shortCode === player.shortCode) {
-      return {
-        name: club.name,
-        short: club.shortCode,
-        position: 0,
-        played,
-        wins: player.wins,
-        draws: player.draws,
-        losses: player.losses,
-        goalDifference: player.goalDifference,
-        points: player.points,
-      };
-    }
-
-    const strengthGap = club.strength - tier.averageOvr;
-    const wins = clamp(Math.floor(played * 0.32 + strengthGap / 8), 0, played);
-    const draws = clamp(Math.round(played * 0.22 + ((club.shortCode.charCodeAt(0) + played) % 2)), 0, played - wins);
-    const losses = Math.max(0, played - wins - draws);
-    const goalDifference = Math.round(strengthGap / 2 + wins - losses + ((club.shortCode.charCodeAt(1) + played) % 3) - 1);
-
+    const rec = season.records[clubId] ?? emptyClubSeasonRecord(clubId);
     return {
       name: club.name,
       short: club.shortCode,
       position: 0,
-      played,
-      wins,
-      draws,
-      losses,
-      goalDifference,
-      points: wins * 3 + draws,
+      played: rec.played,
+      wins: rec.wins,
+      draws: rec.draws,
+      losses: rec.losses,
+      goalDifference: rec.goalsFor - rec.goalsAgainst,
+      points: rec.points,
     };
   });
 
   return rows
     .sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || a.name.localeCompare(b.name))
     .map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+export type ClubWeekResult = { outcome: "W" | "D" | "L"; goalsFor: number; goalsAgainst: number };
+
+// Deterministic light sim of one matchweek for a non-player club. No RNG: the
+// wobble is a fixed function of the club's code and the week index.
+function simClubWeek(strengthGap: number, shortCode: string, weekIndex: number): ClubWeekResult {
+  const c0 = shortCode.charCodeAt(0) || 0;
+  const c1 = shortCode.charCodeAt(1) || 0;
+  const wobble = ((c0 * 31 + c1 * 17 + weekIndex * 13) % 9) - 4; // -4..4
+  const perf = strengthGap + wobble;
+  if (perf >= 2) return { outcome: "W", goalsFor: perf >= 5 ? 3 : 2, goalsAgainst: perf >= 5 ? 0 : 1 };
+  if (perf <= -2) return { outcome: "L", goalsFor: perf <= -5 ? 0 : 1, goalsAgainst: perf <= -5 ? 3 : 2 };
+  return { outcome: "D", goalsFor: 1, goalsAgainst: 1 };
+}
+
+function addResult(rec: ClubSeasonRecord, r: ClubWeekResult): ClubSeasonRecord {
+  return {
+    ...rec,
+    played: rec.played + 1,
+    wins: rec.wins + (r.outcome === "W" ? 1 : 0),
+    draws: rec.draws + (r.outcome === "D" ? 1 : 0),
+    losses: rec.losses + (r.outcome === "L" ? 1 : 0),
+    goalsFor: rec.goalsFor + r.goalsFor,
+    goalsAgainst: rec.goalsAgainst + r.goalsAgainst,
+    points: rec.points + (r.outcome === "W" ? 3 : r.outcome === "D" ? 1 : 0),
+  };
+}
+
+// Advance every league by one matchweek. The player's club takes its real result;
+// every other club gets a deterministic light-sim result. Returns a new World.
+export function advanceWorldMatchweek(
+  world: World,
+  playerShortCode: string,
+  playerResult: ClubWeekResult,
+  weekIndex: number,
+): World {
+  const leagueSeasons = { ...world.leagueSeasons };
+
+  for (const league of Object.values(world.leagues)) {
+    const tier = leagueTiers[league.tierId];
+    const prev = world.leagueSeasons[league.id];
+    const records: Record<string, ClubSeasonRecord> = { ...(prev?.records ?? {}) };
+
+    for (const clubId of league.clubIds) {
+      const club = world.clubs[clubId];
+      const base = records[clubId] ?? emptyClubSeasonRecord(clubId);
+      const result =
+        club.shortCode === playerShortCode
+          ? playerResult
+          : simClubWeek(club.strength - tier.averageOvr, club.shortCode, weekIndex);
+      records[clubId] = addResult(base, result);
+    }
+
+    leagueSeasons[league.id] = { leagueId: league.id, records };
+  }
+
+  return { ...world, leagueSeasons };
+}
+
+// Reset all standings for a new season. (Stage 2b will apply promotion/relegation
+// and strength drift before this reset.)
+export function resetWorldSeason(world: World): World {
+  const leagueSeasons: Record<string, { leagueId: string; records: Record<string, ClubSeasonRecord> }> = {};
+  for (const league of Object.values(world.leagues)) {
+    leagueSeasons[league.id] = {
+      leagueId: league.id,
+      records: Object.fromEntries(league.clubIds.map((id) => [id, emptyClubSeasonRecord(id)])),
+    };
+  }
+  return { ...world, seasonNumber: world.seasonNumber + 1, leagueSeasons };
 }

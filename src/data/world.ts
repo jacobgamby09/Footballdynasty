@@ -1,4 +1,4 @@
-import type { LeagueTierId, World, WorldClub, WorldLeague } from "../types";
+import type { ClubSeasonRecord, LeagueSeason, LeagueTierId, World, WorldClub, WorldLeague } from "../types";
 import { clamp } from "../utils";
 import { baseLeagueTeams } from "./fixtures";
 import { contractMarketClubs, initialClub, leagueTiers } from "./leagues";
@@ -60,9 +60,14 @@ function seedSpecsForTier(tierId: LeagueTierId): ClubSpec[] {
     .map((club) => ({ name: club.club, shortCode: club.short }));
 }
 
+export function emptyClubSeasonRecord(clubId: string): ClubSeasonRecord {
+  return { clubId, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+}
+
 export function seedWorld(): World {
   const clubs: Record<string, WorldClub> = {};
   const leagues: Record<string, WorldLeague> = {};
+  const leagueSeasons: Record<string, LeagueSeason> = {};
   const usedCodes = new Set<string>();
   let generatedCounter = 0;
 
@@ -108,7 +113,11 @@ export function seedWorld(): World {
       promotionSlots: tierIndex === TIER_ORDER.length - 1 ? 0 : 2,
       relegationSlots: tierIndex === 0 ? 0 : 2,
     };
+    leagueSeasons[leagueId] = {
+      leagueId,
+      records: Object.fromEntries(clubIds.map((id) => [id, emptyClubSeasonRecord(id)])),
+    };
   });
 
-  return { seasonNumber: 1, clubs, leagues, tierOrder: [...TIER_ORDER] };
+  return { seasonNumber: 1, clubs, leagues, leagueSeasons, tierOrder: [...TIER_ORDER] };
 }

@@ -7,7 +7,7 @@ import { createSeasonFixtures, getClubShortCode, getClubShortName, getClubStreng
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 function cloneWorld(world: World): World {
   return {
@@ -15,6 +15,12 @@ function cloneWorld(world: World): World {
     tierOrder: [...world.tierOrder],
     clubs: Object.fromEntries(Object.entries(world.clubs).map(([id, club]) => [id, { ...club }])),
     leagues: Object.fromEntries(Object.entries(world.leagues).map(([id, league]) => [id, { ...league, clubIds: [...league.clubIds] }])),
+    leagueSeasons: Object.fromEntries(
+      Object.entries(world.leagueSeasons ?? {}).map(([id, ls]) => [
+        id,
+        { leagueId: ls.leagueId, records: Object.fromEntries(Object.entries(ls.records).map(([cid, rec]) => [cid, { ...rec }])) },
+      ]),
+    ),
   };
 }
 

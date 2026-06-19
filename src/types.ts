@@ -119,10 +119,27 @@ export type WorldLeague = {
   relegationSlots: number;
 };
 
+export type ClubSeasonRecord = {
+  clubId: ClubId;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+};
+
+export type LeagueSeason = {
+  leagueId: LeagueId;
+  records: Record<ClubId, ClubSeasonRecord>;
+};
+
 export type World = {
   seasonNumber: number;
   clubs: Record<ClubId, WorldClub>;
   leagues: Record<LeagueId, WorldLeague>;
+  leagueSeasons: Record<LeagueId, LeagueSeason>;
   tierOrder: LeagueTierId[];
 };
 
@@ -253,7 +270,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 3;
+  version: 4;
   game: GameState;
 };
 

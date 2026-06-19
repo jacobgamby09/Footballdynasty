@@ -7,8 +7,9 @@ of being regenerated around the player on demand.
 This is the foundation for real transfers and league progression now, and a cheap
 dynasty hand-off later. Built in stages so the game stays playable at every step.
 
-> Status: **Stage 2 complete** on branch `feature/persistent-world` (see "Build log").
-> This doc is the source of truth for the design and the hand-off to Codex.
+> Status: **Stage 3 complete** on branch `feature/transfers` (Stages 1-2 merged to
+> `main`). See "Build log". This doc is the source of truth for the design and the
+> hand-off to Codex.
 
 ---
 
@@ -139,7 +140,7 @@ Short codes are made unique across the world. Clubs link to their league via
   bump `world.seasonNumber`.
 - `getWorldLeagueTable` then reads stored records instead of deriving.
 
-### Stage 3 — transfers read the world
+### Stage 3 — transfers read the world  *(DONE)*
 - Replace `contractMarketClubs`-based offers with a query over `world.clubs`
   (filter by tier/reputation/squad-need vs. the player's OVR/form/prestige).
 - Accepting a move sets the player's club to a real world club + its league.
@@ -157,9 +158,12 @@ Respect the existing acyclic DAG (`data ← systems ← state/components ← App
 - `types.ts` — world types.
 - `data/world.ts` — `seedWorld()` + name pools. **Must not import from `systems/`**
   (data is a low layer). Inline tiny helpers (e.g. short-code) here.
-- `systems/world.ts` — pure world logic (table, later: advance/finalise). May import
-  `data/*`, `utils`, `types`.
+- `systems/world.ts` — pure world logic (table, matchweek advance, season rollover,
+  seeded variation). May import `data/*`, `utils`, `types`.
+- `systems/transfers.ts` — world transfer query (interested clubs, world→club state).
+  Must NOT import `systems/contracts` (contracts depends on transfers, not vice versa).
 - `systems/season.ts` — `getLeagueTable` calls `systems/world.ts`.
+- `systems/contracts.ts` — depends on `systems/transfers.ts` for the transfer market.
 - `state/initialState.ts` — seeds `world`. `state/save.ts` — clone + normalise.
 
 ## Save strategy
@@ -245,6 +249,39 @@ Known Stage-2 limitations (addressed later):
 - Non-player results are a light deterministic sim, not real fixtures.
 - World advances one matchweek per player matchweek (12), abstracting real rounds.
 - Player club still embedded + pinned; `clubId` migration + dynasty are Stage 4.
+
+### Stage 3 — DONE (branch `feature/transfers`)
+The transfer market is now the real world. New module **`systems/transfers.ts`**
+(pure world query; does NOT import `contracts`, so the graph stays acyclic —
+`contracts` depends on `transfers`):
+- `getInterestedWorldClubs(game, lastMatch?)` — ranks `world.clubs` by interest
+  (selection score, OVR, prestige, form, tier gap, minus a reputation-resistance so
+  high-rep clubs cool on an under-level player), capped to one tier above current.
+  Seeded by club+week so it varies yet is reproducible.
+- `worldClubToClubState(club)` — maps a `WorldClub` to the player's embedded club on
+  transfer, keeping the world club's exact short code so results feed its standings.
+
+`systems/contracts.ts`:
+- `getExpiredContractMarketOffer` now builds the offer from the most-interested world
+  club (new helper `buildOfferFromWorldClub`, wage shaped from the club's tier band +
+  a reputation factor); the legacy `contractMarketClubs` path remains as a fallback.
+- `acceptContractOfferState` joins the real world club via `worldClubToClubState` when
+  the offer carries a `clubId` (added to `ContractOffer`).
+
+Verified end-to-end in-browser: with the trial contract expired, finishing a match
+produced a transfer offer from a real world club (Vejle Juniors, `clubId`
+`grassroots-dev-10`, source `external-club`); accepting moved the player into that
+club (matching short code → the player now sits in that club's league and feeds its
+standings), and the old club reverts to NPC sim. Build + balance:season green; zero
+import cycles; no console errors.
+
+Stage-3 notes / future:
+- For V1 the market offer surfaces the single best-fit club; `getInterestedWorldClubs`
+  already returns the ranked list, so a "choose between interested clubs" UI is a
+  natural next step.
+- Mid-season transfers reuse the existing fixture rebuild; the world record sync is
+  approximate mid-season (most moves happen at the season boundary).
+- `contractMarketClubs` (static list) is now only a fallback for world-less states.
 
 ## Hand-off notes for Codex
 

@@ -8,8 +8,9 @@ import { calculateOvr, getContractLeagueTier, getLeagueTierIndex } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
 import { getPlayerMatchRole, getRoleThreshold, getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
+import { getInterestedWorldClubs, worldClubToClubState } from "./transfers";
 import type { MatchRole } from "../positionRoles";
-import type { Contract, ContractOffer, GameState, LastMatchSummary, LeagueTier, MatchTotals } from "../types";
+import type { Contract, ContractOffer, GameState, LastMatchSummary, LeagueTier, MatchTotals, WorldClub } from "../types";
 
 export function getMatchContractEarnings(contract: Contract, totals: Pick<MatchTotals, "goals" | "assists">, madeSquad: boolean) {
   const appearanceBonus = madeSquad ? contract.appearanceBonus : 0;
@@ -56,7 +57,13 @@ export function acceptContractOfferState(state: GameState): GameState {
   if (!offer) {
     return state;
   }
-  const nextClub = offer.source === "external-club" ? createClubStateFromOffer(offer, state.club) : state.club;
+  const worldClub = offer.clubId ? state.world?.clubs[offer.clubId] : undefined;
+  const nextClub =
+    offer.source === "external-club"
+      ? worldClub
+        ? worldClubToClubState(worldClub)
+        : createClubStateFromOffer(offer, state.club)
+      : state.club;
 
   return {
     ...state,
@@ -131,6 +138,20 @@ export function getClubContractOffer(game: GameState, lastMatch?: LastMatchSumma
 
 export function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastMatchSummary): ContractOffer | undefined {
   const currentTier = getContractLeagueTier(game.contract);
+
+  // Stage 3: when a world exists, the transfer market is the real world. Pick the most
+  // interested world club (falling back to any grassroots club) and build the offer
+  // from that club. The legacy static-list path below stays as a fallback.
+  if (game.world) {
+    const interested = getInterestedWorldClubs(game, lastMatch);
+    const club =
+      interested[0]?.club ??
+      Object.values(game.world.clubs).find((c) => c.tierId === "grassroots-dev" && c.shortCode !== game.club.shortCode);
+    if (club) {
+      return buildOfferFromWorldClub(game, club, currentTier, lastMatch);
+    }
+  }
+
   const currentTierIndex = getLeagueTierIndex(currentTier.id);
   const selection = getSelectionReport(game, getCurrentFixture(game.season));
   const averageRating = getAverageRating(game.seasonStats.ratings);
@@ -195,6 +216,51 @@ export function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastM
     signingBonus: roundToNearest(weeklyWage * 0.45 * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06), 10),
     pressureModifier,
     summary: getExternalContractOfferSummary(club.club, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
+    source: "external-club",
+    tierId: club.tierId,
+  };
+}
+
+
+function buildOfferFromWorldClub(game: GameState, club: WorldClub, currentTier: LeagueTier, lastMatch?: LastMatchSummary): ContractOffer {
+  const currentTierIndex = getLeagueTierIndex(currentTier.id);
+  const tier = leagueTiers[club.tierId];
+  const tierIndex = getLeagueTierIndex(club.tierId);
+  const selection = getSelectionReport(game, getCurrentFixture(game.season));
+  const averageRating = getAverageRating(game.seasonStats.ratings);
+  const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+  const agentLevel = getSupportLevel(game, "agent");
+  const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
+  const formSignal =
+    Math.max(0, averageRating - 6.4) * 8 + game.seasonStats.goals * 1.6 + game.seasonStats.assists * 1.2 + (lastMatch?.rating ?? 6.5) - 6.5;
+  const rolePromise = getPromisedRole(selection.score + (tierIndex < currentTierIndex ? 8 : 0), "Bench");
+  const leverage = 1 + agentLevel * 0.04 + careerBreakthroughs * 0.035;
+  // Reputation nudges wage within the tier band (seedWorld bases reputation on tierIndex*15+10).
+  const reputationFactor = clamp(0.92 + (club.reputation - (tierIndex * 15 + 10)) * 0.01, 0.85, 1.15);
+  const roleWage: Record<MatchRole, number> = {
+    Bench: tier.wageRange[0],
+    "Impact Sub": tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.28,
+    "Rotation Starter": tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.52,
+    Starter: tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * 0.78,
+  };
+  const rawWage = roleWage[rolePromise] + Math.max(0, ovr - tier.averageOvr) * 5 + formSignal * 3;
+  const weeklyWage = roundToNearest(clamp(rawWage * reputationFactor * leverage, tier.wageRange[0], tier.wageRange[1]), 5);
+  const pressureModifier = rolePromise === "Starter" ? 7 : rolePromise === "Rotation Starter" ? 4 : rolePromise === "Impact Sub" ? 1 : -1;
+
+  return {
+    club: club.name,
+    clubId: club.id,
+    label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Fresh start deal",
+    title: "Transfer offer",
+    weeklyWage,
+    weeks: rolePromise === "Starter" ? 12 : 8,
+    rolePromise,
+    appearanceBonus: roundToNearest(8 + weeklyWage * 0.12, 5),
+    goalBonus: roundToNearest(14 + weeklyWage * 0.24, 5),
+    assistBonus: roundToNearest(10 + weeklyWage * 0.18, 5),
+    signingBonus: roundToNearest(weeklyWage * 0.45 * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06), 10),
+    pressureModifier,
+    summary: getExternalContractOfferSummary(club.name, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
     source: "external-club",
     tierId: club.tierId,
   };

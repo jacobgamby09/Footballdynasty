@@ -216,6 +216,7 @@ export type ContractOffer = Omit<Contract, "weeksRemaining"> & {
   summary: string;
   source?: "current-club" | "external-club";
   tierId?: LeagueTierId;
+  clubId?: ClubId;
 };
 
 export type SupportUpgradeDefinition = {

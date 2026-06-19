@@ -6,7 +6,7 @@ import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
-import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, resetWorldSeason } from "./world";
+import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, rolloverWorldSeason } from "./world";
 import type { Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
 export function getDynastyTotals(seasons: DynastySeason[]) {
@@ -56,7 +56,7 @@ export function startNextSeasonState(state: GameState): GameState {
       fixtures: createSeasonFixtures(state.club),
       results: [],
     },
-    world: resetWorldSeason(state.world),
+    world: rolloverWorldSeason(state.world, state.club.shortCode),
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,

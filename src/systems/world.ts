@@ -1,6 +1,6 @@
 import { leagueTiers } from "../data/leagues";
 import { emptyClubSeasonRecord } from "../data/world";
-import type { ClubSeasonRecord, LeagueId, LeagueTableRow, LeagueTierId, World, WorldLeague } from "../types";
+import type { ClubSeasonRecord, LeagueId, LeagueTableRow, LeagueTierId, World, WorldClub, WorldLeague } from "../types";
 
 // Stage 1 links the player's embedded club to the world by shortCode; the clubId
 // migration is Stage 4 (see WORLD_MODEL.md).
@@ -98,15 +98,87 @@ export function advanceWorldMatchweek(
   return { ...world, leagueSeasons };
 }
 
-// Reset all standings for a new season. (Stage 2b will apply promotion/relegation
-// and strength drift before this reset.)
-export function resetWorldSeason(world: World): World {
-  const leagueSeasons: Record<string, { leagueId: string; records: Record<string, ClubSeasonRecord> }> = {};
-  for (const league of Object.values(world.leagues)) {
+function freshLeagueSeasons(leagues: Record<string, WorldLeague>): World["leagueSeasons"] {
+  const leagueSeasons: World["leagueSeasons"] = {};
+  for (const league of Object.values(leagues)) {
     leagueSeasons[league.id] = {
       leagueId: league.id,
       records: Object.fromEntries(league.clubIds.map((id) => [id, emptyClubSeasonRecord(id)])),
     };
   }
-  return { ...world, seasonNumber: world.seasonNumber + 1, leagueSeasons };
+  return leagueSeasons;
+}
+
+// Reset all standings for a new season, keeping current league memberships.
+export function resetWorldSeason(world: World): World {
+  return { ...world, seasonNumber: world.seasonNumber + 1, leagueSeasons: freshLeagueSeasons(world.leagues) };
+}
+
+function sortedClubIdsByRecord(world: World, leagueId: LeagueId): string[] {
+  const league = world.leagues[leagueId];
+  const records = world.leagueSeasons[leagueId]?.records ?? {};
+  return [...league.clubIds].sort((a, b) => {
+    const ra = records[a] ?? emptyClubSeasonRecord(a);
+    const rb = records[b] ?? emptyClubSeasonRecord(b);
+    const gdA = ra.goalsFor - ra.goalsAgainst;
+    const gdB = rb.goalsFor - rb.goalsAgainst;
+    return rb.points - ra.points || gdB - gdA || world.clubs[a].name.localeCompare(world.clubs[b].name);
+  });
+}
+
+// End-of-season rollover: apply promotion/relegation between adjacent leagues from
+// the final standings, drift moved clubs toward their new tier, reset standings and
+// bump the season clock. The player's club is pinned (its tier is driven by the
+// player's career/transfers, not the world sim) — see WORLD_MODEL.md.
+export function rolloverWorldSeason(world: World, playerShortCode: string): World {
+  const newLeagueOf: Record<string, LeagueId> = {};
+  for (const club of Object.values(world.clubs)) newLeagueOf[club.id] = club.leagueId;
+
+  const isPlayer = (clubId: string) => world.clubs[clubId].shortCode === playerShortCode;
+
+  // Decide all moves from the ORIGINAL standings before applying any, so a club
+  // promoted this rollover cannot also cascade upward in the same rollover.
+  for (let i = 0; i < world.tierOrder.length - 1; i++) {
+    const lower = findLeagueByTier(world, world.tierOrder[i]);
+    const upper = findLeagueByTier(world, world.tierOrder[i + 1]);
+    if (!lower || !upper) continue;
+
+    const promote = sortedClubIdsByRecord(world, lower.id).filter((id) => !isPlayer(id)).slice(0, lower.promotionSlots);
+    for (const id of promote) newLeagueOf[id] = upper.id;
+
+    if (upper.relegationSlots > 0) {
+      const upperSorted = sortedClubIdsByRecord(world, upper.id).filter((id) => !isPlayer(id));
+      const relegate = upperSorted.slice(Math.max(0, upperSorted.length - upper.relegationSlots));
+      for (const id of relegate) newLeagueOf[id] = lower.id;
+    }
+  }
+
+  const clubs: Record<string, WorldClub> = {};
+  for (const club of Object.values(world.clubs)) {
+    const destLeagueId = newLeagueOf[club.id];
+    if (destLeagueId === club.leagueId) {
+      clubs[club.id] = { ...club };
+      continue;
+    }
+    const destTierId = world.leagues[destLeagueId].tierId;
+    const destTier = leagueTiers[destTierId];
+    const driftedStrength = Math.round(club.strength + (destTier.averageOvr - club.strength) * 0.3);
+    clubs[club.id] = {
+      ...club,
+      leagueId: destLeagueId,
+      tierId: destTierId,
+      strength: Math.max(destTier.teamRange[0], Math.min(destTier.teamRange[1], driftedStrength)),
+      reputation: club.reputation,
+    };
+  }
+
+  const leagues: Record<string, WorldLeague> = {};
+  for (const league of Object.values(world.leagues)) {
+    leagues[league.id] = {
+      ...league,
+      clubIds: Object.values(clubs).filter((c) => c.leagueId === league.id).map((c) => c.id),
+    };
+  }
+
+  return { ...world, clubs, leagues, seasonNumber: world.seasonNumber + 1, leagueSeasons: freshLeagueSeasons(leagues) };
 }

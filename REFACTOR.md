@@ -25,17 +25,21 @@ src/
     fixtures.ts         // season fixtures, base league teams          [DONE — Phase 2]
     support.ts          // support/specialist definitions              [DONE — Phase 2]
     initialState.ts     // initialState/Contract + construction        [planned — Phase 4]
+  utils.ts              // clamp (generic math leaf)                   [DONE — Phase 3]
   state/
-    save.ts             // save/load, clone, normalize                 [planned — Phase 3]
+    save.ts             // save/load, clone, normalize                 [planned — Phase 5]
   systems/              // pure gameplay logic
-    ovr.ts              // OVR, attribute XP/growth, clamp util         [planned — Phase 4]
-    training.ts         // applyTrainingWeek, quality, focus            [planned — Phase 4]
-    support.ts          // buySupportUpgradeState + support getters     [planned — Phase 4]
-    match.ts            // createMatch, resolve, follow-up, summaries   [planned — Phase 4]
-    selection.ts        // selection report, fitness, role/minutes      [planned — Phase 4]
-    season.ts           // fixtures advance, league table, review       [planned — Phase 4]
-    contracts.ts        // offers, accept, advance, status              [planned — Phase 4]
-    formatting.ts       // clamp, formatSigned, labels                  [planned — Phase 4]
+    attributeXp.ts      // attribute XP requirement + growth pressure   [DONE — Phase 3]
+    generation.ts       // getGenerationProfile, createGenerationAttrs  [planned — Phase 4]
+    club.ts             // fixtures/league/club construction            [planned — Phase 4]
+    ovr.ts              // OVR, attribute value maps, league scaling    [planned — Phase 6]
+    training.ts         // applyTrainingWeek, quality, focus            [planned — Phase 6]
+    support.ts          // buySupportUpgradeState + support getters     [planned — Phase 6]
+    match.ts            // createMatch, resolve, follow-up, summaries   [planned — Phase 6]
+    selection.ts        // selection report, fitness, role/minutes      [planned — Phase 6]
+    season.ts           // fixtures advance, league table, review       [planned — Phase 6]
+    contracts.ts        // offers, accept, advance, status              [planned — Phase 6]
+    formatting.ts       // formatSigned, labels                         [planned — Phase 6]
   components/
     shared/             // ProgressBar, InfoRow, ChoiceRow, BottomNav…  [planned — Phase 5]
     cards/              // *Card components                             [planned — Phase 5]
@@ -61,6 +65,7 @@ Each phase follows the same discipline:
 | Baseline (branch point) | 7,339 | — | `05548d3` |
 | Phase 1 — types | 6,972 | −367 | `a41d3ef` |
 | Phase 2 — data | 6,459 | −513 | `06af327` |
+| Phase 3 — pure-logic core | 6,401 | −58 | `49fbd60` |
 
 ---
 
@@ -187,17 +192,60 @@ Phase 4 is sequenced to do the core first.
 
 ---
 
+## Phase 3 — Extract pure-logic core → `src/utils.ts` + `src/systems/attributeXp.ts`
+
+**Commit:** `49fbd60` — *Extract pure-logic core: clamp and attribute-XP curve*
+
+### What moved
+The smallest set of pure functions that the Phase 2 data-construction helpers
+depend on, so those helpers can leave `App.tsx` next without a circular import.
+
+**`src/utils.ts`** (no imports — generic leaf)
+- `clamp`
+
+**`src/systems/attributeXp.ts`** (imports: `Attribute`, `GrowthPressureTone` from `../types`)
+- `getAttributeXpRequirement`
+- `getBaseAttributeXpRequirement`
+- `getAttributeGrowthPressure`
+
+### What changed in `App.tsx`
+Two import statements added; the four function definitions removed. All existing
+call sites (`getAttributeGrowthDetail`, `getAttributeProgressPercent`,
+`getXpPercent`, the construction helpers, training/level-up logic, …) now resolve
+through the imports.
+
+### Verification
+- `npm run build` green.
+- Bundle 379.51 kB, functionally identical (1641 modules).
+- Confirmed the four functions no longer exist in `App.tsx`.
+
+### Notes
+- The wider OVR/attribute cluster (`calculateOvr`, `getOvrBreakdown`,
+  `getAttributeValueMap`, `getLeagueAdjusted*`, `getContextualAbilityScore`,
+  `getAttributeProgressPercent`, `getAttributeGrowthDetail`, `getXpPercent`) was
+  deliberately left in `App.tsx` for now — it belongs to the larger `systems/ovr.ts`
+  extraction (Phase 6). Only the leaf functions needed to unblock data
+  construction were moved here.
+
+---
+
 ## Remaining phases (plan)
 
-- **Phase 3 — `state/save.ts`**: `SAVE_KEY`, `SAVE_VERSION`, `loadSavedGame`,
+- **Phase 4 — finish data/construction layer**: move the construction helpers out
+  of `App.tsx` now that their dependencies are extracted —
+  `getGenerationProfile`, `createGenerationAttributes` → `systems/generation.ts`;
+  `createSeasonFixtures`, `createLeagueTeams`, `createClubStateFromOffer`,
+  `rebuildSeasonForClub`, `getClubStrengthForTier`, `getClubShortName`,
+  `getClubShortCode` → `systems/club.ts`; `initialContract`, `initialState` →
+  `state/initialState.ts`.
+- **Phase 5 — `state/save.ts`**: `SAVE_KEY`, `SAVE_VERSION`, `loadSavedGame`,
   `normalizeSavedGame`, `normalizeSavedClub`, `mergeSavedAttributes`,
   `saveGameState`, `clearSavedGame`, `cloneGameState`, `cloneTrainingSummary`,
-  `cloneLastMatchSummary`, `createInitialState`.
-- **Phase 4 — `systems/*`**: extract the pure-logic core first (`clamp`,
-  attribute-XP/growth), then training, support, match, selection, season,
-  contracts. Finish moving the Phase 2 construction helpers + `initialState`
-  into `data/initialState.ts`.
-- **Phase 5 — `components/*`**: shared presentational components first, then
+  `cloneLastMatchSummary`, `createInitialState`. Trivial and cycle-free once
+  Phase 4 has moved `initialState` and the club helpers out of `App.tsx`.
+- **Phase 6 — `systems/*` (gameplay logic)**: the bulk of the logic block — OVR,
+  training, support, match, selection, season, contracts, formatting.
+- **Phase 7 — `components/*`**: shared presentational components first, then
   cards, then screens.
-- **Phase 6 — slim `App.tsx`**: left with `App()` (state + handlers + routing);
+- **Phase 8 — slim `App.tsx`**: left with `App()` (state + handlers + routing);
   optionally extract handlers into a `useGameState` hook.

@@ -315,3 +315,81 @@ Stage-3 notes / future:
   graph acyclic (`data` must not import `systems`).
 - Stage boundaries above are the commit boundaries. Each stage should leave the game
   playable. Update this doc's status + the staged plan as you go.
+
+---
+
+# World v2 — Multi-country pyramid
+
+> Status: **planned** on branch `feature/world-v2` (off `feature/transfers`).
+> Replaces the single 6-tier ladder with countries, each holding its own ladder of
+> divisions that map onto a shared global tier scale.
+
+## Why
+The single global pyramid can't express that the Danish Superliga ≈ the English
+second tier, or that big countries have deep pyramids while small ones are shallow.
+v2 decouples **competition** from **quality**.
+
+## The locked model
+
+Two axes:
+- **Tier 1–6** = global quality. **Tier 1 = the best leagues in the world**; tier 6 =
+  the global bottom. This is the comparability axis (transfers, player level, wages).
+- **Division = (country, level)** — level 1 = the top of *that country*. Each division
+  is pinned to a global tier.
+
+**Countries & divisions (all reach tier 6 so any start country begins at the bottom):**
+
+| Country | Divisions | Tiers (level 1 → down) |
+|---------|-----------|------------------------|
+| England / Spain / Italy | 6 | 1, 2, 3, 4, 5, 6 |
+| Germany / France / Holland / Denmark | 5 | 2, 3, 4, 5, 6 |
+
+- **Tier 1 divisions: 20 clubs.** All other divisions: **16 clubs.**
+- **Promotion / relegation (within a country, between adjacent levels):**
+  - Tier 1 division (top of the big-3): 0 up, **3 down**.
+  - Tier 2 division: **3 up**, **2 down**.
+  - All other divisions: **2 up / 2 down**.
+  - A country's top division: 0 up. A country's bottom (tier 6): 0 down.
+  - Sizes stay constant at every boundary (each boundary moves the same count both
+    ways: the tier1↔tier2 boundary is 3, all others 2).
+- **Player start:** pick a country at career start → begin in that country's bottom
+  division (always tier 6, ~15–25 OVR). Big country = climb all 6 tiers with one
+  club; mid country = climb to tier 2 then transfer abroad to reach tier 1.
+- **Two ways up:** (a) promoted *with your club* through a country's divisions
+  (player club is no longer pinned — it is a real world club that moves), (b) transfer
+  to another club/country, gated by global tier.
+
+Consequence (accepted): mid countries top out at tier 2, so tier 1 is reachable only
+by transferring to England/Spain/Italy. World size ≈ 620 clubs (3×100 + 4×80) — fine
+for localStorage; trim lower-division club counts later if needed.
+
+## Tier scale (global quality bands)
+Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 ≈ elite
+(avg OVR ~90), …, tier 6 ≈ the bottom (avg OVR ~15, accommodating a raw Gen-1 start).
+`getLeagueTierIndex` / `getContextualAbilityScore` must be updated for 1 = top.
+
+## Etape-plan (commit boundaries; keep build + balance:season green each step)
+
+- **Stage A — model + seed.** New `Country` type; `WorldLeague` gains `countryId` +
+  `level` (keeps a tier id). Tier scale renumbered (1 = best). `data/world.ts`
+  `seedWorld()` builds every country's divisions (tier-1 = 20 clubs, else 16) from
+  authored country data (top tier + division count). World reads
+  (`getWorldLeagueTable`, `advanceWorldMatchweek`, `getLeagueTable`) work with the new
+  structure. Player still starts at Northbridge, now placed in a tier-6 division.
+- **Stage B — promotion/relegation per country.** Rework `rolloverWorldSeason` to
+  move clubs between adjacent levels *within each country* using the counts above,
+  with strength drift toward the new tier.
+- **Stage C — player follows club + `clubId`.** Player's club becomes a real world
+  club referenced by `clubId`; it promotes/relegates with the world and `game.club`
+  mirrors it (un-pin). Folds in the old "Stage 4" clubId migration.
+- **Stage D — cross-country transfers by tier.** `getInterestedWorldClubs` already
+  gates by tier; confirm/﻿tune interest across countries (a tier-2 player hears from
+  tier-1/2 clubs in any country).
+- **Stage E — country selection + UI.** Choose a start country at new-game; league
+  table shows the division + country; later a "browse the pyramid" view. Dynasty: the
+  son starts in the chosen (or a new) country.
+
+## Hand-off notes
+Same hard constraints as v1: no `Math.random`/`Date.now`; acyclic imports
+(`data` ⊄ `systems`); seed deterministically; bump `SAVE_VERSION` (disposable saves).
+Update this section's status + stage markers as each stage lands.

@@ -136,29 +136,31 @@ function sortedClubIdsByRecord(world: World, leagueId: LeagueId): string[] {
   });
 }
 
-// End-of-season rollover: apply promotion/relegation between adjacent leagues from
-// the final standings, drift moved clubs toward their new tier, reset standings and
-// bump the season clock. The player's club is pinned (its tier is driven by the
-// player's career/transfers, not the world sim) — see WORLD_MODEL.md.
+// End-of-season rollover: promotion/relegation happens WITHIN each country, between
+// adjacent division levels, decided from the final standings before any move is
+// applied. Moved clubs drift toward their new tier (with a seeded swing). The player's
+// club is pinned for now — Stage C lets the player move up/down with the club.
 export function rolloverWorldSeason(world: World, playerShortCode: string): World {
   const newLeagueOf: Record<string, LeagueId> = {};
   for (const club of Object.values(world.clubs)) newLeagueOf[club.id] = club.leagueId;
 
   const isPlayer = (clubId: string) => world.clubs[clubId].shortCode === playerShortCode;
 
-  // Decide all moves from the ORIGINAL standings before applying any, so a club
-  // promoted this rollover cannot also cascade upward in the same rollover.
-  for (let i = 0; i < world.tierOrder.length - 1; i++) {
-    const lower = findLeagueByTier(world, world.tierOrder[i]);
-    const upper = findLeagueByTier(world, world.tierOrder[i + 1]);
-    if (!lower || !upper) continue;
+  for (const country of Object.values(world.countries)) {
+    const byLevel = Object.values(world.leagues)
+      .filter((l) => l.countryId === country.id)
+      .sort((a, b) => a.level - b.level);
+    for (let i = 0; i < byLevel.length - 1; i++) {
+      const upper = byLevel[i]; // higher division (lower level number)
+      const lower = byLevel[i + 1]; // division below
+      const count = upper.relegationSlots; // equals lower.promotionSlots at this boundary
+      if (count <= 0) continue;
 
-    const promote = sortedClubIdsByRecord(world, lower.id).filter((id) => !isPlayer(id)).slice(0, lower.promotionSlots);
-    for (const id of promote) newLeagueOf[id] = upper.id;
+      const promote = sortedClubIdsByRecord(world, lower.id).filter((id) => !isPlayer(id)).slice(0, count);
+      for (const id of promote) newLeagueOf[id] = upper.id;
 
-    if (upper.relegationSlots > 0) {
       const upperSorted = sortedClubIdsByRecord(world, upper.id).filter((id) => !isPlayer(id));
-      const relegate = upperSorted.slice(Math.max(0, upperSorted.length - upper.relegationSlots));
+      const relegate = upperSorted.slice(Math.max(0, upperSorted.length - count));
       for (const id of relegate) newLeagueOf[id] = lower.id;
     }
   }

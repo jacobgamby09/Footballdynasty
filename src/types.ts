@@ -110,9 +110,19 @@ export type WorldClub = {
   reputation: number;
 };
 
+export type CountryId = "england" | "spain" | "italy" | "germany" | "france" | "holland" | "denmark";
+
+export type Country = {
+  id: CountryId;
+  name: string;
+  tiers: LeagueTierId[]; // top -> bottom: the global tiers this country's divisions occupy
+};
+
 export type WorldLeague = {
   id: LeagueId;
   name: string;
+  countryId: CountryId;
+  level: number; // 1 = top division of that country
   tierId: LeagueTierId;
   clubIds: ClubId[];
   promotionSlots: number;
@@ -137,6 +147,7 @@ export type LeagueSeason = {
 
 export type World = {
   seasonNumber: number;
+  countries: Record<CountryId, Country>;
   clubs: Record<ClubId, WorldClub>;
   leagues: Record<LeagueId, WorldLeague>;
   leagueSeasons: Record<LeagueId, LeagueSeason>;
@@ -272,7 +283,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 4;
+  version: 5;
   game: GameState;
 };
 

@@ -42,12 +42,22 @@ export function getWorldLeagueTable(world: World, leagueId: LeagueId): LeagueTab
 
 export type ClubWeekResult = { outcome: "W" | "D" | "L"; goalsFor: number; goalsAgainst: number };
 
-// Deterministic light sim of one matchweek for a non-player club. No RNG: the
-// wobble is a fixed function of the club's code and the week index.
-function simClubWeek(strengthGap: number, shortCode: string, weekIndex: number): ClubWeekResult {
-  const c0 = shortCode.charCodeAt(0) || 0;
-  const c1 = shortCode.charCodeAt(1) || 0;
-  const wobble = ((c0 * 31 + c1 * 17 + weekIndex * 13) % 9) - 4; // -4..4
+// Deterministic, seed-varied pseudo-random in [0,1). No Math.random (it would break
+// the sim-lab and save-resume): the same seed always yields the same value, but
+// different seeds spread out, so results feel unpredictable yet reproducible.
+function hash01(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+// Light sim of one matchweek for a non-player club. Strength is the main driver;
+// the wobble varies by club AND season, so tables are not identical year to year.
+function simClubWeek(strengthGap: number, shortCode: string, weekIndex: number, seasonNumber: number): ClubWeekResult {
+  const wobble = Math.round((hash01(`${shortCode}|w${weekIndex}|s${seasonNumber}`) - 0.5) * 10); // ~ -5..5
   const perf = strengthGap + wobble;
   if (perf >= 2) return { outcome: "W", goalsFor: perf >= 5 ? 3 : 2, goalsAgainst: perf >= 5 ? 0 : 1 };
   if (perf <= -2) return { outcome: "L", goalsFor: perf <= -5 ? 0 : 1, goalsAgainst: perf <= -5 ? 3 : 2 };
@@ -88,7 +98,7 @@ export function advanceWorldMatchweek(
       const result =
         club.shortCode === playerShortCode
           ? playerResult
-          : simClubWeek(club.strength - tier.averageOvr, club.shortCode, weekIndex);
+          : simClubWeek(club.strength - tier.averageOvr, club.shortCode, weekIndex, world.seasonNumber);
       records[clubId] = addResult(base, result);
     }
 
@@ -162,7 +172,19 @@ export function rolloverWorldSeason(world: World, playerShortCode: string): Worl
     }
     const destTierId = world.leagues[destLeagueId].tierId;
     const destTier = leagueTiers[destTierId];
-    const driftedStrength = Math.round(club.strength + (destTier.averageOvr - club.strength) * 0.3);
+    const isRelegation = destTier.averageOvr < leagueTiers[club.tierId].averageOvr;
+
+    // Base drift toward the new tier, plus a seeded swing so the yo-yo is likely but
+    // not guaranteed: ~30% of moves get a thematic shift (a relegated club sells its
+    // best players -> extra drop; a promoted club invests -> extra boost), otherwise
+    // a small +/-2 wobble. Seeded by club + season, so it is varied yet reproducible.
+    const drift = club.strength + (destTier.averageOvr - club.strength) * 0.3;
+    const bigSwing = hash01(`${club.id}|move|s${world.seasonNumber}`) < 0.3;
+    const magnitude = 4 + Math.round(hash01(`${club.id}|mag|s${world.seasonNumber}`) * 3); // 4..7
+    const smallWobble = Math.round((hash01(`${club.id}|sm|s${world.seasonNumber}`) - 0.5) * 4); // -2..2
+    const swing = bigSwing ? (isRelegation ? -magnitude : magnitude) : smallWobble;
+    const driftedStrength = Math.round(drift) + swing;
+
     clubs[club.id] = {
       ...club,
       leagueId: destLeagueId,

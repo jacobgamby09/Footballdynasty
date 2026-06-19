@@ -225,6 +225,22 @@ Known Stage-1 limitations (by design, addressed later):
   relegated in with strength drifting down, both leagues stayed at 12 clubs, and the
   player's club (Northbridge) was correctly pinned. No console errors across the run.
 
+**Stage 2 polish — seeded variation (deterministic, not RNG).** `systems/world.ts`
+gained a `hash01(seed)` pseudo-random helper (FNV-style, returns [0,1)). Two uses,
+both seeded by club + season so they vary yet stay reproducible (no `Math.random`):
+- `simClubWeek` wobble now includes `seasonNumber`, so a club's weekly results — and
+  thus the table — differ season to season instead of being identical every year.
+- `rolloverWorldSeason` adds a strength swing to promoted/relegated clubs: ~30% of
+  moves get a thematic shift (a relegated club "sells its best players" → extra drop;
+  a promoted club "invests" → extra boost), otherwise a small ±2 wobble. This makes
+  the yo-yo likely but not guaranteed.
+
+Playtested over 3 seasons: promotion was no longer purely the strongest club (a
+str-20 club went up over a str-21 club), a relegated club stayed down across two
+seasons, and a club that bounced back down returned weaker (20 → 15) — all with no
+console errors. Tuning knobs: the 0.3 drift factor, the 0.3 swing probability, the
+4–7 swing magnitude and the ±5 weekly wobble in `systems/world.ts`.
+
 Known Stage-2 limitations (addressed later):
 - Non-player results are a light deterministic sim, not real fixtures.
 - World advances one matchweek per player matchweek (12), abstracting real rounds.

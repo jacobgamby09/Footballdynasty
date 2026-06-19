@@ -1,12 +1,28 @@
 import { getPositionModule } from "../positionRoles";
-import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, TrainingSummary } from "../types";
+import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, TrainingSummary, World } from "../types";
 import { initialAttributes } from "../data/attributes";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
+import { seedWorld } from "../data/world";
 import { createSeasonFixtures, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 4;
+
+function cloneWorld(world: World): World {
+  return {
+    seasonNumber: world.seasonNumber,
+    tierOrder: [...world.tierOrder],
+    clubs: Object.fromEntries(Object.entries(world.clubs).map(([id, club]) => [id, { ...club }])),
+    leagues: Object.fromEntries(Object.entries(world.leagues).map(([id, league]) => [id, { ...league, clubIds: [...league.clubIds] }])),
+    leagueSeasons: Object.fromEntries(
+      Object.entries(world.leagueSeasons ?? {}).map(([id, ls]) => [
+        id,
+        { leagueId: ls.leagueId, records: Object.fromEntries(Object.entries(ls.records).map(([cid, rec]) => [cid, { ...rec }])) },
+      ]),
+    ),
+  };
+}
 
 export function createInitialState(): GameState {
   return cloneGameState(initialState);
@@ -26,6 +42,7 @@ export function cloneGameState(state: GameState): GameState {
       results: state.season.results.map((result) => ({ ...result })),
     },
     club: { ...state.club },
+    world: cloneWorld(state.world),
     dynasty: { ...state.dynasty },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
     contract: { ...state.contract },
@@ -93,6 +110,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
     positionCode: getPositionModule(saved.positionGroup ?? fallback.positionGroup).shortCode,
     archetype: saved.archetype ?? getPositionModule(saved.positionGroup ?? fallback.positionGroup).defaultArchetype,
     attributes: mergeSavedAttributes(saved.attributes ?? fallback.attributes),
+    world: saved.world ? cloneWorld(saved.world) : seedWorld(),
     seasonStats: {
       ...fallback.seasonStats,
       ...saved.seasonStats,

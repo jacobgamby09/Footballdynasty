@@ -7,7 +7,7 @@ of being regenerated around the player on demand.
 This is the foundation for real transfers and league progression now, and a cheap
 dynasty hand-off later. Built in stages so the game stays playable at every step.
 
-> Status: **Stage 1 complete** on branch `feature/persistent-world` (see "Build log").
+> Status: **Stage 2 complete** on branch `feature/persistent-world` (see "Build log").
 > This doc is the source of truth for the design and the hand-off to Codex.
 
 ---
@@ -80,7 +80,7 @@ type World = {
 };
 ```
 
-Deferred to **Stage 2** (documented here so the shape is agreed, not yet in code):
+Added in **Stage 2** (standings as stored, accumulated state):
 
 ```ts
 type ClubSeasonRecord = {
@@ -88,9 +88,12 @@ type ClubSeasonRecord = {
   played: number; wins: number; draws: number; losses: number;
   goalsFor: number; goalsAgainst: number; points: number;
 };
-type LeagueSeason = { leagueId: LeagueId; table: ClubSeasonRecord[] };
-// World gains: leagueSeasons: Record<LeagueId, LeagueSeason>
+type LeagueSeason = { leagueId: LeagueId; records: Record<ClubId, ClubSeasonRecord> };
+// World gained: leagueSeasons: Record<LeagueId, LeagueSeason>
 ```
+
+(Records are keyed by `ClubId` rather than an array so per-matchweek updates are
+cheap; the sorted table is derived on read by `getWorldLeagueTable`.)
 
 ## Seeding (`data/world.ts → seedWorld()`)
 
@@ -126,7 +129,7 @@ Short codes are made unique across the world. Clubs link to their league via
 - **Acceptance:** `npm run build` green, `npm run balance:season` runs, Club tab
   league table renders from the world, save/load works.
 
-### Stage 2 — standings become real + carry across seasons
+### Stage 2 — standings become real + carry across seasons  *(DONE)*
 - Add `ClubSeasonRecord` / `LeagueSeason`; reset at season start.
 - Each matchweek, advance **all** clubs' records (light deterministic sim for
   non-player clubs; player's club from real results) and **store** them. Hook this
@@ -201,6 +204,29 @@ Known Stage-1 limitations (by design, addressed later):
 - Standings for non-player clubs are still derived per render, not accumulated.
 - Player club is still embedded (`game.club`) and linked to the world by `shortCode`.
 - `systems/club.ts → createLeagueTeams` is now only used by the legacy fallback.
+
+### Stage 2 — DONE
+- **2a (commit `2de6e36`)** — accumulated standings. `types`: `ClubSeasonRecord`,
+  `LeagueSeason`, `World.leagueSeasons`. `data/world.ts`: seeds zeroed records +
+  `emptyClubSeasonRecord`. `systems/world.ts`: `advanceWorldMatchweek` (player club
+  takes its real result, others a deterministic light sim), `resetWorldSeason`, and
+  `getWorldLeagueTable` now reads stored records. `systems/match.ts`:
+  `finishMatchState` advances the world one matchweek. `systems/season.ts`:
+  `getLeagueTable` reads stored records. `SAVE_VERSION` 4; `cloneWorld` deep-clones
+  `leagueSeasons`. Verified in-browser: the table accumulates real points after a
+  match and persists across reload.
+- **2b (commit `2def55b`)** — promotion/relegation + strength drift.
+  `systems/world.ts`: `rolloverWorldSeason(world, playerShortCode)` +
+  `sortedClubIdsByRecord`. `systems/season.ts`: `startNextSeasonState` calls it.
+  Player club pinned; league sizes preserved. **Not yet playtested through a full
+  12-match season in-browser** — verified by build + code review only; recommended
+  manual check: play one full season and confirm the table finalises and a club
+  swaps tier on rollover.
+
+Known Stage-2 limitations (addressed later):
+- Non-player results are a light deterministic sim, not real fixtures.
+- World advances one matchweek per player matchweek (12), abstracting real rounds.
+- Player club still embedded + pinned; `clubId` migration + dynasty are Stage 4.
 
 ## Hand-off notes for Codex
 

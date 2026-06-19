@@ -1,147 +1,16 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import {
-  Activity,
-  BadgeDollarSign,
-  BarChart3,
-  Building2,
-  CalendarDays,
-  ChevronRight,
-  ChevronsRight,
-  Dumbbell,
-  Flame,
-  Gauge,
-  HeartPulse,
-  Home,
-  ShieldCheck,
-  Shirt,
-  Sparkles,
-  Target,
-  Trophy,
-  UserRound,
-  UsersRound,
-} from "lucide-react";
-import {
-  createSimEvents,
-  createTeamMatchModel,
-  getSimScoreAtMinute,
-  chooseAutoSimChoice,
-  resolvePlayerChoice,
-  selectPlayerHighlights,
-  seededNoise,
-  type EngineSimEvent,
-} from "./engine/matchEngineCore";
-import { createPositionMatchPool } from "./engine/forwardMoments";
-import {
-  buildOpponentProfile,
-  type ForwardHighlightCategory,
-  type OpponentForm,
-  type OpponentProfile,
-  type ServiceLevel,
-} from "./matchEngine";
-import {
-  getPositionModule,
-  positionModules,
-  type AttributeKey,
-  type MatchRole,
-  type PositionGroup,
-  type PositionModule,
-} from "./positionRoles";
-import type {
-  Attribute,
-  AttributeLevelUp,
-  ChanceQuality,
-  ClubState,
-  ClubView,
-  Contract,
-  ContractOffer,
-  DevelopmentEnvironment,
-  DynastySeason,
-  DynastyState,
-  FitnessAvailability,
-  Fixture,
-  FixtureResult,
-  GameState,
-  GenerationProfile,
-  GrowthPressureTone,
-  HomeView,
-  Intensity,
-  LastMatchSummary,
-  LeagueTableRow,
-  LeagueTeam,
-  LeagueTier,
-  LeagueTierId,
-  MatchChoice,
-  MatchEvent,
-  MatchMoment,
-  MatchResult,
-  MatchSpeed,
-  MatchState,
-  MatchTotals,
-  NavKey,
-  OutcomeTier,
-  PlayerMatchEvent,
-  ScreenKey,
-  SeasonState,
-  SeasonStats,
-  SelectionFactor,
-  SelectionReport,
-  SimMatchEvent,
-  SupportTrackDefinition,
-  SupportTrackId,
-  SupportUpgradeDefinition,
-  SupportUpgradeId,
-  SavePayload,
-  TrainingQuality,
-  TrainingQualityProfile,
-  TrainingSpecialist,
-  TrainingSpecialistId,
-  TrainingSummary,
-  UpcomingMatch,
-  Venue,
-} from "./types";
-import { attributeInfo, generationProfiles, initialAttributes, initialDynasty } from "./data/attributes";
-import {
-  contractMarketClubs,
-  currentClubName,
-  currentClubShortName,
-  currentClubStrength,
-  currentLeagueTier,
-  initialClub,
-  leagueTiers,
-} from "./data/leagues";
-import { baseLeagueTeams, seasonFixtures } from "./data/fixtures";
-import {
-  bootsActionAttributes,
-  initialSupportUpgrades,
-  supportTrackDefinitions,
-  supportUpgradeDefinitions,
-  supportUpgradeMap,
-  trainingSpecialistMap,
-  trainingSpecialists,
-} from "./data/support";
-import { getAttributeGrowthPressure, getAttributeXpRequirement, getBaseAttributeXpRequirement } from "./systems/attributeXp";
-import { clamp } from "./utils";
-import {
-  createClubStateFromOffer,
-  createLeagueTeams,
-  createSeasonFixtures,
-  getClubShortCode,
-  getClubShortName,
-  getClubStrengthForTier,
-  rebuildSeasonForClub,
-} from "./systems/club";
+import { useEffect, useState } from "react";
+import { type AttributeKey } from "./positionRoles";
+import type { Contract, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
+import { trainingSpecialistMap } from "./data/support";
 import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
-import { formatFixtureTitle, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, sumXp } from "./systems/formatting";
-import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getClubLeagueTier, getOvrBreakdown, getXpPercent } from "./systems/ovr";
-import { buySupportUpgradeState, getNextSupportTrackPurchase, getSupportTrackProgress, getSupportUpgradeTotal } from "./systems/support";
-import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
-import { getNextRole, getRoleThreshold, getUpcomingMatch } from "./systems/selection";
-import { applyTrainingWeek, getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "./systems/training";
-import { acceptContractOfferState, getContractStatusLabel } from "./systems/contracts";
-import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview, startNextSeasonState } from "./systems/season";
-import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getAppearanceText, getChoiceAttributeAverage, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, simulateRemainingPlayerMoments, summarizeMatchResults, summarizeSimEvents } from "./systems/match";
-import { BottomNav, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./components/shared";
-import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./components/cards";
+import { buySupportUpgradeState } from "./systems/support";
+import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
+import { getUpcomingMatch } from "./systems/selection";
+import { applyTrainingWeek, getCurrentTrainingFocuses, getTrainingFocusCapacity } from "./systems/training";
+import { acceptContractOfferState } from "./systems/contracts";
+import { startNextSeasonState } from "./systems/season";
+import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
+import { BottomNav } from "./components/shared";
 import { ClubScreen, ContractOfferScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, WeekSummaryScreen } from "./components/screens";
 
 function App() {

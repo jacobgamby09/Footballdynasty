@@ -121,156 +121,16 @@ import {
 } from "./data/support";
 import { getAttributeGrowthPressure, getAttributeXpRequirement, getBaseAttributeXpRequirement } from "./systems/attributeXp";
 import { clamp } from "./utils";
-
-
-
-function getGenerationProfile(generation: number) {
-  return generationProfiles.find((profile) => profile.generation === generation) ?? generationProfiles[generationProfiles.length - 1];
-}
-
-function createGenerationAttributes(generation: number, positionModule = positionModules.Forward): Attribute[] {
-  const profile = getGenerationProfile(generation);
-  return initialAttributes.map((attribute) => {
-    const isKey = positionModule.keyAttributes.includes(attribute.label);
-    const value = clamp(attribute.value + (isKey ? profile.startKeyBonus : profile.startGeneralBonus), 1, 99);
-    const potential = clamp(
-      Math.max(value + 8, attribute.potential + (isKey ? profile.potentialKeyBonus : profile.potentialGeneralBonus)),
-      1,
-      99,
-    );
-    return {
-      ...attribute,
-      value,
-      potential,
-      xp: Math.min(attribute.xp, getAttributeXpRequirement({ ...attribute, value, potential }) - 1),
-    };
-  });
-}
-
-
-function createSeasonFixtures(club: ClubState): Fixture[] {
-  const tier = leagueTiers[club.tierId];
-  const strengthOffset = tier.averageOvr - leagueTiers["grassroots-dev"].averageOvr;
-  return seasonFixtures.map((fixture, index) => {
-    const isClubOpponent = fixture.opponent === club.name || fixture.opponentShort === club.shortName || fixture.opponentShort === club.shortCode;
-    const fallbackOpponent = baseLeagueTeams[(index + 1) % baseLeagueTeams.length] ?? baseLeagueTeams[0];
-    return {
-      ...fixture,
-      opponent: isClubOpponent ? fallbackOpponent.name : fixture.opponent,
-      opponentShort: isClubOpponent ? fallbackOpponent.short : fixture.opponentShort,
-      competition: fixture.competition.includes("Cup") ? `${tier.name} Cup` : tier.name,
-      opponentStrength: clamp(fixture.opponentStrength + strengthOffset, tier.teamRange[0], tier.teamRange[1]),
-    };
-  });
-}
-
-function createLeagueTeams(club: ClubState): LeagueTeam[] {
-  const tier = leagueTiers[club.tierId];
-  const strengthOffset = tier.averageOvr - leagueTiers["grassroots-dev"].averageOvr;
-  const playerTeam = {
-    name: club.name,
-    short: club.shortCode,
-    strength: club.strength,
-  };
-  const opponents = baseLeagueTeams
-    .filter((team) => team.name !== club.name && team.short !== club.shortCode)
-    .map((team) => ({
-      ...team,
-      strength: clamp(team.strength + strengthOffset, tier.teamRange[0], tier.teamRange[1]),
-    }));
-
-  return [playerTeam, ...opponents].slice(0, 12);
-}
-
-function createClubStateFromOffer(offer: ContractOffer, fallback: ClubState): ClubState {
-  const marketClub = contractMarketClubs.find((club) => club.club === offer.club);
-  const tierId = offer.tierId ?? marketClub?.tierId ?? fallback.tierId;
-  return {
-    name: offer.club,
-    shortName: getClubShortName(offer.club),
-    shortCode: marketClub?.short ?? getClubShortCode(offer.club),
-    tierId,
-    strength: getClubStrengthForTier(tierId, marketClub?.roleBias ?? 0),
-  };
-}
-
-function rebuildSeasonForClub(season: SeasonState, club: ClubState): SeasonState {
-  const nextFixtures = createSeasonFixtures(club);
-  return {
-    ...season,
-    fixtures: nextFixtures.map((fixture, index) => (index < season.fixtureIndex ? season.fixtures[index] ?? fixture : fixture)),
-  };
-}
-
-function getClubStrengthForTier(tierId: LeagueTierId, bias = 0) {
-  const tier = leagueTiers[tierId];
-  return clamp(Math.round(tier.averageOvr + bias), tier.teamRange[0], tier.teamRange[1]);
-}
-
-function getClubShortName(name: string) {
-  return name.replace(/\s+(FC|United|Athletic|Borough|Works|Town|City|Crown|1902)$/i, "").split(" ")[0] || name;
-}
-
-function getClubShortCode(name: string) {
-  return name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 3)
-    .toUpperCase();
-}
-
-const initialContract: Contract = {
-  club: initialClub.name,
-  tierId: initialClub.tierId,
-  label: "Trial terms",
-  weeklyWage: 45,
-  weeksRemaining: 4,
-  rolePromise: "Impact Sub",
-  appearanceBonus: 8,
-  goalBonus: 18,
-  assistBonus: 12,
-  pressureModifier: 0,
-};
-
-
-const initialState: GameState = {
-  week: 1,
-  positionGroup: "Forward",
-  positionCode: positionModules.Forward.shortCode,
-  archetype: positionModules.Forward.defaultArchetype,
-  cash: 420,
-  prestige: 12,
-  fitness: 86,
-  morale: 74,
-  pressure: 26,
-  trust: 38,
-  selectedFocus: "Finishing",
-  trainingFocuses: ["Finishing"],
-  trainingSpecialist: "finishing",
-  trainingCompletedWeek: 0,
-  intensity: "Balanced",
-  attributes: createGenerationAttributes(1),
-  seasonStats: {
-    apps: 0,
-    starts: 0,
-    goals: 0,
-    assists: 0,
-    ratings: [],
-  },
-  season: {
-    season: 1,
-    fixtureIndex: 0,
-    fixtures: createSeasonFixtures(initialClub),
-    results: [],
-  },
-  club: initialClub,
-  dynasty: initialDynasty,
-  dynastyHistory: [],
-  contract: initialContract,
-  supportUpgrades: initialSupportUpgrades,
-  lastEvent: "Pre-season complete. Your first senior fixture is waiting.",
-};
+import {
+  createClubStateFromOffer,
+  createLeagueTeams,
+  createSeasonFixtures,
+  getClubShortCode,
+  getClubShortName,
+  getClubStrengthForTier,
+  rebuildSeasonForClub,
+} from "./systems/club";
+import { initialState } from "./state/initialState";
 
 const SAVE_KEY = "football-dynasty-save";
 const SAVE_VERSION = 2;

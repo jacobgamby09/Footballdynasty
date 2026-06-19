@@ -132,6 +132,7 @@ import {
 } from "./systems/club";
 import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
 import { formatFixtureTitle, formatPercentDelta, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getPressureLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, roundToNearest, sumXp } from "./systems/formatting";
+import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getContractLeagueTier, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile, getLeagueTierIndex, getOvrBreakdown, getXpPercent } from "./systems/ovr";
 
 const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },
@@ -3918,18 +3919,6 @@ function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastMatchSum
   };
 }
 
-function getLeagueTierIndex(tierId: LeagueTierId) {
-  return Object.keys(leagueTiers).indexOf(tierId);
-}
-
-function getContractLeagueTier(contract: Pick<Contract, "tierId">) {
-  return contract.tierId ? leagueTiers[contract.tierId] : currentLeagueTier;
-}
-
-function getClubLeagueTier(club: Pick<ClubState, "tierId">) {
-  return leagueTiers[club.tierId] ?? currentLeagueTier;
-}
-
 function getExternalContractOfferSummary(club: string, tier: LeagueTier, currentTier: LeagueTier, rolePromise: MatchRole, weeklyWage: number, currentWage: number) {
   const wageText =
     weeklyWage > currentWage
@@ -5824,58 +5813,6 @@ function createMatchSeed(state: GameState, context: UpcomingMatch) {
   ].join("-");
 }
 
-function calculateOvr(attributes: Attribute[], weights: Partial<Record<AttributeKey, number>> = positionModules.Forward.ovrWeights) {
-  const weighted = attributes.reduce(
-    (sum, attribute) => {
-      const weight = weights[attribute.label] ?? 0;
-      return {
-        value: sum.value + attribute.value * weight,
-        weight: sum.weight + weight,
-      };
-    },
-    { value: 0, weight: 0 },
-  );
-
-  if (weighted.weight <= 0) {
-    return Math.round(attributes.reduce((sum, attribute) => sum + attribute.value, 0) / Math.max(1, attributes.length));
-  }
-
-  return Math.round(weighted.value / weighted.weight);
-}
-
-function calculatePotentialOvr(attributes: Attribute[], weights: Partial<Record<AttributeKey, number>> = positionModules.Forward.ovrWeights) {
-  return calculateOvr(
-    attributes.map((attribute) => ({ ...attribute, value: attribute.potential })),
-    weights,
-  );
-}
-
-function getOvrBreakdown(attributes: Attribute[], positionModule: PositionModule) {
-  const entries = Object.entries(positionModule.ovrWeights)
-    .filter((entry): entry is [AttributeKey, number] => typeof entry[1] === "number" && entry[1] > 0)
-    .sort((a, b) => b[1] - a[1]);
-  const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
-
-  return entries.map(([label, weight]) => ({
-    label,
-    value: getAttributeValue(attributes, label),
-    share: totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0,
-  }));
-}
-
-function getAttributeValue(attributes: Attribute[], key: AttributeKey) {
-  return attributes.find((attribute) => attribute.label === key)?.value ?? 0;
-}
-
-function getAttributeValueMap(attributes: Attribute[]): Record<AttributeKey, number> {
-  return Object.fromEntries(attributes.map((attribute) => [attribute.label, attribute.value])) as Record<AttributeKey, number>;
-}
-
-
-function getAttributeProgressPercent(attribute: Attribute) {
-  return getXpPercent(attribute.xp, getAttributeXpRequirement(attribute));
-}
-
 function getAttributeGrowthDetail(state: GameState, attribute: Attribute) {
   const projection = getTrainingProjection(state);
   const range = projection.ranges[attribute.label];
@@ -5915,35 +5852,6 @@ function getAttributeGrowthDetail(state: GameState, attribute: Attribute) {
       "Build dynasty growth upgrades",
     ],
   };
-}
-
-function getXpPercent(xp: number, requirement: number) {
-  return requirement > 0 ? clamp((xp / requirement) * 100, 0, 100) : 0;
-}
-
-function getLeagueAdjustedAttributeValueMap(attributes: Attribute[], tier = currentLeagueTier): Record<AttributeKey, number> {
-  return Object.fromEntries(
-    attributes.map((attribute) => [attribute.label, getContextualAbilityScore(attribute.value, tier)]),
-  ) as Record<AttributeKey, number>;
-}
-
-function getLeagueAdjustedOpponentProfile(profile: OpponentProfile, tier = currentLeagueTier): OpponentProfile {
-  return {
-    ...profile,
-    overall: getContextualAbilityScore(profile.overall, tier),
-    attack: getContextualAbilityScore(profile.attack, tier),
-    midfield: getContextualAbilityScore(profile.midfield, tier),
-    defense: getContextualAbilityScore(profile.defense, tier),
-    keeper: getContextualAbilityScore(profile.keeper, tier),
-    centerBackPace: getContextualAbilityScore(profile.centerBackPace, tier),
-    aerialDefense: getContextualAbilityScore(profile.aerialDefense, tier),
-    discipline: getContextualAbilityScore(profile.discipline, tier),
-    fatigueResistance: getContextualAbilityScore(profile.fatigueResistance, tier),
-  };
-}
-
-function getContextualAbilityScore(value: number, tier = currentLeagueTier) {
-  return clamp(Math.round(50 + (value - tier.averageOvr) * 1.15), 1, 99);
 }
 
 export default App;

@@ -3,6 +3,7 @@ import type { Contract, GameState } from "../types";
 import { initialDynasty } from "../data/attributes";
 import { initialClub } from "../data/leagues";
 import { initialSupportUpgrades } from "../data/support";
+import { seedWorld } from "../data/world";
 import { createGenerationAttributes } from "../systems/generation";
 import { createSeasonFixtures } from "../systems/club";
 
@@ -51,6 +52,7 @@ export const initialState: GameState = {
     results: [],
   },
   club: initialClub,
+  world: seedWorld(),
   dynasty: initialDynasty,
   dynastyHistory: [],
   contract: initialContract,

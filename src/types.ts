@@ -95,6 +95,37 @@ export type LeagueTier = {
   description: string;
 };
 
+// --- Persistent world model (see WORLD_MODEL.md) ---
+export type ClubId = string;
+export type LeagueId = string;
+
+export type WorldClub = {
+  id: ClubId;
+  name: string;
+  shortName: string;
+  shortCode: string;
+  leagueId: LeagueId;
+  tierId: LeagueTierId;
+  strength: number;
+  reputation: number;
+};
+
+export type WorldLeague = {
+  id: LeagueId;
+  name: string;
+  tierId: LeagueTierId;
+  clubIds: ClubId[];
+  promotionSlots: number;
+  relegationSlots: number;
+};
+
+export type World = {
+  seasonNumber: number;
+  clubs: Record<ClubId, WorldClub>;
+  leagues: Record<LeagueId, WorldLeague>;
+  tierOrder: LeagueTierId[];
+};
+
 export type DevelopmentEnvironment = {
   label: string;
   facilityLevel: number;
@@ -209,6 +240,7 @@ export type GameState = {
   seasonStats: SeasonStats;
   season: SeasonState;
   club: ClubState;
+  world: World;
   dynasty: DynastyState;
   dynastyHistory: DynastySeason[];
   contract: Contract;
@@ -221,7 +253,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 2;
+  version: 3;
   game: GameState;
 };
 

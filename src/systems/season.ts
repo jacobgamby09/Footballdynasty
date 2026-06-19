@@ -6,6 +6,7 @@ import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
+import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable } from "./world";
 import type { Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
 export function getDynastyTotals(seasons: DynastySeason[]) {
@@ -116,6 +117,24 @@ export function getLeagueTable(game: GameState): LeagueTableRow[] {
   const clubRecord = getSeasonRecord(season.results);
   const clubGoals = getSeasonGoals(season.results);
   const played = season.results.length;
+
+  // Stage 1: read standings from the persistent world when present.
+  if (game.world) {
+    const league = findLeagueByClubShortCode(game.world, game.club.shortCode) ?? findLeagueByTier(game.world, game.club.tierId);
+    if (league) {
+      return getWorldLeagueTable(game.world, league.id, {
+        shortCode: game.club.shortCode,
+        played,
+        wins: clubRecord.wins,
+        draws: clubRecord.draws,
+        losses: clubRecord.losses,
+        points: clubRecord.points,
+        goalDifference: clubGoals.for - clubGoals.against,
+      });
+    }
+  }
+
+  // Fallback: legacy template-derived table (pre-world saves / sim-lab states).
   const tier = getClubLeagueTier(game.club);
   const table = createLeagueTeams(game.club).map((team) => {
     if (team.short === game.club.shortCode) {

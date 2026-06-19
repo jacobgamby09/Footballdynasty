@@ -7,7 +7,7 @@ import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonStat
 import { getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, rolloverWorldSeason } from "./world";
-import type { Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
+import type { ClubState, Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
 export function getDynastyTotals(seasons: DynastySeason[]) {
   const totals = seasons.reduce(
@@ -30,18 +30,38 @@ export function getDynastyTotals(seasons: DynastySeason[]) {
 
 
 export function startNextSeasonState(state: GameState): GameState {
+  // Review/offer use the OLD state (this season's results) — compute before rollover.
   const review = getSeasonReview(state);
   const contractOffer = getSeasonContractOffer(state, review);
   const dynastySeason = createDynastySeasonSnapshot(state, review);
   const nextWeek = state.week + 1;
   const nextSeason = state.season.season + 1;
 
+  // Roll the world (per-country promotion/relegation), then mirror the player's club
+  // to its world entity — if it moved division, the player follows it (Stage C).
+  const newWorld = rolloverWorldSeason(state.world);
+  const worldClub =
+    (state.club.clubId && newWorld.clubs[state.club.clubId]) ||
+    Object.values(newWorld.clubs).find((c) => c.shortCode === state.club.shortCode);
+  const syncedClub: ClubState = worldClub
+    ? { clubId: worldClub.id, name: worldClub.name, shortName: worldClub.shortName, shortCode: worldClub.shortCode, tierId: worldClub.tierId, strength: worldClub.strength }
+    : state.club;
+
+  const oldTier = getClubLeagueTier(state.club);
+  const newTier = getClubLeagueTier(syncedClub);
+  const moveNote =
+    newTier.averageOvr > oldTier.averageOvr
+      ? `${syncedClub.name} promoted to ${newTier.name}! `
+      : newTier.averageOvr < oldTier.averageOvr
+        ? `${syncedClub.name} relegated to ${newTier.name}. `
+        : "";
+
   return {
     ...state,
     week: nextWeek,
     cash: state.cash + review.cashReward + contractOffer.signingBonus,
     prestige: state.prestige + review.prestigeReward,
-    contract: contractFromOffer(contractOffer),
+    contract: { ...contractFromOffer(contractOffer), tierId: syncedClub.tierId },
     trainingCompletedWeek: nextWeek - 1,
     seasonStats: {
       apps: 0,
@@ -53,15 +73,16 @@ export function startNextSeasonState(state: GameState): GameState {
     season: {
       season: nextSeason,
       fixtureIndex: 0,
-      fixtures: createSeasonFixtures(state.club),
+      fixtures: createSeasonFixtures(syncedClub),
       results: [],
     },
-    world: rolloverWorldSeason(state.world, state.club.shortCode),
+    club: syncedClub,
+    world: newWorld,
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,
     activeMatch: undefined,
-    lastEvent: `Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`,
+    lastEvent: `${moveNote}Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`,
   };
 }
 

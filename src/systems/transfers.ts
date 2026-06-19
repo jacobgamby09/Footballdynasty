@@ -57,6 +57,7 @@ export function getInterestedWorldClubs(game: GameState, lastMatch?: LastMatchSu
 // club's exact short code so the player's results feed that club's world standings.
 export function worldClubToClubState(club: WorldClub): ClubState {
   return {
+    clubId: club.id,
     name: club.name,
     shortName: club.shortName,
     shortCode: club.shortCode,

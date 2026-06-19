@@ -42,9 +42,9 @@ src/
     season.ts           // league table, review, dynasty, next season   [DONE — Phase 6h]
     match.ts            // createMatch, resolve, sim, summaries         [DONE — Phase 6i]
   components/
-    shared/             // ProgressBar, InfoRow, ChoiceRow, BottomNav…  [planned — Phase 7]
-    cards/              // *Card components                             [planned — Phase 7]
-    screens/            // Player/Training/Club/Home/Match/…            [planned — Phase 7]
+    shared.tsx          // primitives, nav, headers (+ navItems)        [DONE — Phase 7a]
+    cards.tsx           // screen section cards (+ getReadinessDetails)  [DONE — Phase 7b]
+    screens.tsx         // full screens + sub-views                     [DONE — Phase 7c]
 ```
 
 ## Working conventions
@@ -79,6 +79,10 @@ Each phase follows the same discipline:
 | Phase 6h — season | 4,311 | −236 | `cede98f` |
 | Phase 6i — match | 3,141 | −1,170 | `5071d4e` |
 | Phase 6 — import cleanup | 3,141 | 0 | `fcd29df` |
+| Phase 7a — shared components | 2,824 | −317 | `b2a6240` |
+| Phase 7b — cards | 2,097 | −727 | `72b0008` |
+| Phase 7c — screens | 678 | −1,419 | `4dfa986` |
+| Phase 7 — import prune | 547 | −131 | `d184a8a` |
 
 ---
 
@@ -397,17 +401,75 @@ identical throughout.
 
 ---
 
-## Remaining phases (plan)
+## Phase 7 — Extract React components → `src/components/*`
 
-- **Phase 7 — `components/*` (UI)**: the remaining bulk of `App.tsx` is React
-  components — shared presentational pieces first (ProgressBar, InfoRow, ChoiceRow,
-  BottomNav, Header…), then `*Card` components, then the screens
-  (Player/Training/Club/Home/Match/PostMatch/WeekSummary/…). Each imports systems +
-  data + types.
-- **Phase 8 — slim `App.tsx`**: left with `App()` (state + handlers + routing) and
-  `getReadinessDetails`; optionally extract handlers into a `useGameState` hook.
+The remaining bulk of `App.tsx` was 44 React components. Split into three files
+along the natural layering, executed as three sub-commits (7a–7c) plus an
+import prune, each build-green.
+
+### How the split was derived
+Same discipline as Phase 6: built the component reference graph (who renders
+whom, scanning full bodies), assigned components to three groups, and ran Tarjan
+SCC on the group graph to confirm acyclicity. Result:
+
+`shared < cards < screens < App`
+
+- `shared` renders only `shared`.
+- `cards` → `shared`.
+- `screens` → `cards`, `shared`.
+- `App` → `screens`, `shared`.
+
+Per-file imports (lucide icons, React hooks/types, systems, data, sibling
+component groups) were computed by reusing `App.tsx`'s own import statements as
+the authoritative symbol→source map, re-pathed from `components/` (`./x` → `../x`).
+
+### Modules (commit)
+- **7a `shared.tsx`** (`b2a6240`) — Header, ResourcePill, ScreenTitle, ChoiceRow,
+  InfoRow, InfoTile, ProgressRow, ProgressBar, BottomNav, NavButton, WeekNote,
+  DetailHeader, FixtureStatusBadge, LeagueTableRowView, MatchScoreHeader,
+  SummaryScoreHeader, and the `navItems` nav config (used only by BottomNav/NavButton).
+- **7b `cards.tsx`** (`72b0008`) — SelectionBriefingCard, SeasonContextCard,
+  LastMatchCard, CareerCard, ReadinessStrip (+ its `getReadinessDetails` helper),
+  NextActionCard, AttributesCard, SeasonSnapshot, RelationshipsCard,
+  ContractMarketCard, EquipmentFacilitiesCard, SupportTrackCard, FixturePreviewList,
+  LeagueTablePreview, DynastySeasonRow.
+- **7c `screens.tsx`** (`4dfa986`) — PlayerScreen, TrainingScreen, ClubScreen,
+  ClubFixturesView, ClubTableView, HomeScreen, SupportShopView, PreMatchScreen,
+  MatchMomentScreen, PostMatchSummaryScreen, WeekSummaryScreen, SeasonReviewScreen,
+  TrainingSummaryScreen, ContractOfferScreen.
+
+### Import prune
+After all three groups moved out, **Phase 7 prune** (`d184a8a`) removed every
+`App.tsx` import that had become unused (lucide icons, data constants, types and
+systems helpers only referenced by the extracted components). `App.tsx` dropped
+to **547 lines** — just `App()` (state, the matchweek handlers, and screen
+routing) plus 14 imports. Verified zero import cycles across all 29 src files.
+
+---
+
+## Final state
+
+`App.tsx`: **7,339 → 547 lines** (−93%). The file now holds only the `App()`
+component: game state, the advance-week / match / training / contract handlers,
+and screen routing. Everything else lives in focused modules:
+
+- `types.ts`, `utils.ts`
+- `data/*` (4 files) — static game data
+- `state/*` — `initialState.ts`, `save.ts`
+- `systems/*` (12 files) — pure gameplay logic, acyclic DAG
+- `components/*` — `shared.tsx`, `cards.tsx`, `screens.tsx`
+
+Build (`tsc --noEmit` + `vite build`) green at every commit; the production
+bundle stayed functionally identical throughout. Zero import cycles.
+
+### Optional follow-ups (not yet done)
+- Split `screens.tsx` (still the largest file) into per-screen files if it grows.
+- Extract `App()`'s handlers into a `useGameState` hook.
+- Let the balance labs (`scripts/*.mjs`) import the extracted `systems/*` modules
+  instead of re-implementing season/training logic.
 
 > Note on numbering: the original plan listed `state/save.ts` as Phase 3 and a
 > single `systems/*` phase. As the dependency reality became clear the order was
 > refined — the pure-logic core (Phase 3) and construction (Phase 4) had to precede
-> save (Phase 5), and the gameplay-logic split was executed as Phase 6a–6i.
+> save (Phase 5), the gameplay-logic split became Phase 6a–6i, and the component
+> split became Phase 7a–7c.

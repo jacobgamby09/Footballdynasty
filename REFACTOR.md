@@ -24,23 +24,23 @@ src/
     leagues.ts          // league tiers, club, contract market         [DONE — Phase 2]
     fixtures.ts         // season fixtures, base league teams          [DONE — Phase 2]
     support.ts          // support/specialist definitions              [DONE — Phase 2]
-    initialState.ts     // initialState/Contract + construction        [planned — Phase 4]
   utils.ts              // clamp (generic math leaf)                   [DONE — Phase 3]
   state/
     save.ts             // save/load, clone, normalize                 [DONE — Phase 5]
     initialState.ts     // initialContract, initialState                [DONE — Phase 4]
-  systems/              // pure gameplay logic
+  systems/              // pure gameplay logic (import-safe DAG, see Phase 6)
     attributeXp.ts      // attribute XP requirement + growth pressure   [DONE — Phase 3]
     generation.ts       // getGenerationProfile, createGenerationAttrs  [DONE — Phase 4]
     club.ts             // fixtures/league/club construction            [DONE — Phase 4]
-    ovr.ts              // OVR, attribute value maps, league scaling    [planned — Phase 6]
-    training.ts         // applyTrainingWeek, quality, focus            [planned — Phase 6]
-    support.ts          // buySupportUpgradeState + support getters     [planned — Phase 6]
-    match.ts            // createMatch, resolve, follow-up, summaries   [planned — Phase 6]
-    selection.ts        // selection report, fitness, role/minutes      [planned — Phase 6]
-    season.ts           // fixtures advance, league table, review       [planned — Phase 6]
-    contracts.ts        // offers, accept, advance, status              [planned — Phase 6]
-    formatting.ts       // formatSigned, labels                         [planned — Phase 6]
+    formatting.ts       // format/label helpers                         [DONE — Phase 6a]
+    ovr.ts              // OVR, attribute maps, league scaling, tiers   [DONE — Phase 6b]
+    support.ts          // buySupportUpgradeState + support getters     [DONE — Phase 6c]
+    seasonState.ts      // fixture readers/writers, form, record        [DONE — Phase 6d]
+    selection.ts        // selection report, fitness, role/minutes      [DONE — Phase 6e]
+    training.ts         // applyTrainingWeek, quality, focus, attr XP   [DONE — Phase 6f]
+    contracts.ts        // offers, accept, advance, status              [DONE — Phase 6g]
+    season.ts           // league table, review, dynasty, next season   [DONE — Phase 6h]
+    match.ts            // createMatch, resolve, sim, summaries         [DONE — Phase 6i]
   components/
     shared/             // ProgressBar, InfoRow, ChoiceRow, BottomNav…  [planned — Phase 7]
     cards/              // *Card components                             [planned — Phase 7]
@@ -69,6 +69,16 @@ Each phase follows the same discipline:
 | Phase 3 — pure-logic core | 6,401 | −58 | `49fbd60` |
 | Phase 4 — construction + initial state | 6,261 | −140 | `1f5f727` |
 | Phase 5 — save/load | 6,095 | −166 | `67d1d13` |
+| Phase 6a — formatting | 5,950 | −145 | `80cf634` |
+| Phase 6b — ovr | 5,858 | −92 | `1030291` |
+| Phase 6c — support | 5,694 | −164 | `b495fee` |
+| Phase 6d — seasonState | 5,592 | −102 | `01ecf3d` |
+| Phase 6e — selection | 5,303 | −289 | `9565117` |
+| Phase 6f — training | 4,772 | −531 | `74bd68a` |
+| Phase 6g — contracts | 4,547 | −225 | `b7a945e` |
+| Phase 6h — season | 4,311 | −236 | `cede98f` |
+| Phase 6i — match | 3,141 | −1,170 | `5071d4e` |
+| Phase 6 — import cleanup | 3,141 | 0 | `fcd29df` |
 
 ---
 
@@ -318,11 +328,86 @@ consumer, `createInitialState`, moved to `save.ts`) and was swapped for the
 
 ---
 
+## Phase 6 — Extract gameplay logic → `src/systems/*`
+
+The bulk of the file: ~159 logic functions split into nine cohesive systems
+modules. Done as nine sub-commits (6a–6i) plus an import-cleanup commit, each
+build-green.
+
+### How the split was derived (tooling)
+Splitting interdependent logic risked import cycles, so the boundaries were
+computed, not guessed:
+1. Built the internal call graph of all 159 top-level logic functions
+   (scanning each function's full text **including default-parameter calls** —
+   an early version missed these and hid a real cycle).
+2. Confirmed the function graph is itself acyclic (Tarjan SCC: 159 singletons).
+3. Assigned functions to modules by domain, then ran Tarjan SCC on the
+   **module** graph and iterated until acyclic.
+4. The one real module cycle found — `season ↔ contracts` (via
+   `startNextSeasonState → getSeasonContractOffer → getSeasonReview`) — was
+   resolved by keeping `getSeasonContractOffer` in `season` (its only caller is
+   `startNextSeasonState`), making `season → contracts` one-directional.
+
+### Import-safe order (low → high)
+`formatting < ovr < support < seasonState < selection < training < contracts < season < match`
+
+Each module imports only from lower modules + `data/*`, `utils`, `types`,
+`positionRoles`, `matchEngine`, `engine/*`. Verified **zero import cycles**
+across all 26 `src` files after extraction.
+
+### Modules (commit)
+- **6a `formatting.ts`** (`80cf634`) — formatSigned/Delta/PercentDelta,
+  roundToNearest, getUniqueItems, morale/pressure/intensity/matchup/event labels,
+  trust/form/average-rating, formatFixtureTitle, sumXp, getTopXpEntry.
+- **6b `ovr.ts`** (`1030291`) — calculateOvr, calculatePotentialOvr,
+  getOvrBreakdown, attribute value maps, getXpPercent, league-adjusted maps +
+  getContextualAbilityScore, and tier helpers getClubLeagueTier /
+  getContractLeagueTier / getLeagueTierIndex.
+- **6c `support.ts`** (`b495fee`) — buySupportUpgradeState, track/upgrade getters,
+  and the support-effect helpers (XP floor/ceiling, fatigue relief, recovery,
+  boots, lifestyle).
+- **6d `seasonState.ts`** (`01ecf3d`) — fixture readers/writers and form/record
+  helpers (low-level so selection/season can read fixtures without a cycle).
+- **6e `selection.ts`** (`9565117`) — getUpcomingMatch, getSelectionReport, fitness
+  availability/impact, role/minutes, tactical focus, manager instruction.
+- **6f `training.ts`** (`74bd68a`) — applyTrainingWeek, projection/quality, focus
+  capacity, specialist XP, rollTrainingXp, attribute-XP application,
+  getAttributeGrowthDetail, support-card display helpers.
+- **6g `contracts.ts`** (`b7a945e`) — earnings, advanceContractWeek, contractFromOffer,
+  acceptContractOfferState, club/expired-market offers, status/role helpers.
+- **6h `season.ts`** (`cede98f`) — getLeagueTable, getSeasonReview/Verdict, market
+  interest, contract outlook, startNextSeasonState, dynasty snapshot/totals,
+  getSeasonContractOffer.
+- **6i `match.ts`** (`5071d4e`) — match creation/seed, choice resolution, follow-ups,
+  auto-sim, rating/XP composition, result/explanation/timeline helpers,
+  summaries, buildLastMatchSummary, finishMatchState and post-match plumbing.
+
+### App import-back + cleanup
+During the step-by-step moves, `App.tsx` imported back any moved function still
+referenced by the not-yet-moved logic in the file, so every intermediate build
+stayed green. Once all nine modules were out, **6 cleanup** (`fcd29df`) removed
+34 imports that had become unused (symbols only referenced by logic that had
+since moved into sibling modules).
+
+### Result
+`App.tsx` went from 6,095 → **3,141 lines** in this phase. The only logic
+function deliberately left in `App.tsx` is `getReadinessDetails` (a presentational
+readiness helper used directly by the Player UI). Build green; bundle functionally
+identical throughout.
+
+---
+
 ## Remaining phases (plan)
 
-- **Phase 6 — `systems/*` (gameplay logic)**: the bulk of the logic block — OVR,
-  training, support, match, selection, season, contracts, formatting.
-- **Phase 7 — `components/*`**: shared presentational components first, then
-  cards, then screens.
-- **Phase 8 — slim `App.tsx`**: left with `App()` (state + handlers + routing);
-  optionally extract handlers into a `useGameState` hook.
+- **Phase 7 — `components/*` (UI)**: the remaining bulk of `App.tsx` is React
+  components — shared presentational pieces first (ProgressBar, InfoRow, ChoiceRow,
+  BottomNav, Header…), then `*Card` components, then the screens
+  (Player/Training/Club/Home/Match/PostMatch/WeekSummary/…). Each imports systems +
+  data + types.
+- **Phase 8 — slim `App.tsx`**: left with `App()` (state + handlers + routing) and
+  `getReadinessDetails`; optionally extract handlers into a `useGameState` hook.
+
+> Note on numbering: the original plan listed `state/save.ts` as Phase 3 and a
+> single `systems/*` phase. As the dependency reality became clear the order was
+> refined — the pure-logic core (Phase 3) and construction (Phase 4) had to precede
+> save (Phase 5), and the gameplay-logic split was executed as Phase 6a–6i.

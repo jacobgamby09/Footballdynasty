@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, ContractOffer, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
+import type { Contract, ContractOffer, CountryId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
 import { trainingSpecialistMap } from "./data/support";
-import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
+import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
+import { createCareerForCountry } from "./state/initialState";
+import { COUNTRIES } from "./data/world";
 import { buySupportUpgradeState } from "./systems/support";
 import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 import { getUpcomingMatch } from "./systems/selection";
@@ -11,15 +13,17 @@ import { acceptContractOfferState } from "./systems/contracts";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { BottomNav } from "./components/shared";
-import { ClubScreen, ContractOfferScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubScreen, ContractOfferScreen, CountrySelectScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, WeekSummaryScreen } from "./components/screens";
 
 function App() {
-  const [activeScreen, setActiveScreen] = useState<ScreenKey>("player");
+  const [careerStarted, setCareerStarted] = useState<boolean>(() => hasSavedGame());
+  const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => (hasSavedGame() ? "player" : "country-select"));
   const [game, setGame] = useState<GameState>(() => loadSavedGame());
   const [matchSpeed, setMatchSpeed] = useState<MatchSpeed>(2);
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved">("saved");
 
   const activeNav =
+    activeScreen === "country-select" ||
     activeScreen === "pre-match" ||
     activeScreen === "match" ||
     activeScreen === "summary" ||
@@ -64,6 +68,9 @@ function App() {
           : "Next Week";
 
   useEffect(() => {
+    if (!careerStarted) {
+      return; // no career chosen yet (country-select) — don't persist the placeholder
+    }
     if (game.activeMatch) {
       setSaveStatus("unsaved");
       return;
@@ -71,7 +78,7 @@ function App() {
 
     saveGameState(game);
     setSaveStatus("saved");
-  }, [game]);
+  }, [game, careerStarted]);
 
   useEffect(() => {
     if (activeScreen !== "match" || !game.activeMatch || game.activeMatch.currentResult) {
@@ -471,7 +478,14 @@ function App() {
     }
 
     clearSavedGame();
-    setGame(createInitialState());
+    setCareerStarted(false);
+    setActiveScreen("country-select");
+    setSaveStatus("saved");
+  }
+
+  function startCareerInCountry(countryId: CountryId) {
+    setGame(createCareerForCountry(countryId));
+    setCareerStarted(true);
     setActiveScreen("player");
     setSaveStatus("saved");
   }
@@ -480,6 +494,7 @@ function App() {
     <main className="app-shell">
       <section className="app-frame" aria-label="Football Dynasty">
         <div className="screen-scroll">
+          {activeScreen === "country-select" && <CountrySelectScreen countries={COUNTRIES} onPick={startCareerInCountry} />}
           {activeScreen === "player" && <PlayerScreen game={game} />}
           {activeScreen === "training" && (
             <TrainingScreen
@@ -533,13 +548,15 @@ function App() {
           {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}
         </div>
 
-        <BottomNav
-          activeNav={activeNav}
-          advanceLabel={advanceLabel}
-          disabled={activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))}
-          onAdvance={handleAdvance}
-          onNavigate={navigate}
-        />
+        {activeScreen !== "country-select" && (
+          <BottomNav
+            activeNav={activeNav}
+            advanceLabel={advanceLabel}
+            disabled={activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))}
+            onAdvance={handleAdvance}
+            onNavigate={navigate}
+          />
+        )}
       </section>
     </main>
   );

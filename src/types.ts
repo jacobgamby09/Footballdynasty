@@ -8,7 +8,7 @@ import type {
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "season-review";
+export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "season-review";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";

@@ -27,7 +27,7 @@ src/
     initialState.ts     // initialState/Contract + construction        [planned — Phase 4]
   utils.ts              // clamp (generic math leaf)                   [DONE — Phase 3]
   state/
-    save.ts             // save/load, clone, normalize                 [planned — Phase 5]
+    save.ts             // save/load, clone, normalize                 [DONE — Phase 5]
     initialState.ts     // initialContract, initialState                [DONE — Phase 4]
   systems/              // pure gameplay logic
     attributeXp.ts      // attribute XP requirement + growth pressure   [DONE — Phase 3]
@@ -68,6 +68,7 @@ Each phase follows the same discipline:
 | Phase 2 — data | 6,459 | −513 | `06af327` |
 | Phase 3 — pure-logic core | 6,401 | −58 | `49fbd60` |
 | Phase 4 — construction + initial state | 6,261 | −140 | `1f5f727` |
+| Phase 5 — save/load | 6,095 | −166 | `67d1d13` |
 
 ---
 
@@ -280,13 +281,45 @@ reference would fail the build.
 
 ---
 
+## Phase 5 — Extract save/load → `src/state/save.ts`
+
+**Commit:** `67d1d13` — *Extract save/load into state/save.ts*
+
+### What moved
+The whole persistence layer (a contiguous block in `App.tsx`) into
+`src/state/save.ts`:
+- `SAVE_KEY`, `SAVE_VERSION` (module-internal, not exported)
+- `createInitialState`, `cloneGameState`, `cloneTrainingSummary`, `cloneLastMatchSummary`
+- `loadSavedGame`, `normalizeSavedGame`, `normalizeSavedClub`, `mergeSavedAttributes`
+- `saveGameState`, `clearSavedGame`
+
+Imports: `getPositionModule` from `../positionRoles`; persistence types from
+`../types`; `initialAttributes` from `../data/attributes`; `contractMarketClubs`,
+`initialClub`, `leagueTiers` from `../data/leagues`; `createSeasonFixtures`,
+`getClubShortCode`, `getClubShortName`, `getClubStrengthForTier` from
+`../systems/club`; `initialState` from `./initialState`.
+
+### What changed in `App.tsx`
+Imported back the four entry points still used by the component layer:
+`createInitialState` (reset), `loadSavedGame` (initial `useState`),
+`saveGameState` (persist effect), `clearSavedGame` (reset). The clone/normalize
+helpers and `SAVE_KEY`/`SAVE_VERSION` are internal to `save.ts` and not
+re-imported. The Phase 4 `initialState` import became redundant (its only
+consumer, `createInitialState`, moved to `save.ts`) and was swapped for the
+`save` import.
+
+### Verification
+- `npm run build` green.
+- Bundle 379.52 kB, functionally identical (1645 modules).
+- Confirmed all 12 declarations are gone from `App.tsx`.
+- Cycle-free: `save.ts` depends only on already-extracted modules; nothing it
+  imports depends back on `save.ts`. This is exactly why Phase 4 (moving
+  `initialState` + club helpers out) was sequenced first.
+
+---
+
 ## Remaining phases (plan)
 
-- **Phase 5 — `state/save.ts`**: `SAVE_KEY`, `SAVE_VERSION`, `loadSavedGame`,
-  `normalizeSavedGame`, `normalizeSavedClub`, `mergeSavedAttributes`,
-  `saveGameState`, `clearSavedGame`, `cloneGameState`, `cloneTrainingSummary`,
-  `cloneLastMatchSummary`, `createInitialState`. Trivial and cycle-free once
-  Phase 4 has moved `initialState` and the club helpers out of `App.tsx`.
 - **Phase 6 — `systems/*` (gameplay logic)**: the bulk of the logic block — OVR,
   training, support, match, selection, season, contracts, formatting.
 - **Phase 7 — `components/*`**: shared presentational components first, then

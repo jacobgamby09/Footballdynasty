@@ -45,45 +45,60 @@ export function PlayerScreen({ game }: { game: GameState }) {
 
 export function ContractOfferScreen({
   current,
-  offer,
+  offers,
+  onAccept,
   onDecline,
 }: {
   current: Contract;
-  offer: ContractOffer;
+  offers: ContractOffer[];
+  onAccept: (offer: ContractOffer) => void;
   onDecline: () => void;
 }) {
+  const multiple = offers.length > 1;
+  const primary = offers[0];
+
   return (
     <section className="simple-screen contract-offer-screen">
-      <ScreenTitle label={offer.source === "external-club" ? "Contract market" : "Club offer"} title={offer.title} />
+      <ScreenTitle
+        label={multiple ? "Transfer interest" : primary.source === "external-club" ? "Contract market" : "Club offer"}
+        title={multiple ? `${offers.length} clubs want you` : primary.title}
+      />
 
-      <div className="card contract-offer-card">
-        <div className="section-heading">
-          <div>
-            <span className="metric-label">{offer.club}</span>
-            <h2>{offer.label}</h2>
+      {offers.map((offer, index) => (
+        <div className="card contract-offer-card" key={offer.clubId ?? offer.club ?? index}>
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">{offer.club}</span>
+              <h2>{offer.label}</h2>
+            </div>
+            <BadgeDollarSign size={19} />
           </div>
-          <BadgeDollarSign size={19} />
-        </div>
-        <div className="contract-hero">
-          <div>
-            <span>Weekly wage</span>
-            <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
+          <div className="contract-hero">
+            <div>
+              <span>Weekly wage</span>
+              <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
+            </div>
+            <div>
+              <span>Role promise</span>
+              <strong>{offer.rolePromise}</strong>
+            </div>
           </div>
-          <div>
-            <span>Role promise</span>
-            <strong>{offer.rolePromise}</strong>
+          <div className="stat-grid">
+            <InfoTile label="Length" value={`${offer.weeks} wks`} />
+            <InfoTile label="Signing" value={`+$${offer.signingBonus}`} tone="good" />
+            <InfoTile label="Appearance" value={`+$${offer.appearanceBonus}`} />
+            <InfoTile label="Goal" value={`+$${offer.goalBonus}`} tone="gold" />
+            <InfoTile label="Assist" value={`+$${offer.assistBonus}`} />
+            <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
           </div>
+          <p>{offer.summary}</p>
+          {multiple && (
+            <button className="primary-action" type="button" onClick={() => onAccept(offer)}>
+              Accept {offer.club}
+            </button>
+          )}
         </div>
-        <div className="stat-grid">
-          <InfoTile label="Length" value={`${offer.weeks} wks`} />
-          <InfoTile label="Signing" value={`+$${offer.signingBonus}`} tone="good" />
-          <InfoTile label="Appearance" value={`+$${offer.appearanceBonus}`} />
-          <InfoTile label="Goal" value={`+$${offer.goalBonus}`} tone="gold" />
-          <InfoTile label="Assist" value={`+$${offer.assistBonus}`} />
-          <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
-        </div>
-        <p>{offer.summary}</p>
-      </div>
+      ))}
 
       <div className="card">
         <span className="metric-label">Current deal</span>
@@ -95,7 +110,7 @@ export function ContractOfferScreen({
       </div>
 
       <button className="secondary-action" type="button" onClick={onDecline}>
-        Decline for now
+        Decline {multiple ? "all" : "for now"}
       </button>
     </section>
   );

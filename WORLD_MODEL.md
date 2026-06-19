@@ -7,8 +7,9 @@ of being regenerated around the player on demand.
 This is the foundation for real transfers and league progression now, and a cheap
 dynasty hand-off later. Built in stages so the game stays playable at every step.
 
-> Status: **Stage 2 complete** on branch `feature/persistent-world` (see "Build log").
-> This doc is the source of truth for the design and the hand-off to Codex.
+> Status: **Stage 3 complete** on branch `feature/transfers` (Stages 1-2 merged to
+> `main`). See "Build log". This doc is the source of truth for the design and the
+> hand-off to Codex.
 
 ---
 
@@ -139,7 +140,7 @@ Short codes are made unique across the world. Clubs link to their league via
   bump `world.seasonNumber`.
 - `getWorldLeagueTable` then reads stored records instead of deriving.
 
-### Stage 3 — transfers read the world
+### Stage 3 — transfers read the world  *(DONE)*
 - Replace `contractMarketClubs`-based offers with a query over `world.clubs`
   (filter by tier/reputation/squad-need vs. the player's OVR/form/prestige).
 - Accepting a move sets the player's club to a real world club + its league.
@@ -157,9 +158,12 @@ Respect the existing acyclic DAG (`data ← systems ← state/components ← App
 - `types.ts` — world types.
 - `data/world.ts` — `seedWorld()` + name pools. **Must not import from `systems/`**
   (data is a low layer). Inline tiny helpers (e.g. short-code) here.
-- `systems/world.ts` — pure world logic (table, later: advance/finalise). May import
-  `data/*`, `utils`, `types`.
+- `systems/world.ts` — pure world logic (table, matchweek advance, season rollover,
+  seeded variation). May import `data/*`, `utils`, `types`.
+- `systems/transfers.ts` — world transfer query (interested clubs, world→club state).
+  Must NOT import `systems/contracts` (contracts depends on transfers, not vice versa).
 - `systems/season.ts` — `getLeagueTable` calls `systems/world.ts`.
+- `systems/contracts.ts` — depends on `systems/transfers.ts` for the transfer market.
 - `state/initialState.ts` — seeds `world`. `state/save.ts` — clone + normalise.
 
 ## Save strategy
@@ -246,6 +250,61 @@ Known Stage-2 limitations (addressed later):
 - World advances one matchweek per player matchweek (12), abstracting real rounds.
 - Player club still embedded + pinned; `clubId` migration + dynasty are Stage 4.
 
+### Stage 3 — DONE (branch `feature/transfers`)
+The transfer market is now the real world. New module **`systems/transfers.ts`**
+(pure world query; does NOT import `contracts`, so the graph stays acyclic —
+`contracts` depends on `transfers`):
+- `getInterestedWorldClubs(game, lastMatch?)` — ranks `world.clubs` by interest
+  (selection score, OVR, prestige, form, tier gap, minus a reputation-resistance so
+  high-rep clubs cool on an under-level player), capped to one tier above current.
+  Seeded by club+week so it varies yet is reproducible.
+- `worldClubToClubState(club)` — maps a `WorldClub` to the player's embedded club on
+  transfer, keeping the world club's exact short code so results feed its standings.
+
+`systems/contracts.ts`:
+- `getExpiredContractMarketOffer` now builds the offer from the most-interested world
+  club (new helper `buildOfferFromWorldClub`, wage shaped from the club's tier band +
+  a reputation factor); the legacy `contractMarketClubs` path remains as a fallback.
+- `acceptContractOfferState` joins the real world club via `worldClubToClubState` when
+  the offer carries a `clubId` (added to `ContractOffer`).
+
+Verified end-to-end in-browser: with the trial contract expired, finishing a match
+produced a transfer offer from a real world club (Vejle Juniors, `clubId`
+`grassroots-dev-10`, source `external-club`); accepting moved the player into that
+club (matching short code → the player now sits in that club's league and feeds its
+standings), and the old club reverts to NPC sim. Build + balance:season green; zero
+import cycles; no console errors.
+
+### Stage 3b — DONE: multi-offer transfer choice (demand-gated)
+When the player is genuinely in demand, the transfer market offers a *choice* of clubs
+instead of a single deal.
+- `types`: `GameState.contractOffers?: ContractOffer[]` (alongside the single
+  `contractOffer` used for current-club renewals).
+- `systems/contracts.ts`: `getTransferMarketOffers(game, lastMatch)` — count scales
+  with demand (number of clubs above a strong-interest threshold, clamped 1–3) and the
+  chosen clubs are spread across tiers (distinct-tier first, then fill) so the terms
+  differ (a higher club offering more wage / smaller role vs. a same-tier starter
+  role). `acceptContractOfferState(state, chosen?)` accepts a specific offer.
+- `systems/match.ts`: `finishMatchState` routes an expired contract to the market
+  (single offer → `contractOffer`, several → `contractOffers`); renewals stay single.
+- UI: `components/screens.tsx → ContractOfferScreen` renders one card per offer with a
+  per-club Accept button (plus the central "Accept Offer" = top pick) and "Decline all".
+  `App.tsx` carries `contractOffers` through the offer flow.
+
+Verified in-browser: an in-demand player (high prestige/form, expired deal) got 3
+offers spread across tiers (Silkeborg II grassroots $90 Starter, Havenbrook FC
+local-semi-pro $240 Starter, Randers Academy grassroots $90 Starter); the choice
+screen rendered all three; accepting the non-first semi-pro offer moved the player up
+to that club's division. A non-in-demand player still gets a single offer. No console
+errors; build + balance:season green; zero import cycles.
+
+Stage-3 notes / future:
+- Mid-season transfers reuse the existing fixture rebuild; the world record sync is
+  approximate mid-season (most moves happen at the season boundary).
+- `contractMarketClubs` (static list) is now only a fallback for world-less states.
+- Demand tuning knobs: `STRONG_INTEREST` (58) and the 1–3 count in
+  `getTransferMarketOffers`; interest weights in `systems/transfers.ts`.
+
 ## Hand-off notes for Codex
 
 - Branch: `feature/persistent-world`. Build with `npm run build` (tsc + vite) and
@@ -256,3 +315,90 @@ Known Stage-2 limitations (addressed later):
   graph acyclic (`data` must not import `systems`).
 - Stage boundaries above are the commit boundaries. Each stage should leave the game
   playable. Update this doc's status + the staged plan as you go.
+
+---
+
+# World v2 — Multi-country pyramid
+
+> Status: **Stage A done** on branch `feature/world-v2` (off `feature/transfers`).
+> Replaces the single 6-tier ladder with countries, each holding its own ladder of
+> divisions that map onto a shared global tier scale.
+
+## Why
+The single global pyramid can't express that the Danish Superliga ≈ the English
+second tier, or that big countries have deep pyramids while small ones are shallow.
+v2 decouples **competition** from **quality**.
+
+## The locked model
+
+Two axes:
+- **Tier 1–6** = global quality. **Tier 1 = the best leagues in the world**; tier 6 =
+  the global bottom. This is the comparability axis (transfers, player level, wages).
+- **Division = (country, level)** — level 1 = the top of *that country*. Each division
+  is pinned to a global tier.
+
+**Countries & divisions (all reach tier 6 so any start country begins at the bottom):**
+
+| Country | Divisions | Tiers (level 1 → down) |
+|---------|-----------|------------------------|
+| England / Spain / Italy | 6 | 1, 2, 3, 4, 5, 6 |
+| Germany / France / Holland / Denmark | 5 | 2, 3, 4, 5, 6 |
+
+- **Tier 1 divisions: 20 clubs.** All other divisions: **16 clubs.**
+- **Promotion / relegation (within a country, between adjacent levels):**
+  - Tier 1 division (top of the big-3): 0 up, **3 down**.
+  - Tier 2 division: **3 up**, **2 down**.
+  - All other divisions: **2 up / 2 down**.
+  - A country's top division: 0 up. A country's bottom (tier 6): 0 down.
+  - Sizes stay constant at every boundary (each boundary moves the same count both
+    ways: the tier1↔tier2 boundary is 3, all others 2).
+- **Player start:** pick a country at career start → begin in that country's bottom
+  division (always tier 6, ~15–25 OVR). Big country = climb all 6 tiers with one
+  club; mid country = climb to tier 2 then transfer abroad to reach tier 1.
+- **Two ways up:** (a) promoted *with your club* through a country's divisions
+  (player club is no longer pinned — it is a real world club that moves), (b) transfer
+  to another club/country, gated by global tier.
+
+Consequence (accepted): mid countries top out at tier 2, so tier 1 is reachable only
+by transferring to England/Spain/Italy. World size ≈ 620 clubs (3×100 + 4×80) — fine
+for localStorage; trim lower-division club counts later if needed.
+
+## Tier scale (global quality bands)
+Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 ≈ elite
+(avg OVR ~90), …, tier 6 ≈ the bottom (avg OVR ~15, accommodating a raw Gen-1 start).
+`getLeagueTierIndex` / `getContextualAbilityScore` must be updated for 1 = top.
+
+## Etape-plan (commit boundaries; keep build + balance:season green each step)
+
+- **Stage A — model + seed. ✅ DONE.** Added `Country`/`CountryId` types; `WorldLeague`
+  gained `countryId` + `level`; `World` gained `countries`. The existing 6 tier bands
+  ARE the global tiers (elite = tier 1 … grassroots-dev = tier 6) — kept as-is to
+  avoid churn. `data/world.ts seedWorld()` now builds 7 countries (England/Spain/Italy
+  = 6 divisions tiers 1-6; Germany/France/Holland/Denmark = 5 divisions tiers 2-6),
+  tier-1 divisions = 20 clubs else 16, promotion/relegation slots per the spec
+  (tier1↔2 = 3, else 2). Northbridge is seeded into Denmark's bottom (tier 6); the
+  Danish-flavoured names populate Denmark, the rest are generated from name pools.
+  `systems/world.ts rolloverWorldSeason` now promotes/relegates **per country**
+  between adjacent levels (player club still pinned until Stage C). `cloneWorld`
+  clones `countries`; `SAVE_VERSION` → 5. Verified (bundled seed run): 7 countries,
+  38 leagues, 620 clubs, no duplicate short codes, slot counts exactly per spec,
+  initial-state + getLeagueTable/getSeasonReview/getUpcomingMatch all run clean.
+  (Bugfix: `makeShortCode` must use an unbounded counter — bounding it looped forever
+  once a prefix's variants were exhausted across ~620 clubs, which blanked the app.)
+- **Stage B — promotion/relegation per country.** Rework `rolloverWorldSeason` to
+  move clubs between adjacent levels *within each country* using the counts above,
+  with strength drift toward the new tier.
+- **Stage C — player follows club + `clubId`.** Player's club becomes a real world
+  club referenced by `clubId`; it promotes/relegates with the world and `game.club`
+  mirrors it (un-pin). Folds in the old "Stage 4" clubId migration.
+- **Stage D — cross-country transfers by tier.** `getInterestedWorldClubs` already
+  gates by tier; confirm/﻿tune interest across countries (a tier-2 player hears from
+  tier-1/2 clubs in any country).
+- **Stage E — country selection + UI.** Choose a start country at new-game; league
+  table shows the division + country; later a "browse the pyramid" view. Dynasty: the
+  son starts in the chosen (or a new) country.
+
+## Hand-off notes
+Same hard constraints as v1: no `Math.random`/`Date.now`; acyclic imports
+(`data` ⊄ `systems`); seed deterministically; bump `SAVE_VERSION` (disposable saves).
+Update this section's status + stage markers as each stage lands.

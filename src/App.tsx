@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
+import type { Contract, ContractOffer, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
 import { trainingSpecialistMap } from "./data/support";
 import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
 import { buySupportUpgradeState } from "./systems/support";
@@ -44,7 +44,7 @@ function App() {
       : activeScreen === "training-summary"
         ? "Continue Career"
       : activeScreen === "week-summary"
-        ? game.contractOffer
+        ? game.contractOffer || game.contractOffers?.length
           ? "Contract"
           : seasonComplete
             ? "Season Review"
@@ -429,7 +429,7 @@ function App() {
   }
 
   function closeWeekSummary() {
-    setActiveScreen(game.contractOffer ? "contract-offer" : isSeasonComplete(game.season) ? "season-review" : "player");
+    setActiveScreen(game.contractOffer || game.contractOffers?.length ? "contract-offer" : isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
   function closeTrainingSummary() {
@@ -441,8 +441,8 @@ function App() {
     setActiveScreen("player");
   }
 
-  function acceptContractOffer() {
-    setGame((state) => acceptContractOfferState(state));
+  function acceptContractOffer(offer?: ContractOffer) {
+    setGame((state) => acceptContractOfferState(state, offer));
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
@@ -450,6 +450,7 @@ function App() {
     setGame((state) => ({
       ...state,
       contractOffer: undefined,
+      contractOffers: undefined,
       lastEvent: "Contract offer declined. The club may return with terms later.",
     }));
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
@@ -521,10 +522,11 @@ function App() {
             />
           )}
           {activeScreen === "week-summary" && <WeekSummaryScreen game={game} />}
-          {activeScreen === "contract-offer" && game.contractOffer && (
+          {activeScreen === "contract-offer" && (game.contractOffers?.length || game.contractOffer) && (
             <ContractOfferScreen
               current={game.contract}
-              offer={game.contractOffer}
+              offers={game.contractOffers ?? (game.contractOffer ? [game.contractOffer] : [])}
+              onAccept={acceptContractOffer}
               onDecline={declineContractOffer}
             />
           )}

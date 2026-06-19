@@ -2,7 +2,7 @@ import { createPositionMatchPool } from "../engine/forwardMoments";
 import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, getSimScoreAtMinute, resolvePlayerChoice, seededNoise, selectPlayerHighlights } from "../engine/matchEngineCore";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
-import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings } from "./contracts";
+import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
 import { getFormScore } from "./formatting";
 import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile } from "./ovr";
 import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, isSeasonComplete } from "./seasonState";
@@ -134,13 +134,24 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     season: updatedSeason,
     world: updatedWorld,
   };
-  const contractOffer = isSeasonComplete(updatedSeason)
-    ? state.contractOffer
-    : state.contractOffer ?? getClubContractOffer(stateForOffer, lastMatch);
+  let contractOffer = state.contractOffer;
+  let contractOffers = state.contractOffers;
+  if (!isSeasonComplete(updatedSeason) && !contractOffer && !contractOffers?.length) {
+    if (stateForOffer.contract.weeksRemaining <= 0) {
+      // Expired -> transfer market: a single offer, or a choice when in demand.
+      const offers = getTransferMarketOffers(stateForOffer, lastMatch);
+      if (offers.length > 1) contractOffers = offers;
+      else if (offers.length === 1) contractOffer = offers[0];
+    } else {
+      // Still under contract -> current-club renewal only.
+      contractOffer = getClubContractOffer(stateForOffer, lastMatch);
+    }
+  }
 
   return {
     ...stateForOffer,
     contractOffer,
+    contractOffers,
     lastEvent: getMatchSummaryText(results, totals),
     lastMatch,
     activeMatch: undefined,

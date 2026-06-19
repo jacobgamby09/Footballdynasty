@@ -20,7 +20,7 @@ const TIER_ORDER: LeagueTierId[] = [
 const BIG3_TIERS: LeagueTierId[] = ["elite", "top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"];
 const MID_TIERS: LeagueTierId[] = ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"];
 
-const COUNTRIES: Country[] = [
+export const COUNTRIES: Country[] = [
   { id: "england", name: "England", tiers: BIG3_TIERS },
   { id: "spain", name: "Spain", tiers: BIG3_TIERS },
   { id: "italy", name: "Italy", tiers: BIG3_TIERS },

@@ -16,7 +16,7 @@ import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTabl
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSpecialistId, TrainingSummary, Venue } from "../types";
+import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSpecialistId, TrainingSummary, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game }: { game: GameState }) {
@@ -1467,3 +1467,38 @@ export function SupportShopView({
   );
 }
 
+
+
+export function CountrySelectScreen({ countries, onPick }: { countries: Country[]; onPick: (id: CountryId) => void }) {
+  return (
+    <section className="simple-screen">
+      <ScreenTitle label="New career" title="Choose your country" />
+
+      <div className="card">
+        <p>
+          You start at the bottom of your chosen country and climb. Big footballing nations let you reach the world
+          top with one club; smaller nations cap lower &mdash; you&rsquo;ll need a move abroad to reach the elite.
+        </p>
+      </div>
+
+      {countries.map((country) => {
+        const reachesTop = country.tiers[0] === "elite";
+        return (
+          <button key={country.id} className="card country-option" type="button" onClick={() => onPick(country.id)}>
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">{country.tiers.length} divisions</span>
+                <h2>{country.name}</h2>
+              </div>
+            </div>
+            <p>
+              {reachesTop
+                ? "Deep pyramid — climb all the way to the world top (Tier 1) with one club."
+                : "Tops at Tier 2 — dominate locally, then transfer abroad to reach the elite."}
+            </p>
+          </button>
+        );
+      })}
+    </section>
+  );
+}

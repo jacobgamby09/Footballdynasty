@@ -402,9 +402,19 @@ Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 �
 - **Stage D — cross-country transfers by tier.** `getInterestedWorldClubs` already
   gates by tier; confirm/﻿tune interest across countries (a tier-2 player hears from
   tier-1/2 clubs in any country).
-- **Stage E — country selection + UI.** Choose a start country at new-game; league
-  table shows the division + country; later a "browse the pyramid" view. Dynasty: the
-  son starts in the chosen (or a new) country.
+- **Stage E — country selection. ✅ DONE (selection part).** A `CountrySelectScreen`
+  is shown at the start of a new Gen-1 career (no save yet, or after "New Career"):
+  pick one of the 7 countries and the career starts in that country's **weakest
+  tier-6 club** ("start from the bottom"). `createCareerForCountry(countryId)` builds
+  the fresh state; `initialState` is now `createCareerForCountry("denmark")` (the load
+  fallback). `hasSavedGame()` gates whether the app opens on the picker or the saved
+  career; the save effect is suppressed until a country is chosen; the bottom nav is
+  hidden on the picker. Verified in-browser: fresh start shows the 7-country picker;
+  picking Italy started the player at Elmsworth Albion (Italy tier 6, weakest in its
+  division), the career persisted across reload, no console errors.
+  Still open under "Stage E": a **browse-the-pyramid UI** (see other leagues/divisions)
+  and **Gen 2+ offer-driven start** (the son inherits a name → offered contracts rather
+  than picking a country) — the latter belongs with the dynasty loop.
 
 ## Hand-off notes
 Same hard constraints as v1: no `Math.random`/`Date.now`; acyclic imports

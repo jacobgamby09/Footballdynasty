@@ -80,6 +80,22 @@ export function cloneLastMatchSummary(summary: LastMatchSummary): LastMatchSumma
   };
 }
 
+export function hasSavedGame(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      return false;
+    }
+    const payload = JSON.parse(raw) as Partial<SavePayload>;
+    return payload.version === SAVE_VERSION && Boolean(payload.game);
+  } catch {
+    return false;
+  }
+}
+
 export function loadSavedGame(): GameState {
   if (typeof window === "undefined") {
     return createInitialState();

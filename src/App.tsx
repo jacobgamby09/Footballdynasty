@@ -131,13 +131,13 @@ import {
   rebuildSeasonForClub,
 } from "./systems/club";
 import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from "./state/save";
-import { formatFixtureTitle, formatPercentDelta, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getPressureLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, roundToNearest, sumXp } from "./systems/formatting";
-import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getContractLeagueTier, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile, getLeagueTierIndex, getOvrBreakdown, getXpPercent } from "./systems/ovr";
-import { applyBootsActionBoost, buySupportUpgradeState, getBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getNextSupportTrackPurchase, getRecoveryBreakthroughRelief, getRecoverySessionBonus, getSupportLevel, getSupportTrackBreakthroughCount, getSupportTrackProgress, getSupportUpgradeTotal, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus } from "./systems/support";
-import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
-import { getNextRole, getPlayerMatchRole, getPlayerMomentCount, getRoleThreshold, getSelectionReport, getUpcomingMatch } from "./systems/selection";
-import { addAttributeXp, applyTrainingWeek, getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "./systems/training";
-import { acceptContractOfferState, advanceContractWeek, contractFromOffer, getClubContractOffer, getContractOfferSummary, getContractStatusLabel, getMatchContractEarnings, getPromisedRole } from "./systems/contracts";
+import { formatFixtureTitle, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, sumXp } from "./systems/formatting";
+import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getClubLeagueTier, getOvrBreakdown, getXpPercent } from "./systems/ovr";
+import { buySupportUpgradeState, getNextSupportTrackPurchase, getSupportTrackProgress, getSupportUpgradeTotal } from "./systems/support";
+import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
+import { getNextRole, getRoleThreshold, getUpcomingMatch } from "./systems/selection";
+import { applyTrainingWeek, getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "./systems/training";
+import { acceptContractOfferState, getContractStatusLabel } from "./systems/contracts";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview, startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getAppearanceText, getChoiceAttributeAverage, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, simulateRemainingPlayerMoments, summarizeMatchResults, summarizeSimEvents } from "./systems/match";
 

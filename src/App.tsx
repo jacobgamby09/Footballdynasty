@@ -134,6 +134,7 @@ import { clearSavedGame, createInitialState, loadSavedGame, saveGameState } from
 import { formatFixtureTitle, formatPercentDelta, formatSigned, getAverageRating, getFormLabel, getFormScore, getMatchupText, getMoraleLabel, getPressureLabel, getTopXpEntry, getTrainingIntensityLabel, getTrustStatus, getUniqueItems, roundToNearest, sumXp } from "./systems/formatting";
 import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getContractLeagueTier, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile, getLeagueTierIndex, getOvrBreakdown, getXpPercent } from "./systems/ovr";
 import { applyBootsActionBoost, buySupportUpgradeState, getBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getNextSupportTrackPurchase, getRecoveryBreakthroughRelief, getRecoverySessionBonus, getSupportLevel, getSupportTrackBreakthroughCount, getSupportTrackProgress, getSupportUpgradeTotal, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus } from "./systems/support";
+import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 
 const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },
@@ -3828,45 +3829,6 @@ function getContractOfferSummary(rolePromise: MatchRole, weeklyWage: number, cur
   return "The club keeps you on the pathway, but wants another season before a bigger promise.";
 }
 
-function createFixtureResult(match: MatchState, totals: MatchTotals): FixtureResult {
-  const outcome = totals.teamGoals > totals.opponentGoals ? "W" : totals.teamGoals < totals.opponentGoals ? "L" : "D";
-
-  return {
-    fixtureId: match.fixtureId,
-    opponent: match.opponent,
-    venue: match.venue,
-    competition: match.competition,
-    teamGoals: totals.teamGoals,
-    opponentGoals: totals.opponentGoals,
-    outcome,
-    rating: totals.rating,
-  };
-}
-
-function advanceSeasonFixture(season: SeasonState, result: FixtureResult): SeasonState {
-  const nextIndex = Math.min(season.fixtureIndex + 1, season.fixtures.length);
-  const existingIndex = season.results.findIndex((item) => item.fixtureId === result.fixtureId);
-  const results =
-    existingIndex >= 0
-      ? season.results.map((item, index) => (index === existingIndex ? result : item))
-      : [...season.results, result];
-
-  return {
-    ...season,
-    fixtureIndex: nextIndex,
-    results,
-  };
-}
-
-function hasPlayableFixture(season: SeasonState) {
-  const fixture = season.fixtures[season.fixtureIndex];
-  return !!fixture && !season.results.some((result) => result.fixtureId === fixture.id);
-}
-
-function isSeasonComplete(season: SeasonState) {
-  return season.fixtures.length > 0 && season.results.length >= season.fixtures.length;
-}
-
 function buildLastMatchSummary({
   match,
   results,
@@ -4357,66 +4319,6 @@ function getUpcomingMatch(state: GameState): UpcomingMatch {
   };
 }
 
-function getCurrentFixture(season: SeasonState) {
-  return season.fixtures[Math.min(season.fixtureIndex, season.fixtures.length - 1)] ?? season.fixtures[0];
-}
-
-function getUpcomingFixtures(season: SeasonState, count: number) {
-  return season.fixtures.slice(season.fixtureIndex, season.fixtureIndex + count);
-}
-
-function getSeasonRecord(results: FixtureResult[]) {
-  return results.reduce(
-    (record, result) => {
-      if (result.outcome === "W") {
-        record.wins += 1;
-        record.points += 3;
-      } else if (result.outcome === "D") {
-        record.draws += 1;
-        record.points += 1;
-      } else {
-        record.losses += 1;
-      }
-
-      return record;
-    },
-    { wins: 0, draws: 0, losses: 0, points: 0 },
-  );
-}
-
-function getSeasonGoals(results: FixtureResult[]) {
-  return results.reduce(
-    (goals, result) => ({
-      for: goals.for + result.teamGoals,
-      against: goals.against + result.opponentGoals,
-    }),
-    { for: 0, against: 0 },
-  );
-}
-
-function getRecentFormText(results: FixtureResult[]) {
-  if (results.length === 0) {
-    return "No form";
-  }
-
-  return results
-    .slice(-5)
-    .map((result) => result.outcome)
-    .join("");
-}
-
-function getTeamFormScore(results: FixtureResult[]) {
-  if (results.length === 0) {
-    return 50;
-  }
-
-  const recent = results.slice(-5);
-  const points = getSeasonRecord(recent).points;
-  const maxPoints = recent.length * 3;
-
-  return Math.round((points / maxPoints) * 100);
-}
-
 function getLeagueTable(game: GameState): LeagueTableRow[] {
   const season = game.season;
   const clubRecord = getSeasonRecord(season.results);
@@ -4553,10 +4455,6 @@ function getContractOutlook(selectionScore: number, averageRating: number, apps:
     return "The club wants another season of steady minutes before making a bigger commitment.";
   }
   return "The staff still view you as a project, so training output matters immediately next season.";
-}
-
-function getNextFixtureAfterMatch(season: SeasonState) {
-  return season.fixtures[Math.min(season.fixtureIndex + 1, season.fixtures.length - 1)] ?? getCurrentFixture(season);
 }
 
 function getSelectionReport(

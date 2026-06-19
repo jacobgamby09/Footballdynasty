@@ -268,6 +268,7 @@ export type GameState = {
   lastMatch?: LastMatchSummary;
   lastTraining?: TrainingSummary;
   contractOffer?: ContractOffer;
+  contractOffers?: ContractOffer[];
 };
 
 export type SavePayload = {

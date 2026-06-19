@@ -275,13 +275,35 @@ club (matching short code → the player now sits in that club's league and feed
 standings), and the old club reverts to NPC sim. Build + balance:season green; zero
 import cycles; no console errors.
 
+### Stage 3b — DONE: multi-offer transfer choice (demand-gated)
+When the player is genuinely in demand, the transfer market offers a *choice* of clubs
+instead of a single deal.
+- `types`: `GameState.contractOffers?: ContractOffer[]` (alongside the single
+  `contractOffer` used for current-club renewals).
+- `systems/contracts.ts`: `getTransferMarketOffers(game, lastMatch)` — count scales
+  with demand (number of clubs above a strong-interest threshold, clamped 1–3) and the
+  chosen clubs are spread across tiers (distinct-tier first, then fill) so the terms
+  differ (a higher club offering more wage / smaller role vs. a same-tier starter
+  role). `acceptContractOfferState(state, chosen?)` accepts a specific offer.
+- `systems/match.ts`: `finishMatchState` routes an expired contract to the market
+  (single offer → `contractOffer`, several → `contractOffers`); renewals stay single.
+- UI: `components/screens.tsx → ContractOfferScreen` renders one card per offer with a
+  per-club Accept button (plus the central "Accept Offer" = top pick) and "Decline all".
+  `App.tsx` carries `contractOffers` through the offer flow.
+
+Verified in-browser: an in-demand player (high prestige/form, expired deal) got 3
+offers spread across tiers (Silkeborg II grassroots $90 Starter, Havenbrook FC
+local-semi-pro $240 Starter, Randers Academy grassroots $90 Starter); the choice
+screen rendered all three; accepting the non-first semi-pro offer moved the player up
+to that club's division. A non-in-demand player still gets a single offer. No console
+errors; build + balance:season green; zero import cycles.
+
 Stage-3 notes / future:
-- For V1 the market offer surfaces the single best-fit club; `getInterestedWorldClubs`
-  already returns the ranked list, so a "choose between interested clubs" UI is a
-  natural next step.
 - Mid-season transfers reuse the existing fixture rebuild; the world record sync is
   approximate mid-season (most moves happen at the season boundary).
 - `contractMarketClubs` (static list) is now only a fallback for world-less states.
+- Demand tuning knobs: `STRONG_INTEREST` (58) and the 1–3 count in
+  `getTransferMarketOffers`; interest weights in `systems/transfers.ts`.
 
 ## Hand-off notes for Codex
 

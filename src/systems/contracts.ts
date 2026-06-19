@@ -52,8 +52,8 @@ export function contractFromOffer(offer: ContractOffer): Contract {
 }
 
 
-export function acceptContractOfferState(state: GameState): GameState {
-  const offer = state.contractOffer;
+export function acceptContractOfferState(state: GameState, chosen?: ContractOffer): GameState {
+  const offer = chosen ?? state.contractOffer ?? state.contractOffers?.[0];
   if (!offer) {
     return state;
   }
@@ -72,8 +72,41 @@ export function acceptContractOfferState(state: GameState): GameState {
     season: offer.source === "external-club" ? rebuildSeasonForClub(state.season, nextClub) : state.season,
     contract: contractFromOffer(offer),
     contractOffer: undefined,
+    contractOffers: undefined,
     lastEvent: `${offer.title} accepted. ${offer.club} now pays $${offer.weeklyWage}/wk.`,
   };
+}
+
+// Transfer-market offers when a contract has expired. The player gets a single offer
+// from the most interested world club, OR — when genuinely in demand (several clubs
+// strongly interested) — a choice of up to 3, spread across tiers so the terms differ
+// (a higher club offering a smaller role/more wage vs. a same-tier starting role).
+// See WORLD_MODEL.md, Stage 3b.
+export function getTransferMarketOffers(game: GameState, lastMatch?: LastMatchSummary): ContractOffer[] {
+  const currentTier = getContractLeagueTier(game.contract);
+
+  if (game.world) {
+    const interested = getInterestedWorldClubs(game, lastMatch);
+    if (interested.length > 0) {
+      const STRONG_INTEREST = 58;
+      const strongCount = interested.filter((entry) => entry.interest >= STRONG_INTEREST).length;
+      const count = clamp(strongCount, 1, 3);
+      const chosen: typeof interested = [];
+      const tiersUsed = new Set<string>();
+      for (const entry of interested) {
+        if (chosen.length >= count) break;
+        if (!tiersUsed.has(entry.club.tierId)) { chosen.push(entry); tiersUsed.add(entry.club.tierId); }
+      }
+      for (const entry of interested) {
+        if (chosen.length >= count) break;
+        if (!chosen.includes(entry)) chosen.push(entry);
+      }
+      return chosen.map((entry) => buildOfferFromWorldClub(game, entry.club, currentTier, lastMatch));
+    }
+  }
+
+  const single = getExpiredContractMarketOffer(game, lastMatch);
+  return single ? [single] : [];
 }
 
 

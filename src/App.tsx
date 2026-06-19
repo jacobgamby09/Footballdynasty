@@ -46,420 +46,60 @@ import {
   type PositionGroup,
   type PositionModule,
 } from "./positionRoles";
+import type {
+  Attribute,
+  AttributeLevelUp,
+  ChanceQuality,
+  ClubState,
+  ClubView,
+  Contract,
+  ContractOffer,
+  DevelopmentEnvironment,
+  DynastySeason,
+  DynastyState,
+  FitnessAvailability,
+  Fixture,
+  FixtureResult,
+  GameState,
+  GenerationProfile,
+  GrowthPressureTone,
+  HomeView,
+  Intensity,
+  LastMatchSummary,
+  LeagueTableRow,
+  LeagueTeam,
+  LeagueTier,
+  LeagueTierId,
+  MatchChoice,
+  MatchEvent,
+  MatchMoment,
+  MatchResult,
+  MatchSpeed,
+  MatchState,
+  MatchTotals,
+  NavKey,
+  OutcomeTier,
+  PlayerMatchEvent,
+  ScreenKey,
+  SeasonState,
+  SeasonStats,
+  SelectionFactor,
+  SelectionReport,
+  SimMatchEvent,
+  SupportTrackDefinition,
+  SupportTrackId,
+  SupportUpgradeDefinition,
+  SupportUpgradeId,
+  SavePayload,
+  TrainingQuality,
+  TrainingQualityProfile,
+  TrainingSpecialist,
+  TrainingSpecialistId,
+  TrainingSummary,
+  UpcomingMatch,
+  Venue,
+} from "./types";
 
-type NavKey = "player" | "training" | "club" | "home";
-type ScreenKey = NavKey | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "season-review";
-type Intensity = "Light" | "Balanced" | "Hard";
-type MatchSpeed = 1 | 2 | 4;
-type Venue = "Home" | "Away";
-type ClubView = "overview" | "fixtures" | "table";
-type HomeView = "base" | "support" | "dynasty";
-type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
-type SupportTrackId = "training" | "recovery" | "performance" | "career" | "lifestyle";
-type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
-type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
-
-type Attribute = {
-  label: AttributeKey;
-  value: number;
-  potential: number;
-  xp: number;
-};
-
-type GrowthPressureTone = "fast" | "normal" | "hard" | "elite";
-
-type SeasonStats = {
-  apps: number;
-  starts: number;
-  goals: number;
-  assists: number;
-  ratings: number[];
-};
-
-type DynastySeason = {
-  season: number;
-  club: string;
-  leaguePosition: number;
-  record: string;
-  apps: number;
-  starts: number;
-  goals: number;
-  assists: number;
-  averageRating: number;
-};
-
-type Fixture = {
-  id: string;
-  opponent: string;
-  opponentShort: string;
-  venue: Venue;
-  competition: string;
-  opponentStrength: number;
-  opponentForm: OpponentForm;
-  serviceLevel: ServiceLevel;
-};
-
-type FixtureResult = {
-  fixtureId: string;
-  opponent: string;
-  venue: Venue;
-  competition: string;
-  teamGoals: number;
-  opponentGoals: number;
-  outcome: "W" | "D" | "L";
-  rating: number;
-};
-
-type LeagueTeam = {
-  name: string;
-  short: string;
-  strength: number;
-};
-
-type ClubState = {
-  name: string;
-  shortName: string;
-  shortCode: string;
-  tierId: LeagueTierId;
-  strength: number;
-};
-
-type LeagueTier = {
-  id: LeagueTierId;
-  name: string;
-  averageOvr: number;
-  teamRange: [number, number];
-  wageRange: [number, number];
-  facilityLevel: number;
-  prestigeMultiplier: number;
-  description: string;
-};
-
-type DevelopmentEnvironment = {
-  label: string;
-  facilityLevel: number;
-  xpMultiplier: number;
-  xpFloorBonus: number;
-  recoveryBonus: number;
-  supportEfficiency: number;
-};
-
-type TrainingSpecialistId = "finishing" | "movement" | "technical" | "strength" | "mental";
-type TrainingQuality = "Poor" | "Solid" | "Sharp" | "Breakthrough";
-
-type TrainingSpecialist = {
-  id: TrainingSpecialistId;
-  name: string;
-  category: string;
-  attributes: AttributeKey[];
-  description: string;
-};
-
-type TrainingQualityProfile = {
-  quality: TrainingQuality;
-  xpMultiplier: number;
-  label: string;
-  description: string;
-};
-
-type LeagueTableRow = {
-  name: string;
-  short: string;
-  position: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalDifference: number;
-  points: number;
-};
-
-type SeasonState = {
-  season: number;
-  fixtureIndex: number;
-  fixtures: Fixture[];
-  results: FixtureResult[];
-};
-
-type DynastyState = {
-  generation: number;
-  legacyLevel: number;
-  legacyPoints: number;
-  potentialTier: string;
-};
-
-type Contract = {
-  club: string;
-  tierId?: LeagueTierId;
-  label: string;
-  weeklyWage: number;
-  weeksRemaining: number;
-  rolePromise: MatchRole;
-  appearanceBonus: number;
-  goalBonus: number;
-  assistBonus: number;
-  pressureModifier: number;
-};
-
-type ContractOffer = Omit<Contract, "weeksRemaining"> & {
-  title: string;
-  weeks: number;
-  signingBonus: number;
-  summary: string;
-  source?: "current-club" | "external-club";
-  tierId?: LeagueTierId;
-};
-
-type SupportUpgradeDefinition = {
-  id: SupportUpgradeId;
-  name: string;
-  category: string;
-  maxLevel: number;
-  baseCost: number;
-  effect: string;
-};
-
-type SupportTrackDefinition = {
-  id: SupportTrackId;
-  name: string;
-  category: string;
-  upgradeIds: SupportUpgradeId[];
-  breakpoints: number[];
-  breakthroughs: string[];
-  effect: string;
-};
-
-type GameState = {
-  week: number;
-  positionGroup: PositionGroup;
-  positionCode: string;
-  archetype: string;
-  cash: number;
-  prestige: number;
-  fitness: number;
-  morale: number;
-  pressure: number;
-  trust: number;
-  selectedFocus: AttributeKey;
-  trainingFocuses: AttributeKey[];
-  trainingSpecialist: TrainingSpecialistId;
-  trainingCompletedWeek: number;
-  intensity: Intensity;
-  attributes: Attribute[];
-  seasonStats: SeasonStats;
-  season: SeasonState;
-  club: ClubState;
-  dynasty: DynastyState;
-  dynastyHistory: DynastySeason[];
-  contract: Contract;
-  supportUpgrades: Record<SupportUpgradeId, number>;
-  lastEvent: string;
-  activeMatch?: MatchState;
-  lastMatch?: LastMatchSummary;
-  lastTraining?: TrainingSummary;
-  contractOffer?: ContractOffer;
-};
-
-type SavePayload = {
-  version: 2;
-  game: GameState;
-};
-
-type AttributeLevelUp = {
-  attribute: AttributeKey;
-  before: number;
-  after: number;
-};
-
-type TrainingSummary = {
-  week: number;
-  focuses: AttributeKey[];
-  intensity: Intensity;
-  specialist: TrainingSpecialistId;
-  quality: TrainingQuality;
-  qualityLabel: string;
-  specialistXp: Partial<Record<AttributeKey, number>>;
-  ranges: Partial<Record<AttributeKey, { min: number; max: number }>>;
-  xp: Partial<Record<AttributeKey, number>>;
-  fitnessDelta: number;
-  moraleDelta: number;
-  trustDelta: number;
-  selectionBefore: number;
-  selectionAfter: number;
-  levelUps: AttributeLevelUp[];
-};
-
-type UpcomingMatch = {
-  id: string;
-  opponent: string;
-  opponentShort: string;
-  venue: Venue;
-  competition: string;
-  kickoff: string;
-  teamStrength: number;
-  opponentStrength: number;
-  opponentForm: OpponentForm;
-  opponentProfile: OpponentProfile;
-  matchImportance: "Low" | "Normal" | "High";
-  positionGroup: PositionGroup;
-  playerRole: MatchRole;
-  selection: SelectionReport;
-  expectedMinutes: string;
-  fitnessAvailability: FitnessAvailability;
-  isInSquad: boolean;
-  managerInstruction: string;
-  tacticalFocus: string;
-  serviceLevel: ServiceLevel;
-};
-
-type SelectionReport = {
-  score: number;
-  role: MatchRole;
-  nextRole?: "Impact Sub" | "Rotation Starter" | "Starter";
-  pointsToNextRole: number;
-  factors: SelectionFactor[];
-  summary: string;
-};
-
-type SelectionFactor = {
-  label: string;
-  value: string;
-  impact: number;
-  tone: "good" | "neutral" | "warn";
-};
-
-type MatchState = {
-  matchSeed: string;
-  fixtureId: string;
-  matchNumber: number;
-  seasonLength: number;
-  teamName: string;
-  teamShortName: string;
-  opponent: string;
-  venue: Venue;
-  competition: string;
-  matchImportance: UpcomingMatch["matchImportance"];
-  opponentForm: UpcomingMatch["opponentForm"];
-  opponentProfile: OpponentProfile;
-  serviceLevel: UpcomingMatch["serviceLevel"];
-  teamStrength: number;
-  opponentStrength: number;
-  positionGroup: PositionGroup;
-  playerRole: MatchRole;
-  selectionScore: number;
-  selectionSummary: string;
-  expectedMinutes: string;
-  fitnessAvailability: FitnessAvailability;
-  isInSquad: boolean;
-  entryMinute: number;
-  exitMinute?: number;
-  managerInstruction: string;
-  tacticalFocus: string;
-  score: string;
-  events: MatchEvent[];
-  currentEventIndex: number;
-  liveMinute: number;
-  results: MatchResult[];
-  currentResult?: MatchResult;
-  isComplete?: boolean;
-};
-
-type MatchEvent = SimMatchEvent | PlayerMatchEvent;
-
-type SimMatchEvent = EngineSimEvent;
-
-type PlayerMatchEvent = MatchMoment & {
-  type: "player_moment";
-};
-
-type MatchMoment = {
-  id: string;
-  category: ForwardHighlightCategory;
-  minute: number;
-  opponent: string;
-  situation: string;
-  context: string;
-  choices: MatchChoice[];
-  result?: MatchResult;
-  chainDepth?: number;
-};
-
-type MatchChoice = {
-  id: string;
-  label: string;
-  uses: AttributeKey[];
-  risk: "Low" | "Medium" | "High";
-  reward: string;
-  manager: "Likes" | "Neutral" | "Risky";
-  outcome: "goal" | "assist" | "trust" | "defense";
-};
-
-type ChanceQuality = "Clear chance" | "Good chance" | "Half chance" | "Difficult chance";
-type OutcomeTier = "Poor" | "Okay" | "Good" | "Great";
-
-type MatchResult = {
-  title: string;
-  detail: string;
-  choiceId: string;
-  choiceLabel: string;
-  choiceOutcome: MatchChoice["outcome"];
-  success: boolean;
-  outcomeTier: OutcomeTier;
-  chanceQuality: ChanceQuality;
-  explanationTags: string[];
-  performanceReasons: string[];
-  rating: number;
-  trustDelta: number;
-  fitnessDelta: number;
-  goals: number;
-  assists: number;
-  chancesCreated: number;
-  xp: Partial<Record<AttributeKey, number>>;
-  source?: "manual" | "auto";
-};
-
-type MatchTotals = {
-  rating: number;
-  trustDelta: number;
-  fitnessDelta: number;
-  goals: number;
-  assists: number;
-  chancesCreated: number;
-  teamGoals: number;
-  opponentGoals: number;
-  chanceQualities: ChanceQuality[];
-  explanationTags: string[];
-  performanceReasons: string[];
-  xp: Partial<Record<AttributeKey, number>>;
-};
-
-type LastMatchSummary = MatchTotals & {
-  fixtureId: string;
-  matchNumber: number;
-  seasonLength: number;
-  clubName: string;
-  clubShortName: string;
-  opponent: string;
-  venue: Venue;
-  competition: string;
-  playerRole: MatchRole;
-  expectedMinutes: string;
-  autoSimulated: number;
-  manualHighlights: number;
-  cashDelta: number;
-  weeklyWage: number;
-  appearanceBonus: number;
-  goalBonus: number;
-  assistBonus: number;
-  prestigeDelta: number;
-  moraleDelta: number;
-  roleBefore: MatchRole;
-  roleAfter: MatchRole;
-  selectionBefore: number;
-  selectionAfter: number;
-  pointsToNextRole: number;
-  careerImpact: string[];
-};
 
 const initialAttributes: Attribute[] = [
   { label: "Finishing", value: 18, potential: 48, xp: 22 },
@@ -481,14 +121,6 @@ const initialAttributes: Attribute[] = [
   { label: "Positioning", value: 13, potential: 42, xp: 15 },
 ];
 
-type GenerationProfile = {
-  generation: number;
-  label: string;
-  startKeyBonus: number;
-  startGeneralBonus: number;
-  potentialKeyBonus: number;
-  potentialGeneralBonus: number;
-};
 
 const generationProfiles: GenerationProfile[] = [
   { generation: 1, label: "Local bloodline", startKeyBonus: 0, startGeneralBonus: 0, potentialKeyBonus: 0, potentialGeneralBonus: 0 },

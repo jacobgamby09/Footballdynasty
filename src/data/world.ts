@@ -33,16 +33,85 @@ export const COUNTRIES: Country[] = [
 const TIER1_CLUBS = 20;
 const DEFAULT_CLUBS = 16;
 
-// Deterministic generated-club name pools (no RNG). 40 x 16 = 640 unique combos,
-// enough for the ~600 generated clubs; a global counter walks them so names are stable.
-const CITY_POOL = [
-  "Ashford", "Brookvale", "Crestwood", "Dawnport", "Elmsworth", "Fairhaven", "Graniton", "Havenbrook",
-  "Irongate", "Kingsmere", "Lakemont", "Marsh End", "Norwick", "Oakvale", "Pinecliff", "Queensford",
-  "Ravenhill", "Stormgate", "Thornwick", "Updale", "Westmoor", "Whitlock", "Yarborough", "Ridgeway",
-  "Stonefield", "Highmoor", "Blackwater", "Greycastle", "Redhill", "Silverbrook", "Carrowmore", "Dunmere",
-  "Eastcliff", "Foxhollow", "Goldcrest", "Hartwell", "Lynwood", "Maybridge", "Northgate", "Roseport",
-];
-const SUFFIX_POOL = ["FC", "United", "City", "Athletic", "Rovers", "Town", "County", "Albion", "Wanderers", "Sporting", "Real", "Dynamo", "Olympic", "Borough", "Park", "Castle"];
+// Deterministic generated-club name pools (no RNG), themed per country so each
+// nation's pyramid reads like its own football culture. The suffix always follows
+// the city ("Madrigal CF", "Rosenheim SV") so the city stays the short name. Each
+// pool has enough city x suffix combos for a Big-3 country (~100 clubs): a per-country
+// counter walks cities first, then suffixes, so generated names are stable and unique
+// within a country.
+type NamePool = { cities: string[]; suffixes: string[] };
+const NAME_POOLS: Record<CountryId, NamePool> = {
+  england: {
+    cities: [
+      "Ashford", "Brookvale", "Crestwood", "Dawnport", "Elmsworth", "Fairhaven", "Graniton", "Havenbrook",
+      "Irongate", "Kingsmere", "Lakemont", "Marston", "Norwick", "Oakvale", "Pinecliff", "Queensford",
+      "Ravenhill", "Stormgate", "Thornwick", "Updale", "Westmoor", "Whitlock", "Yarborough", "Ridgeway",
+      "Stonefield", "Highmoor", "Blackwater", "Greycastle", "Redhill", "Silverbrook", "Carrowmore", "Dunmere",
+      "Eastcliff", "Foxhollow", "Goldcrest", "Hartwell", "Lynwood", "Maybridge", "Northgate", "Roseport",
+    ],
+    suffixes: ["FC", "United", "City", "Athletic", "Rovers", "Town", "County", "Albion", "Wanderers", "Borough"],
+  },
+  spain: {
+    cities: [
+      "Vallehermoso", "Castellar", "Miramar", "Robledo", "Alcázar", "Montilla", "Navarro", "Espinar",
+      "Olivares", "Quintana", "Ribera", "Soler", "Torrente", "Valverde", "Zamora", "Bárcena",
+      "Cendrera", "Duero", "Estella", "Figueras", "Granados", "Herrera", "Lorca", "Marbella",
+      "Nájera", "Ondara", "Palamós", "Requena", "Sabadar", "Tarazona", "Utrera", "Vélez",
+      "Yecla", "Aranda", "Bailén", "Cuéllar",
+    ],
+    suffixes: ["CF", "FC", "CD", "Real", "Atlético", "Deportivo", "Racing", "Unión", "Balompié"],
+  },
+  italy: {
+    cities: [
+      "Montese", "Casale", "Rivalta", "Carrara", "Sestri", "Aversa", "Brindola", "Cesara",
+      "Faenzo", "Imola", "Lecco", "Mantova", "Novara", "Pisano", "Rieti", "Siena",
+      "Treviso", "Vibona", "Lazzaro", "Ortona", "Salento", "Marsano", "Crotona", "Empoli",
+      "Frosino", "Avellina", "Benevo", "Catania", "Massano", "Comense", "Brescano", "Ascoli",
+      "Latino", "Cosenza", "Vercelli", "Pordeno",
+    ],
+    suffixes: ["FC", "Calcio", "AC", "US", "Hellas", "Pro", "Virtus", "Unione", "Sportiva"],
+  },
+  germany: {
+    cities: [
+      "Rosenheim", "Lindberg", "Steinbach", "Eschwald", "Hochdorf", "Altberg", "Friedstadt", "Grünwald",
+      "Königsbach", "Lauterbach", "Mühldorf", "Neuburg", "Oberstadt", "Reinfeld", "Schönberg", "Tannheim",
+      "Waldbrück", "Wertheim", "Ziegelau", "Bachfeld", "Donaustadt", "Erlbach", "Falkberg", "Geldern",
+      "Hattingen", "Kirchdorf", "Lohberg", "Marbach", "Nordheim", "Osterburg", "Pfalzdorf", "Rheinau",
+      "Sandberg", "Talheim", "Uhlbach", "Vogtland",
+    ],
+    suffixes: ["FC", "SV", "VfB", "FSV", "TSV", "SC", "SpVgg", "Borussia"],
+  },
+  france: {
+    cities: [
+      "Montreuil", "Beauval", "Clairac", "Roquefort", "Valmont", "Aubernay", "Bellac", "Chambon",
+      "Doullens", "Etaples", "Fougerac", "Lavalle", "Mareuil", "Nogent", "Ozanne", "Pernay",
+      "Quincy", "Rivanne", "Sancerre", "Tournay", "Vendac", "Auberive", "Brionne", "Cormeil",
+      "Donzère", "Ervaux", "Fréland", "Gimont", "Hennac", "Loriol", "Mirande", "Nevoy",
+      "Plombval", "Riquet", "Salbris", "Verzac",
+    ],
+    suffixes: ["FC", "AS", "Olympique", "Racing", "Stade", "US", "RC", "SC"],
+  },
+  holland: {
+    cities: [
+      "Veldhoven", "Brakel", "Dongen", "Gorssel", "Heinkel", "Lemmer", "Marken", "Nijkerk",
+      "Putten", "Renkum", "Almelo", "Boskamp", "Dalfsen", "Emmeloord", "Genemuiden", "Harderveld",
+      "Kampen", "Lochem", "Meppel", "Oldenzaal", "Raalte", "Staphorst", "Tubbergen", "Voorst",
+      "Wezep", "Zwaag", "Beilen", "Coevorst", "Drachten", "Ermelo", "Franeker", "Hattem",
+      "Norden", "Urkel", "Grouwen", "IJsseldam",
+    ],
+    suffixes: ["FC", "SC", "VV", "SV", "VVV", "RKC", "Sportclub"],
+  },
+  denmark: {
+    cities: [
+      "Hadsund", "Brovst", "Skjern", "Tarm", "Lemvig", "Struer", "Bramming", "Grindsted",
+      "Ikast", "Brande", "Ringe", "Faaborg", "Nyborg", "Assens", "Holbæk", "Kalundborg",
+      "Ringsted", "Slagelse", "Sorø", "Maribo", "Frederiksværk", "Birkerød", "Farum", "Ballerup",
+      "Glostrup", "Greve", "Solrød", "Stege", "Rødby", "Skive", "Hobro", "Brønderslev",
+      "Frederikshavn", "Hadsten", "Galten", "Ølstykke",
+    ],
+    suffixes: ["IF", "BK", "FC", "GF", "FF", "Boldklub"],
+  },
+};
 
 type ClubSpec = { name: string; shortCode?: string; shortName?: string; strength?: number };
 
@@ -90,10 +159,11 @@ export function seedWorld(): World {
   const leagues: Record<string, WorldLeague> = {};
   const leagueSeasons: Record<string, LeagueSeason> = {};
   const usedCodes = new Set<string>();
-  let generatedCounter = 0;
 
   for (const country of COUNTRIES) {
     countries[country.id] = country;
+    const pool = NAME_POOLS[country.id];
+    let generatedCounter = 0;
 
     country.tiers.forEach((tierId, levelIndex) => {
       const level = levelIndex + 1;
@@ -106,8 +176,14 @@ export function seedWorld(): World {
 
       const specs = namedSpecsFor(country.id, tierId).slice(0, clubCount);
       while (specs.length < clubCount) {
-        const city = CITY_POOL[generatedCounter % CITY_POOL.length];
-        const suffix = SUFFIX_POOL[Math.floor(generatedCounter / CITY_POOL.length) % SUFFIX_POOL.length];
+        // City walks one-by-one (distinct within a division: clubCount <= cities).
+        // Suffix = (cityIndex + band) so it varies WITHIN a division for flavour,
+        // while a repeated city in a later division lands on a different suffix —
+        // keeping every generated name unique across the country.
+        const cityIndex = generatedCounter % pool.cities.length;
+        const band = Math.floor(generatedCounter / pool.cities.length);
+        const city = pool.cities[cityIndex];
+        const suffix = pool.suffixes[(cityIndex + band) % pool.suffixes.length];
         specs.push({ name: `${city} ${suffix}` });
         generatedCounter += 1;
       }

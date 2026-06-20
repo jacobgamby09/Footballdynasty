@@ -284,7 +284,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 6;
+  version: 7;
   game: GameState;
 };
 

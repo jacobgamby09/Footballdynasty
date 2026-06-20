@@ -416,6 +416,29 @@ Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 �
   and **Gen 2+ offer-driven start** (the son inherits a name → offered contracts rather
   than picking a country) — the latter belongs with the dynasty loop.
 
+- **Stage F — country-correct identity. ✅ DONE.** Two follow-ups so the world reads
+  like the player's actual country instead of always-Danish:
+  1. **Themed club names.** `data/world.ts` replaces the single English `CITY_POOL`/
+     `SUFFIX_POOL` with a per-country `NAME_POOLS` map (England, Spain, Italy, Germany,
+     France, Holland, Denmark each get their own city + suffix lists; the suffix always
+     follows the city so the city is the short name). A per-country counter walks cities
+     one-by-one (distinct within a division) and offsets the suffix by `cityIndex + band`
+     so suffixes vary *within* a division while every generated name stays unique across
+     the country. Denmark still injects its real named clubs (Northbridge FC, Aalborg…)
+     and only themes the generated overflow.
+  2. **World-based fixtures.** `systems/club.ts → createSeasonFixturesFromWorld(club, world)`
+     builds the player's 12-match schedule from their REAL league's other clubs (seeded
+     venue/form/service, real strengths), replacing the static Danish `seasonFixtures`
+     list. Used by `initialState`, `season.ts` (rollover), `save.ts` (fallback) and
+     `rebuildSeasonForClub` (transfer). Legacy `createSeasonFixtures` is kept only as the
+     no-world fallback (pre-world saves / sim-lab).
+  3. **Highlight names.** `engine/matchEngineCore.js → createSimEvent` no longer hardcodes
+     "Northbridge"; it reads `input.teamShort` (passed from `state.club.shortName` in
+     `match.ts`), so goal/chance/sub highlights name the player's actual club.
+  `SAVE_VERSION` → 7 (themed world re-seeds on load). Verified in-browser: a Spain career
+  starts at Torrente Deportivo, all fixtures are Spanish sides, a full match shows no
+  "Northbridge" anywhere, and every country's pyramid is themed correctly.
+
 ## Hand-off notes
 Same hard constraints as v1: no `Math.random`/`Date.now`; acyclic imports
 (`data` ⊄ `systems`); seed deterministically; bump `SAVE_VERSION` (disposable saves).

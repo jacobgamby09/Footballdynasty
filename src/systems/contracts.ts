@@ -69,7 +69,7 @@ export function acceptContractOfferState(state: GameState, chosen?: ContractOffe
     ...state,
     cash: state.cash + offer.signingBonus,
     club: nextClub,
-    season: offer.source === "external-club" ? rebuildSeasonForClub(state.season, nextClub) : state.season,
+    season: offer.source === "external-club" ? rebuildSeasonForClub(state.season, nextClub, state.world) : state.season,
     contract: contractFromOffer(offer),
     contractOffer: undefined,
     contractOffers: undefined,

@@ -759,6 +759,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     matchSeed,
     model: teamMatchModel,
     opponentShort: context.opponentShort,
+    teamShort: state.club.shortName,
     managerInstruction: context.managerInstruction,
   });
   const appearanceWindow = getAppearanceWindow(context.playerRole, state, context, simEvents, matchSeed);

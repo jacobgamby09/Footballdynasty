@@ -5,7 +5,7 @@ import { initialClub } from "../data/leagues";
 import { initialSupportUpgrades } from "../data/support";
 import { seedWorld } from "../data/world";
 import { createGenerationAttributes } from "../systems/generation";
-import { createSeasonFixtures } from "../systems/club";
+import { createSeasonFixturesFromWorld } from "../systems/club";
 
 export const initialContract: Contract = {
   club: initialClub.name,
@@ -59,7 +59,7 @@ export function createCareerForCountry(countryId: CountryId): GameState {
     intensity: "Balanced",
     attributes: createGenerationAttributes(1),
     seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },
-    season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixtures(club), results: [] },
+    season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixturesFromWorld(club, world), results: [] },
     club,
     world,
     dynasty: { ...initialDynasty },

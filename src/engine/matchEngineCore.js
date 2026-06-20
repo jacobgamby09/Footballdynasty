@@ -569,20 +569,22 @@ function createSimEvent(type, input, random, index) {
     fitnessDelta: type === "team_chance" || type === "tempo" ? -1 : 0,
   };
 
+  const teamShort = input.teamShort || "Your side";
+
   if (type === "team_goal") {
-    return { ...base, title: "Northbridge goal", detail: "Northbridge turn pressure into a goal." };
+    return { ...base, title: `${teamShort} goal`, detail: `${teamShort} turn pressure into a goal.` };
   }
   if (type === "opponent_goal") {
     return { ...base, title: `${input.opponentShort} goal`, detail: `${input.opponentShort} find the finish after a dangerous spell.` };
   }
   if (type === "team_chance") {
-    return { ...base, title: "Northbridge chance", detail: "Northbridge create a look at goal, but the finish flashes wide." };
+    return { ...base, title: `${teamShort} chance`, detail: `${teamShort} create a look at goal, but the finish flashes wide.` };
   }
   if (type === "opponent_chance") {
-    return { ...base, title: `${input.opponentShort} chance`, detail: `${input.opponentShort} threaten, but Northbridge survive.` };
+    return { ...base, title: `${input.opponentShort} chance`, detail: `${input.opponentShort} threaten, but ${teamShort} survive.` };
   }
   if (type === "substitution") {
-    return { ...base, title: "Fresh legs around you", detail: `Northbridge change shape. ${input.managerInstruction}` };
+    return { ...base, title: "Fresh legs around you", detail: `${teamShort} change shape. ${input.managerInstruction}` };
   }
 
   return { ...base, title: "Quiet spell", detail: "The match settles into midfield duels with little service into the box." };

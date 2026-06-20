@@ -3,11 +3,11 @@ import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SaveP
 import { initialAttributes } from "../data/attributes";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
 import { seedWorld } from "../data/world";
-import { createSeasonFixtures, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
+import { createSeasonFixturesFromWorld, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 function cloneWorld(world: World): World {
   return {
@@ -121,13 +121,14 @@ export function loadSavedGame(): GameState {
 export function normalizeSavedGame(saved: GameState): GameState {
   const fallback = createInitialState();
   const savedClub = normalizeSavedClub(saved.club, saved.contract);
+  const normalizedWorld = saved.world ? cloneWorld(saved.world) : seedWorld();
   return {
     ...fallback,
     ...saved,
     positionCode: getPositionModule(saved.positionGroup ?? fallback.positionGroup).shortCode,
     archetype: saved.archetype ?? getPositionModule(saved.positionGroup ?? fallback.positionGroup).defaultArchetype,
     attributes: mergeSavedAttributes(saved.attributes ?? fallback.attributes),
-    world: saved.world ? cloneWorld(saved.world) : seedWorld(),
+    world: normalizedWorld,
     seasonStats: {
       ...fallback.seasonStats,
       ...saved.seasonStats,
@@ -136,7 +137,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
     season: {
       ...fallback.season,
       ...saved.season,
-      fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : createSeasonFixtures(savedClub),
+      fixtures: saved.season?.fixtures?.length ? saved.season.fixtures.map((fixture) => ({ ...fixture })) : createSeasonFixturesFromWorld(savedClub, normalizedWorld),
       results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
     },
     club: savedClub,

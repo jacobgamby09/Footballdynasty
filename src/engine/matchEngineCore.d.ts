@@ -60,6 +60,7 @@ export function createSimEvents(input: {
   matchSeed: string;
   model: TeamMatchModel;
   opponentShort: string;
+  teamShort?: string;
   managerInstruction: string;
 }): EngineSimEvent[];
 

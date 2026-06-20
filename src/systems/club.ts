@@ -1,7 +1,62 @@
-import type { ClubState, ContractOffer, Fixture, LeagueTeam, LeagueTierId, SeasonState } from "../types";
+import type { ClubState, ContractOffer, Fixture, LeagueTeam, LeagueTierId, SeasonState, Venue, World } from "../types";
+import type { OpponentForm, ServiceLevel } from "../matchEngine";
 import { contractMarketClubs, leagueTiers } from "../data/leagues";
 import { baseLeagueTeams, seasonFixtures } from "../data/fixtures";
 import { clamp } from "../utils";
+
+const FIXTURE_COUNT = 12;
+const FIXTURE_FORMS: OpponentForm[] = ["Poor", "Mixed", "Good", "Hot"];
+const FIXTURE_SERVICES: ServiceLevel[] = ["Low", "Mixed", "Good"];
+// Matchdays 3 and 8 are cup fixtures in the legacy schedule — keep that rhythm.
+const CUP_MATCHDAYS = new Set([2, 7]);
+
+// Deterministic [0,1) hash (FNV-1a). No Math.random / Date.now (would break the
+// sim-lab and save-resume): same seed -> same value, different seeds spread out.
+function fixtureHash(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+// Build the player's season fixtures from their REAL league in the world, so the
+// opponents match the player's country (a Spanish side faces Spanish clubs, etc.).
+// Falls back to the legacy static (Danish-flavoured) schedule only when the club
+// can't be located in the world — e.g. pre-world saves or sim-lab states.
+export function createSeasonFixturesFromWorld(club: ClubState, world?: World): Fixture[] {
+  if (!world) return createSeasonFixtures(club);
+
+  const playerWorldClub = club.clubId ? world.clubs[club.clubId] : undefined;
+  const league = playerWorldClub
+    ? world.leagues[playerWorldClub.leagueId]
+    : Object.values(world.leagues).find((l) => l.clubIds.some((id) => world.clubs[id]?.shortCode === club.shortCode));
+  if (!league) return createSeasonFixtures(club);
+
+  const opponents = league.clubIds
+    .map((id) => world.clubs[id])
+    .filter((c) => c && c.shortCode !== club.shortCode && c.id !== club.clubId);
+  if (opponents.length === 0) return createSeasonFixtures(club);
+
+  const tier = leagueTiers[club.tierId];
+  const count = Math.min(FIXTURE_COUNT, opponents.length);
+  return Array.from({ length: count }, (_, index) => {
+    const opponent = opponents[index % opponents.length];
+    const seed = `${club.shortCode}|s${world.seasonNumber}|${opponent.id}|${index}`;
+    const isCup = CUP_MATCHDAYS.has(index);
+    return {
+      id: `md${index + 1}-${opponent.shortCode.toLowerCase()}`,
+      opponent: opponent.name,
+      opponentShort: opponent.shortName,
+      venue: (index % 2 === 0 ? "Away" : "Home") as Venue,
+      competition: isCup ? `${tier.name} Cup` : tier.name,
+      opponentStrength: clamp(opponent.strength, tier.teamRange[0], tier.teamRange[1]),
+      opponentForm: FIXTURE_FORMS[Math.floor(fixtureHash(`${seed}|form`) * FIXTURE_FORMS.length) % FIXTURE_FORMS.length],
+      serviceLevel: FIXTURE_SERVICES[Math.floor(fixtureHash(`${seed}|svc`) * FIXTURE_SERVICES.length) % FIXTURE_SERVICES.length],
+    };
+  });
+}
 
 export function createSeasonFixtures(club: ClubState): Fixture[] {
   const tier = leagueTiers[club.tierId];
@@ -49,8 +104,8 @@ export function createClubStateFromOffer(offer: ContractOffer, fallback: ClubSta
   };
 }
 
-export function rebuildSeasonForClub(season: SeasonState, club: ClubState): SeasonState {
-  const nextFixtures = createSeasonFixtures(club);
+export function rebuildSeasonForClub(season: SeasonState, club: ClubState, world?: World): SeasonState {
+  const nextFixtures = createSeasonFixturesFromWorld(club, world);
   return {
     ...season,
     fixtures: nextFixtures.map((fixture, index) => (index < season.fixtureIndex ? season.fixtures[index] ?? fixture : fixture)),

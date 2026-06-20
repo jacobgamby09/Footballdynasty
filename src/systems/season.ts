@@ -1,5 +1,5 @@
 import { clamp } from "../utils";
-import { createLeagueTeams, createSeasonFixtures } from "./club";
+import { createLeagueTeams, createSeasonFixturesFromWorld } from "./club";
 import { contractFromOffer, getContractOfferSummary, getPromisedRole } from "./contracts";
 import { getAverageRating, roundToNearest } from "./formatting";
 import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
@@ -73,7 +73,7 @@ export function startNextSeasonState(state: GameState): GameState {
     season: {
       season: nextSeason,
       fixtureIndex: 0,
-      fixtures: createSeasonFixtures(syncedClub),
+      fixtures: createSeasonFixturesFromWorld(syncedClub, newWorld),
       results: [],
     },
     club: syncedClub,

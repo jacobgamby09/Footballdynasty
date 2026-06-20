@@ -37,23 +37,30 @@ export function createSeasonFixturesFromWorld(club: ClubState, world?: World): F
   if (opponents.length === 0) return createSeasonFixtures(club);
 
   const tier = leagueTiers[club.tierId];
-  // Single round-robin: the player faces every other club in their league exactly
-  // once, so the season length tracks the league size (16 clubs -> 15 matches,
-  // a 20-club tier-1 -> 19). The world advances one matchweek per player match, so
-  // the standings stay consistent (every club plays the same number of games).
-  return opponents.map((opponent, index) => {
+  // Double round-robin: the player faces every other club home AND away, so the
+  // season length tracks the league size (16 clubs -> 30 matches, a 20-club tier-1
+  // -> 38). The first leg uses one venue per opponent; the second leg (same order)
+  // swaps it, so each club is played once home and once away. The world advances one
+  // matchweek per player match, so the standings stay consistent (every club plays
+  // the same number of games).
+  const makeFixture = (opponent: (typeof opponents)[number], index: number, venue: Venue): Fixture => {
     const seed = `${club.shortCode}|s${world.seasonNumber}|${opponent.id}|${index}`;
     return {
       id: `md${index + 1}-${opponent.shortCode.toLowerCase()}`,
       opponent: opponent.name,
       opponentShort: opponent.shortName,
-      venue: (index % 2 === 0 ? "Away" : "Home") as Venue,
+      venue,
       competition: tier.name,
       opponentStrength: clamp(opponent.strength, tier.teamRange[0], tier.teamRange[1]),
       opponentForm: FIXTURE_FORMS[Math.floor(fixtureHash(`${seed}|form`) * FIXTURE_FORMS.length) % FIXTURE_FORMS.length],
       serviceLevel: FIXTURE_SERVICES[Math.floor(fixtureHash(`${seed}|svc`) * FIXTURE_SERVICES.length) % FIXTURE_SERVICES.length],
     };
-  });
+  };
+  const firstLeg = opponents.map((opponent, i) => makeFixture(opponent, i, i % 2 === 0 ? "Away" : "Home"));
+  const secondLeg = opponents.map((opponent, i) =>
+    makeFixture(opponent, opponents.length + i, i % 2 === 0 ? "Home" : "Away"),
+  );
+  return [...firstLeg, ...secondLeg];
 }
 
 export function createSeasonFixtures(club: ClubState): Fixture[] {

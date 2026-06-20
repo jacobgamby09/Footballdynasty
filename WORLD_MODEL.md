@@ -440,13 +440,15 @@ Reuse the existing 6 bands but **inverted and renumbered so 1 = best**: tier 1 �
   "Northbridge" anywhere, and every country's pyramid is themed correctly.
 
 - **Stage G — full league schedule. ✅ DONE.** The season was hardcoded to 12 matches
-  regardless of league size. `createSeasonFixturesFromWorld` now builds a **single
-  round-robin**: the player faces every other club in their league exactly once, so the
-  season length tracks the league size (16-club division → 15 matches, a 20-club tier-1
-  → 19). Cup framing dropped — it's a clean league schedule (all matches use the tier's
-  league competition). The world already advances one matchweek per player match, so the
-  standings stay consistent (every club plays the same number of games — verified: after
-  2 player matches all 16 league clubs show `played: 2`). `SAVE_VERSION` → 8.
+  regardless of league size. `createSeasonFixturesFromWorld` now builds a **double
+  round-robin**: the player faces every other club home AND away, so the season length
+  tracks the league size (16-club division → 30 matches, a 20-club tier-1 → 38). The
+  first leg assigns one venue per opponent; the second leg (same order) swaps it, so
+  each club is played once home and once away (verified: 16-club league → 30 fixtures,
+  15 home / 15 away, every opponent home+away). Cup framing dropped — it's a clean league
+  schedule (all matches use the tier's league competition). The world already advances
+  one matchweek per player match, so the standings stay consistent (every club plays the
+  same number of games). `SAVE_VERSION` → 9.
 
 ## Hand-off notes
 Same hard constraints as v1: no `Math.random`/`Date.now`; acyclic imports

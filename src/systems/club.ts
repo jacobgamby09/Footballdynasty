@@ -4,11 +4,8 @@ import { contractMarketClubs, leagueTiers } from "../data/leagues";
 import { baseLeagueTeams, seasonFixtures } from "../data/fixtures";
 import { clamp } from "../utils";
 
-const FIXTURE_COUNT = 12;
 const FIXTURE_FORMS: OpponentForm[] = ["Poor", "Mixed", "Good", "Hot"];
 const FIXTURE_SERVICES: ServiceLevel[] = ["Low", "Mixed", "Good"];
-// Matchdays 3 and 8 are cup fixtures in the legacy schedule — keep that rhythm.
-const CUP_MATCHDAYS = new Set([2, 7]);
 
 // Deterministic [0,1) hash (FNV-1a). No Math.random / Date.now (would break the
 // sim-lab and save-resume): same seed -> same value, different seeds spread out.
@@ -40,17 +37,18 @@ export function createSeasonFixturesFromWorld(club: ClubState, world?: World): F
   if (opponents.length === 0) return createSeasonFixtures(club);
 
   const tier = leagueTiers[club.tierId];
-  const count = Math.min(FIXTURE_COUNT, opponents.length);
-  return Array.from({ length: count }, (_, index) => {
-    const opponent = opponents[index % opponents.length];
+  // Single round-robin: the player faces every other club in their league exactly
+  // once, so the season length tracks the league size (16 clubs -> 15 matches,
+  // a 20-club tier-1 -> 19). The world advances one matchweek per player match, so
+  // the standings stay consistent (every club plays the same number of games).
+  return opponents.map((opponent, index) => {
     const seed = `${club.shortCode}|s${world.seasonNumber}|${opponent.id}|${index}`;
-    const isCup = CUP_MATCHDAYS.has(index);
     return {
       id: `md${index + 1}-${opponent.shortCode.toLowerCase()}`,
       opponent: opponent.name,
       opponentShort: opponent.shortName,
       venue: (index % 2 === 0 ? "Away" : "Home") as Venue,
-      competition: isCup ? `${tier.name} Cup` : tier.name,
+      competition: tier.name,
       opponentStrength: clamp(opponent.strength, tier.teamRange[0], tier.teamRange[1]),
       opponentForm: FIXTURE_FORMS[Math.floor(fixtureHash(`${seed}|form`) * FIXTURE_FORMS.length) % FIXTURE_FORMS.length],
       serviceLevel: FIXTURE_SERVICES[Math.floor(fixtureHash(`${seed}|svc`) * FIXTURE_SERVICES.length) % FIXTURE_SERVICES.length],

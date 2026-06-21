@@ -75,7 +75,7 @@ export function getSelectionReport(
     0,
     100,
   );
-  const role = availability === "Out" ? "Bench" : getPlayerMatchRole(score);
+  const role = availability === "Out" ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), availability);
   const nextRole = getNextRole(role);
   const nextThreshold = nextRole ? getRoleThreshold(nextRole) : 100;
 
@@ -189,12 +189,12 @@ export function getFitnessSelectionImpact(fitness: number) {
     return -18;
   }
   if (fitness < 62) {
-    return -9;
+    return -8;
   }
   if (fitness < 78) {
-    return -2;
+    return 0;
   }
-  return Math.round((fitness - 78) * 0.12);
+  return Math.min(1, Math.round((fitness - 78) * 0.08));
 }
 
 
@@ -252,6 +252,23 @@ export function getPlayerMatchRole(selectionScore: number): UpcomingMatch["playe
 }
 
 
+function capRoleByFitness(role: UpcomingMatch["playerRole"], availability: FitnessAvailability): UpcomingMatch["playerRole"] {
+  if (availability === "Critical") {
+    return "Bench";
+  }
+
+  if (availability === "Heavy" && (role === "Starter" || role === "Rotation Starter")) {
+    return "Impact Sub";
+  }
+
+  if (availability === "Tired" && role === "Starter") {
+    return "Rotation Starter";
+  }
+
+  return role;
+}
+
+
 export function getExpectedMinutes(role: UpcomingMatch["playerRole"], availability: FitnessAvailability = "Ready", isInSquad = true) {
   if (!isInSquad || availability === "Out") {
     return "Not selected";
@@ -297,16 +314,16 @@ export function getPlayerMomentCount(role: UpcomingMatch["playerRole"], involvem
 
   const roleRatesPer90: Record<UpcomingMatch["playerRole"], number> = {
     Bench: 0,
-    "Impact Sub": 3.0,
-    "Rotation Starter": 3.6,
-    Starter: 4.0,
+    "Impact Sub": 2.4,
+    "Rotation Starter": 3.0,
+    Starter: 3.35,
   };
-  const involvementModifier = clamp((involvementScore - 50) / 38, -0.55, 0.8);
+  const involvementModifier = clamp((involvementScore - 50) / 46, -0.45, 0.45);
   const expectedMoments = Math.max(0, (minutes / 90) * roleRatesPer90[role] * (1 + involvementModifier));
   const baseMoments = Math.floor(expectedMoments);
   const extraMoment = seededNoise(`${matchSeed}-${role}-${minutes}-moment-volume`) < expectedMoments - baseMoments ? 1 : 0;
   const lateSubCeiling = minutes < 18 ? 1 : minutes < 32 ? 2 : 3;
-  const roleCeiling = role === "Starter" ? 5 : role === "Rotation Starter" ? 4 : lateSubCeiling;
+  const roleCeiling = role === "Starter" ? 4 : role === "Rotation Starter" ? 3 : lateSubCeiling;
 
   return clamp(baseMoments + extraMoment, 0, roleCeiling);
 }

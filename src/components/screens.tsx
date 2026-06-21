@@ -5,13 +5,15 @@ import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
 import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculatePotentialOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
+import { getPrestigeStatus } from "../systems/prestige";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
 import { getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
+import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
 import { clamp } from "../utils";
-import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
+import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
@@ -25,6 +27,7 @@ export function PlayerScreen({ game }: { game: GameState }) {
       <Header game={game} />
       <CareerCard game={game} />
       <ReadinessStrip game={game} />
+      <PrestigeStatusCard game={game} />
       <SeasonContextCard game={game} />
       <NextActionCard game={game} />
       <SelectionBriefingCard game={game} />
@@ -36,7 +39,6 @@ export function PlayerScreen({ game }: { game: GameState }) {
       />
       <SeasonSnapshot stats={game.seasonStats} />
       <RelationshipsCard game={game} />
-      <ContractMarketCard game={game} />
       <EquipmentFacilitiesCard />
     </>
   );
@@ -766,6 +768,7 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
   const topTraining = training ? getTopXpEntry(training.xp) : undefined;
   const topMatch = match ? getTopXpEntry(match.xp) : undefined;
   const weekNumber = training?.week ?? Math.max(1, game.week - 1);
+  const prestigeStatus = getPrestigeStatus(game.prestige);
 
   return (
     <section className="simple-screen week-summary-screen">
@@ -777,7 +780,8 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
           <h2>+${match?.cashDelta ?? 0}</h2>
           <p>
             Wage ${match?.weeklyWage ?? game.contract.weeklyWage}
-            {match ? ` + bonuses $${match.cashDelta - match.weeklyWage}` : ""}
+            {match ? ` + contract bonuses $${match.appearanceBonus + match.goalBonus + match.assistBonus}` : ""}
+            {match && match.sponsorCashDelta > 0 ? ` + sponsor $${match.sponsorCashDelta}` : ""}
           </p>
         </div>
         <div>
@@ -794,6 +798,7 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
           <InfoTile label="Appearance" value={`+$${match?.appearanceBonus ?? 0}`} />
           <InfoTile label="Goals" value={`+$${match?.goalBonus ?? 0}`} tone={(match?.goalBonus ?? 0) > 0 ? "gold" : undefined} />
           <InfoTile label="Assists" value={`+$${match?.assistBonus ?? 0}`} />
+          <InfoTile label="Sponsor" value={`+$${match?.sponsorCashDelta ?? 0}`} tone={(match?.sponsorCashDelta ?? 0) > 0 ? "gold" : undefined} />
         </div>
       </div>
 
@@ -824,6 +829,14 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
           <InfoTile label="Selection" value={match ? `${match.selectionBefore} -> ${match.selectionAfter}` : "-"} tone={match && match.selectionAfter > match.selectionBefore ? "good" : undefined} />
           <InfoTile label="Trust" value={match ? formatSigned(match.trustDelta) : "0"} />
           <InfoTile label="Prestige" value={match ? `+${match.prestigeDelta}` : "0"} tone="gold" />
+        </div>
+        <div className="match-hint">
+          <Sparkles size={16} />
+          <span>
+            {prestigeStatus.next
+              ? `${prestigeStatus.current.label}: ${prestigeStatus.pointsToNext} prestige to ${prestigeStatus.next.label}.`
+              : `${prestigeStatus.current.label}: maximum prestige tier reached.`}
+          </span>
         </div>
       </div>
 
@@ -856,6 +869,7 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
   const stats = game.seasonStats;
   const goals = getSeasonGoals(game.season.results);
   const goalDifference = goals.for - goals.against;
+  const prestigeAfterReward = getPrestigeStatus(game.prestige + review.prestigeReward);
 
   return (
     <section className="simple-screen season-review-screen">
@@ -923,7 +937,10 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
         <div className="next-grid">
           <InfoTile label="Cash" value={`+$${review.cashReward}`} tone="good" />
           <InfoTile label="Prestige" value={`+${review.prestigeReward}`} tone="gold" />
+          <InfoTile label="Status" value={prestigeAfterReward.current.label} tone="gold" />
           <InfoTile label="Interest" value={review.marketInterest} />
+          <InfoTile label="Next tier" value={prestigeAfterReward.next ? `${prestigeAfterReward.pointsToNext} pts` : "Max"} />
+          <InfoTile label="Sponsor" value={prestigeAfterReward.sponsorInterest} />
         </div>
         <div className="match-hint">
           <Sparkles size={16} />
@@ -1308,11 +1325,13 @@ export function HomeScreen({
   game,
   saveStatus,
   onBuySupportUpgrade,
+  onAcceptSponsorDeal,
   onResetCareer,
 }: {
   game: GameState;
   saveStatus: "saved" | "unsaved";
   onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
+  onAcceptSponsorDeal: (dealId: string) => void;
   onResetCareer: () => void;
 }) {
   const [homeView, setHomeView] = useState<HomeView>("base");
@@ -1331,6 +1350,9 @@ export function HomeScreen({
         </button>
         <button className={homeView === "support" ? "is-active" : ""} type="button" onClick={() => setHomeView("support")}>
           Support
+        </button>
+        <button className={homeView === "deals" ? "is-active" : ""} type="button" onClick={() => setHomeView("deals")}>
+          Deals
         </button>
         <button className={homeView === "dynasty" ? "is-active" : ""} type="button" onClick={() => setHomeView("dynasty")}>
           Dynasty
@@ -1382,6 +1404,8 @@ export function HomeScreen({
         </>
       ) : homeView === "support" ? (
         <SupportShopView game={game} onBuySupportUpgrade={onBuySupportUpgrade} />
+      ) : homeView === "deals" ? (
+        <DealsView game={game} onAcceptSponsorDeal={onAcceptSponsorDeal} />
       ) : (
         <>
           <div className="card">
@@ -1418,6 +1442,107 @@ export function HomeScreen({
         </>
       )}
     </section>
+  );
+}
+
+
+export function DealsView({ game, onAcceptSponsorDeal }: { game: GameState; onAcceptSponsorDeal: (dealId: string) => void }) {
+  const prestige = getPrestigeStatus(game.prestige);
+  const sponsorOffers = getAvailableSponsorDeals(game);
+  const sponsorUnlocked = prestige.tierIndex >= 1;
+  const sponsorStatus = game.sponsor ? "Active" : sponsorUnlocked ? "Offers ready" : "Locked";
+  const sponsorRequirement = game.sponsor
+    ? `${game.sponsor.weeksRemaining} weeks left`
+    : sponsorUnlocked
+      ? prestige.sponsorInterest
+      : `${prestige.pointsToNext} pts to Known Talent`;
+
+  return (
+    <>
+      <div className="card deals-overview-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Career deals</span>
+            <h2>Contract and sponsors</h2>
+          </div>
+          <BadgeDollarSign size={19} />
+        </div>
+        <div className="next-grid">
+          <InfoTile label="Weekly wage" value={`$${game.contract.weeklyWage}`} tone="good" />
+          <InfoTile label="Prestige" value={prestige.current.label} tone="gold" />
+          <InfoTile label="Sponsor" value={sponsorStatus} tone={sponsorUnlocked ? "good" : undefined} />
+        </div>
+      </div>
+
+      <ContractMarketCard game={game} />
+
+      <div className="card sponsor-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Sponsor slot</span>
+            <h2>{game.sponsor ? game.sponsor.name : sponsorUnlocked ? "Choose a deal" : "Build your name"}</h2>
+          </div>
+          <Sparkles size={19} />
+        </div>
+        {game.sponsor ? (
+          <>
+            <p>{game.sponsor.summary}</p>
+            <div className="next-grid">
+              <InfoTile label="Retainer" value={`$${game.sponsor.weeklyRetainer}/wk`} tone="good" />
+              <InfoTile label="Objective" value={`+$${game.sponsor.objectiveBonus}`} tone="gold" />
+              <InfoTile label="Pressure" value={formatSigned(game.sponsor.pressureModifier)} tone={game.sponsor.pressureModifier > 0 ? "warn" : "good"} />
+            </div>
+            <div className="match-hint">
+              <Sparkles size={16} />
+              <span>{game.sponsor.objective.label}. {game.sponsor.weeksRemaining} weeks remaining.</span>
+            </div>
+          </>
+        ) : sponsorOffers.length ? (
+          <div className="sponsor-offer-list">
+            {sponsorOffers.map((offer) => (
+              <div className="sponsor-offer-card" key={offer.id}>
+                <div className="sponsor-offer-main">
+                  <div>
+                    <span className="metric-label">{offer.tierLabel}</span>
+                    <h3>{offer.name}</h3>
+                    <p>{offer.summary}</p>
+                  </div>
+                  <strong>${offer.weeklyRetainer}/wk</strong>
+                </div>
+                <div className="next-grid">
+                  <InfoTile label="Objective" value={offer.objective.label} />
+                  <InfoTile label="Bonus" value={`+$${offer.objectiveBonus}`} tone="gold" />
+                  <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > 0 ? "warn" : "good"} />
+                </div>
+                <div className="sponsor-offer-footer">
+                  <span>{offer.weeksRemaining} weeks</span>
+                  <button type="button" onClick={() => onAcceptSponsorDeal(offer.id)}>
+                    Accept
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="contract-hero">
+              <div>
+                <span>Status</span>
+                <strong>{sponsorStatus}</strong>
+              </div>
+              <div>
+                <span>Access</span>
+                <strong>{sponsorRequirement}</strong>
+              </div>
+            </div>
+            <div className="match-hint">
+              <Sparkles size={16} />
+              <span>Sponsors start paying attention once you reach Known Talent.</span>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

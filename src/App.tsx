@@ -10,6 +10,7 @@ import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 import { getUpcomingMatch } from "./systems/selection";
 import { applyTrainingWeek, getCurrentTrainingFocuses, getTrainingFocusCapacity } from "./systems/training";
 import { acceptContractOfferState } from "./systems/contracts";
+import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { BottomNav } from "./components/shared";
@@ -467,6 +468,10 @@ function App() {
     setGame((state) => buySupportUpgradeState(state, upgradeId));
   }
 
+  function acceptSponsorDeal(dealId: string) {
+    setGame((state) => acceptSponsorDealState(state, dealId));
+  }
+
   function navigate(nav: NavKey) {
     setActiveScreen(nav);
   }
@@ -510,6 +515,7 @@ function App() {
               game={game}
               saveStatus={saveStatus}
               onBuySupportUpgrade={buySupportUpgrade}
+              onAcceptSponsorDeal={acceptSponsorDeal}
               onResetCareer={resetCareer}
             />
           )}

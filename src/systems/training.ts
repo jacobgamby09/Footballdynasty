@@ -8,7 +8,7 @@ import { formatPercentDelta, formatSigned } from "./formatting";
 import { getAttributeValue, getClubLeagueTier, getXpPercent } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
 import { getSelectionReport } from "./selection";
-import { getBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getRecoverySessionBonus, getSupportLevel, getSupportTrackBreakthroughCount, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getRecoverySessionBonus, getSupportLevel, getSupportTrackBreakthroughCount, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus } from "./support";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, AttributeLevelUp, DevelopmentEnvironment, GameState, Intensity, LeagueTier, SupportTrackDefinition, SupportUpgradeId, TrainingQuality, TrainingQualityProfile, TrainingSummary } from "../types";
 
@@ -91,10 +91,13 @@ export function getSupportTrackCurrentBonusLines(state: GameState, track: Suppor
   if (track.id === "recovery") {
     const recoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
     const nutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+    const floor = getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, breakthroughs);
+    const ceiling = getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, breakthroughs);
     return [
       `+${getWeeklySupportRecoveryBonus(recoveryLevel, nutritionLevel)} weekly recovery`,
       `+${getTrainingFatigueRelief(nutritionLevel)} training relief`,
       `+${getMatchActionRecoveryRelief(recoveryLevel) + getRecoveryBreakthroughRelief(breakthroughs)} match relief`,
+      `${floor}-${ceiling} fitness band`,
     ];
   }
 
@@ -122,7 +125,8 @@ export function applyTrainingWeek(state: GameState): GameState {
   const combinedXp = mergeAttributeXp(rolledXp, projection.specialistXp);
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season)).score;
   const attributeResult = addAttributeXpDetailed(state.attributes, combinedXp);
-  const fitness = clamp(state.fitness + projection.fitnessDelta, 0, 100);
+  const fitness = getProjectedTrainingFitness(state, projection.fitnessDelta);
+  const actualFitnessDelta = fitness - state.fitness;
   const morale = clamp(state.morale + projection.moraleDelta, 0, 100);
   const trust = clamp(state.trust + projection.trustDelta, 0, 100);
   const nextStateForSelection = {
@@ -143,7 +147,7 @@ export function applyTrainingWeek(state: GameState): GameState {
     specialistXp: projection.specialistXp,
     ranges: projection.ranges,
     xp: combinedXp,
-    fitnessDelta: projection.fitnessDelta,
+    fitnessDelta: actualFitnessDelta,
     moraleDelta: projection.moraleDelta,
     trustDelta: projection.trustDelta,
     selectionBefore,
@@ -259,7 +263,7 @@ export function getTrainingProjection(state: GameState) {
       qualityLabel: "Recovery session",
       qualityProfile: getTrainingQualityProfileByQuality("Poor"),
       specialistXp: {} as Partial<Record<AttributeKey, number>>,
-      fitnessDelta: 14 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel),
+      fitnessDelta: 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel),
       moraleDelta: 1,
       trustDelta: -1,
     };
@@ -296,16 +300,18 @@ export function getTrainingProjection(state: GameState) {
     };
   });
 
+  const rawFitnessDelta =
+    intensity.fitnessDelta < 0
+      ? Math.min(0, intensity.fitnessDelta + getTrainingFatigueRelief(effectiveNutritionLevel))
+      : intensity.fitnessDelta + environment.recoveryBonus;
+
   return {
     ranges,
     quality: qualityProfile.quality,
     qualityLabel: qualityProfile.label,
     qualityProfile,
     specialistXp: getProjectedSpecialistXp(state, environment, qualityProfile),
-    fitnessDelta:
-      intensity.fitnessDelta < 0
-        ? Math.min(0, intensity.fitnessDelta + environment.recoveryBonus + getTrainingFatigueRelief(effectiveNutritionLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs))
-        : intensity.fitnessDelta + environment.recoveryBonus + getRecoveryBreakthroughRelief(recoveryBreakthroughs),
+    fitnessDelta: getProjectedTrainingFitness(state, rawFitnessDelta) - state.fitness,
     moraleDelta: intensity.moraleDelta,
     trustDelta: intensity.trustDelta,
   };
@@ -317,11 +323,24 @@ export function getDevelopmentEnvironment(tier: LeagueTier): DevelopmentEnvironm
   return {
     label: tier.name,
     facilityLevel: level,
-    xpMultiplier: 1 + (level - 1) * 0.18,
-    xpFloorBonus: (level - 1) * 4,
-    recoveryBonus: Math.floor((level - 1) / 3),
-    supportEfficiency: 1 + (level - 1) * 0.1,
+    xpMultiplier: 1 + (level - 1) * 0.12,
+    xpFloorBonus: (level - 1) * 3,
+    recoveryBonus: level >= 4 ? 1 : 0,
+    supportEfficiency: 1 + (level - 1) * 0.06,
   };
+}
+
+
+function getProjectedTrainingFitness(state: GameState, fitnessDelta: number) {
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+  const recoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
+  const nutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+  const projectedFitness = clamp(state.fitness + fitnessDelta, 0, 100);
+  const floor = getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, recoveryBreakthroughs);
+  const ceiling = getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, recoveryBreakthroughs);
+
+  return applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, floor), ceiling);
 }
 
 
@@ -335,10 +354,10 @@ export function getTrainingQualityProfile(state: GameState, seed: string, enviro
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    nutritionLevel * 1.7 +
-    recoveryLevel * 1.1 +
-    trainingBreakthroughs * 7 +
-    recoveryBreakthroughs * 4 +
+    nutritionLevel * 1.05 +
+    recoveryLevel * 0.35 +
+    trainingBreakthroughs * 5 +
+    recoveryBreakthroughs * 1.5 +
     (state.intensity === "Hard" ? -6 : state.intensity === "Light" ? 4 : 0);
   const roll = seededNoise(`${seed}-quality`);
   const qualityScore = readinessScore + Math.round(roll * 34) - 17;
@@ -411,7 +430,7 @@ export function getProjectedSpecialistXp(
 export function getSpecialistBaseXpBonus(state: GameState, environment = getDevelopmentEnvironment(currentLeagueTier)) {
   const coachLevel = getSupportLevel(state, "coach");
   const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  return Math.round(10 + environment.facilityLevel * 3 + coachLevel * 2.8 + trainingBreakthroughs * 7);
+  return Math.round(8 + environment.facilityLevel * 2 + coachLevel * 1.6 + trainingBreakthroughs * 4);
 }
 
 
@@ -513,14 +532,15 @@ export function rollTrainingXp(
 export function createTrainingSeed(state: GameState) {
   return [
     "training",
+    state.club.clubId ?? state.club.shortCode,
+    state.world?.seasonNumber ?? state.season.season,
+    state.season.season,
     state.week,
     state.trainingCompletedWeek,
     state.trainingFocuses.join(","),
     state.intensity,
     state.fitness,
     state.trust,
-    Date.now().toString(36),
-    Math.random().toString(36).slice(2, 8),
   ].join("-");
 }
 

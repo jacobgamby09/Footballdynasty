@@ -2,6 +2,33 @@
 
 ## 2026-06-18
 
+### Prestige Tier V1
+
+- Added a central prestige tier system: Local Prospect, Known Talent, Regional Name, National Profile, Star Player, Icon and Legend.
+- Prestige is still stored as one raw career score, so no save-version bump is required; tiers are derived from existing `game.prestige`.
+- Match prestige gains now scale from goals, assists, chances created, rating, match importance and league prestige multiplier.
+- Season prestige rewards now scale from apps, starts, goals, assists, average rating, table position, goal difference and club tier.
+- Player screen now shows a dedicated prestige card with current tier, total prestige, progress to next tier and sponsor-interest unlock text.
+- Week Summary and Season Review now show prestige movement in tier context instead of only a raw `+X`.
+- Contract/transfer logic now uses a normalized prestige leverage score so larger raw prestige totals do not explode old interest formulas.
+- Season balance lab now tracks prestige gained, end prestige, prestige tier and season-by-season prestige curve output.
+
+### Career Deals Screen V1
+
+- Added `Deals` as a Home subtab alongside Base, Support and Dynasty.
+- Moved detailed contract viewing out of the Player dashboard and into Home -> Deals.
+- Deals now shows a compact commercial overview, the current contract card and a sponsor slot placeholder.
+- Sponsor slot displays eligibility from prestige tier, current retainer, objective and pressure values, ready for Sponsor V1 offers.
+- DESIGN and GDD now define contracts and sponsors as one `Career Deals` surface instead of separate shops.
+
+### Economy Direction: Prestige, Sponsors And Legacy
+
+- Locked the three-currency direction in the design docs: cash is active-career spending, prestige is career status/access and Legacy Points are dynasty spending power.
+- Prestige should be an unbounded score with readable tiers such as Local Prospect, Known Talent, Regional Name, National Profile, Star Player, Icon and Legend.
+- Prestige is not spent directly. It unlocks opportunities, especially sponsor interest, transfer visibility and career pressure.
+- Sponsors are defined as the mid/late-career cash accelerator: weekly retainers, objective payouts and pressure/obligation tradeoffs unlocked by prestige, role, club tier and agent/career setup.
+- Retirement should convert final prestige plus career achievements into Legacy Points, preserving the incentive to invest cash into the current player instead of hoarding it for dynasty upgrades.
+
 ### Club State V1
 
 - Added saveable current club state with name, short name/code, league tier and squad strength.
@@ -1158,3 +1185,116 @@
 
 - Positioner kan nu udbygges uden at lægge mere positionsdata ind i `App.tsx`.
 - Næste naturlige step er at tilføje rigtige moment libraries for Winger/Midfielder/Fullback/Centerback og lade positionens `momentPools` vælge bibliotek.
+
+## 2026-06-20 - Sponsor Deals V1
+
+### Implemented
+
+- Added `src/systems/sponsors.ts` as the sponsor engine surface.
+- Sponsors now unlock from prestige and can be accepted from Home -> Deals.
+- One active sponsor at a time in V1.
+- Active sponsor deals pay:
+  - weekly retainer
+  - objective bonus when the match objective is completed
+  - pressure modifier while the deal is active
+- Match finish now includes sponsor cash in total weekly cash and advances sponsor duration.
+- Week Summary now breaks out sponsor cash next to wage and contract bonuses.
+- Save/load clones active sponsor state safely; older saves fall back to no active sponsor.
+- Season balance lab now auto-accepts available sponsor deals and tracks sponsor earned/deals.
+
+### Current Lab Read
+
+- Build passed.
+- `npm run balance:season -- --seasons=12 --career-seasons=4 --generations=1` passed.
+- Sponsor earnings are visible once prestige reaches Known Talent.
+- Recovery-heavy paths create many more minutes, which raises goals, assists, prestige and sponsor cash sharply.
+- This confirms sponsors are connected to the wider economy, but also flags recovery/minutes/output balance as the next tuning area.
+
+### Design Impact
+
+- Home -> Deals is now the permanent career-economy hub for contract and sponsor information.
+- Sponsors are no longer a placeholder: they are a mid-run cash lever gated by prestige and performance.
+- V1 remains deliberately narrow so future sponsor tiers, fame systems and negotiations can build on one clear model.
+
+## 2026-06-21 - Recovery Balance Patch V1
+
+### Implemented
+
+- Recovery is now balanced as a stabilizer instead of a direct accelerator.
+- Reduced direct weekly recovery, recovery-session gain, match-action relief and recovery breakthrough relief.
+- Added a recovery fitness floor that softly protects against critical fitness collapse without pushing the player to permanent high readiness.
+- Training preview now reports the actual post-mitigation fitness delta, so UI and result are aligned.
+- Fitness now caps match role readiness:
+  - Critical: bench only
+  - Heavy: max Impact Sub
+  - Tired: max Rotation Starter
+- Recovery has a smaller impact on training quality, so it no longer doubles as a hidden XP engine.
+- Season balance lab mirrors the new recovery formulas and role caps.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=12 --career-seasons=4 --generations=1`
+
+- Balanced spending: 59.7 apps, 872 minutes, 39.4 end OVR, 30.3 end fitness, near target curve.
+- Recovery spending: 66.6 apps, 1046 minutes, 38.8 end OVR, 35.0 end fitness, near target curve.
+- Recovery-track focus: 106 apps, 2960 minutes, 36.2 end OVR, 45.8 end fitness, still strong but far lower than the previous runaway result.
+- Sponsor cash no longer broadly unlocks in balanced/development by season 4, but recovery-track can still reach Known Talent and earn sponsor money.
+
+### Design Impact
+
+- Recovery still matters clearly when the player is low on fitness.
+- Recovery no longer automatically creates huge starts/minutes/output/sponsor snowball in ordinary balanced builds.
+- The remaining balance question is whether very focused recovery builds should be allowed to trade OVR growth for much higher availability, or whether their minutes should be capped further by role/trust/ability.
+
+## 2026-06-21 - Prestige Unlock Patch V1
+
+### Implemented
+
+- Lowered early prestige tier thresholds:
+  - Known Talent: 350 prestige
+  - Regional Name: 1,500 prestige
+- Sponsor definitions now use the same thresholds.
+- Match prestige now gives more credit for appearance and team result, not only direct goals/assists.
+- Season prestige now gives more credit for appearances, starts and season consistency.
+- Deals UI now checks prestige tier instead of a hardcoded 500-point unlock.
+- Season balance lab now tracks first sponsor unlock week and first sponsor deal week.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=12 --career-seasons=4 --generations=1`
+
+- Balanced spending: first sponsor unlock average week 116.4, first sponsor deal average week 115.0, end prestige 499.8.
+- Development spending: first sponsor unlock average week 116.9, first sponsor deal average week 114.3, end prestige 458.9.
+- Recovery spending: first sponsor unlock average week 111.6, first sponsor deal average week 110.7, end prestige 566.6.
+- Recovery-track focus: first sponsor unlock average week 60.3, first sponsor deal average week 61.0, end prestige 1,743.5.
+
+### Design Impact
+
+- Sponsor access now arrives as a late season 4 reward for balanced/development builds instead of being mostly unreachable.
+- Recovery-heavy builds still reach sponsors earlier because they earn more appearances and output, which is a meaningful availability tradeoff.
+- Pure non-recovery/non-development builds generally do not unlock sponsors by season 4, which reinforces that early support choices matter.
+
+## 2026-06-21 - Recovery Ceiling Patch V1
+
+### Implemented
+
+- Added a soft recovery fitness ceiling on top of the existing recovery floor.
+- Recovery still protects against critical collapse, but extreme recovery builds are now pulled down from permanent 95-100 fitness.
+- Training, match resolution and the season balance lab all use the same floor/ceiling formula.
+- Recovery support UI now shows the effective fitness band so the mechanic is less hidden.
+
+### Design Intent
+
+- Recovery should be a strong availability build, not a way to remove fatigue from the game.
+- High recovery can still produce better readiness than other builds, but the player should still need to manage training intensity, match load and long seasons.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=8 --career-seasons=10 --generations=1`
+
+- Balanced spending: 64.1 end OVR, 48.8 end fitness.
+- Development spending: 63.9 end OVR, 46.0 end fitness.
+- Recovery spending: 63.9 end OVR, 48.0 end fitness.
+- Recovery-track focus: 50.0 end OVR, 83.5 end fitness.
+
+This keeps pure recovery clearly better at availability, but no longer lets it sit at permanent 95-100 readiness.

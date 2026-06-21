@@ -7,7 +7,9 @@ import { getFormScore } from "./formatting";
 import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile } from "./ovr";
 import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, isSeasonComplete } from "./seasonState";
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
-import { applyBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
+import { getMatchPrestigeDelta } from "./prestige";
+import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
+import { applyBootsActionBoost, applyRecoveryCeiling, applyRecoveryFloor, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
 import type { AttributeKey, PositionModule } from "../positionRoles";
@@ -45,23 +47,42 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const simTotals = match ? summarizeSimEvents(match.events, match.events.length - 1) : undefined;
   const rawTotals = summarizeMatchResults(results, simTotals);
   const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+  const effectiveRecoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
+  const effectiveNutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
   const weeklyRecoveryBonus =
+    1 +
     environment.recoveryBonus +
-    getRecoveryBreakthroughRelief(getSupportTrackBreakthroughCount(state, "recovery")) +
+    getRecoveryBreakthroughRelief(recoveryBreakthroughs) +
     getWeeklySupportRecoveryBonus(
-      getSupportLevel(state, "recovery") * environment.supportEfficiency,
-      getSupportLevel(state, "nutrition") * environment.supportEfficiency,
+      effectiveRecoveryLevel,
+      effectiveNutritionLevel,
     );
-  const totals = match
-    ? { ...rawTotals, fitnessDelta: getMatchFitnessDelta(match, results) + weeklyRecoveryBonus }
-    : { ...rawTotals, fitnessDelta: rawTotals.fitnessDelta + weeklyRecoveryBonus };
+  const baseFitnessDelta = match ? getMatchFitnessDelta(match, results) + weeklyRecoveryBonus : rawTotals.fitnessDelta + weeklyRecoveryBonus;
+  const projectedFitness = clamp(state.fitness + baseFitnessDelta, 0, 100);
+  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  const adjustedFitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
+  const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);
   const moraleDelta = playerAppeared ? (totals.rating >= 7 ? 3 : -2) : 0;
   const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
-  const cashDelta = contractEarnings.total;
-  const prestigeDelta = Math.max(0, Math.round((totals.rating - 6) * 2));
-  const pressureDelta = totals.goals * 2 - getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), getSupportTrackBreakthroughCount(state, "lifestyle"));
+  const sponsorPayout = getSponsorPayout(state.sponsor, totals, playerAppeared);
+  const cashDelta = contractEarnings.total + sponsorPayout.total;
+  const prestigeDelta =
+    match
+      ? getMatchPrestigeDelta({
+          totals,
+          tierId: state.club.tierId,
+          matchImportance: match.matchImportance,
+          playerAppeared,
+        })
+      : 0;
+  const pressureDelta =
+    totals.goals * 2 +
+    (state.sponsor?.pressureModifier ?? 0) -
+    getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), getSupportTrackBreakthroughCount(state, "lifestyle"));
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season));
   const postMatchState = {
     ...state,
@@ -86,6 +107,11 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
         appearanceBonus: contractEarnings.appearanceBonus,
         goalBonus: contractEarnings.goalBonus,
         assistBonus: contractEarnings.assistBonus,
+        sponsorRetainer: sponsorPayout.retainer,
+        sponsorObjectiveBonus: sponsorPayout.objectiveBonus,
+        sponsorCashDelta: sponsorPayout.total,
+        sponsorObjectiveCompleted: sponsorPayout.objectiveCompleted,
+        sponsorName: sponsorPayout.sponsorName,
         prestigeDelta,
         moraleDelta,
         roleBefore,
@@ -106,6 +132,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     ratings: postMatchState.seasonStats.ratings,
   };
   const nextContract = advanceContractWeek(state.contract);
+  const nextSponsor = advanceSponsorWeek(state.sponsor);
   const updatedSeason = fixtureResult
     ? advanceSeasonFixture(state.season, fixtureResult)
     : state.season;
@@ -129,6 +156,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     cash: state.cash + cashDelta,
     prestige: state.prestige + prestigeDelta,
     contract: nextContract,
+    sponsor: nextSponsor,
     attributes: addAttributeXp(state.attributes, totals.xp),
     seasonStats: updatedSeasonStats,
     season: updatedSeason,
@@ -202,6 +230,11 @@ export function buildLastMatchSummary({
   appearanceBonus,
   goalBonus,
   assistBonus,
+  sponsorRetainer,
+  sponsorObjectiveBonus,
+  sponsorCashDelta,
+  sponsorObjectiveCompleted,
+  sponsorName,
   prestigeDelta,
   moraleDelta,
   roleBefore,
@@ -218,6 +251,11 @@ export function buildLastMatchSummary({
   appearanceBonus: number;
   goalBonus: number;
   assistBonus: number;
+  sponsorRetainer: number;
+  sponsorObjectiveBonus: number;
+  sponsorCashDelta: number;
+  sponsorObjectiveCompleted: boolean;
+  sponsorName?: string;
   prestigeDelta: number;
   moraleDelta: number;
   roleBefore: UpcomingMatch["playerRole"];
@@ -245,6 +283,11 @@ export function buildLastMatchSummary({
     appearanceBonus,
     goalBonus,
     assistBonus,
+    sponsorRetainer,
+    sponsorObjectiveBonus,
+    sponsorCashDelta,
+    sponsorObjectiveCompleted,
+    sponsorName,
     prestigeDelta,
     moraleDelta,
     roleBefore,
@@ -1074,25 +1117,26 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
 export function buildChoiceXp(choice: MatchChoice, tier: OutcomeTier, positionModule: PositionModule, moment: MatchMoment): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
   const tierBase: Record<OutcomeTier, number> = {
-    Poor: 7,
-    Okay: 10,
-    Good: 14,
-    Great: 18,
+    Poor: 5,
+    Okay: 8,
+    Good: 11,
+    Great: 15,
   };
-  const base = tierBase[tier];
+  const chainMultiplier = moment.chainDepth && moment.chainDepth > 0 ? 0.65 : 1;
+  const base = Math.max(1, Math.round(tierBase[tier] * chainMultiplier));
   choice.uses.forEach((key, index) => {
-    const keyAttributeBonus = positionModule.keyAttributes.includes(key) ? 2 : 0;
-    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 4 : 0) + keyAttributeBonus;
+    const keyAttributeBonus = positionModule.keyAttributes.includes(key) ? 1 : 0;
+    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 3 : 0) + keyAttributeBonus;
   });
 
   if (choice.manager === "Likes") {
     const managerBonusAttribute = getManagerBonusAttribute(choice, positionModule);
-    xp[managerBonusAttribute] = (xp[managerBonusAttribute] ?? 0) + 4;
+    xp[managerBonusAttribute] = (xp[managerBonusAttribute] ?? 0) + Math.max(1, Math.round(3 * chainMultiplier));
   }
 
   if (positionModule.matchTendencies.preferredForwardCategories.includes(moment.category)) {
     const focusAttribute = choice.uses.find((key) => positionModule.keyAttributes.includes(key)) ?? choice.uses[0];
-    xp[focusAttribute] = (xp[focusAttribute] ?? 0) + 2;
+    xp[focusAttribute] = (xp[focusAttribute] ?? 0) + Math.max(1, Math.round(2 * chainMultiplier));
   }
 
   return xp;
@@ -1241,10 +1285,12 @@ export function createMatchSeed(state: GameState, context: UpcomingMatch) {
   return [
     "match",
     context.id,
+    state.club.clubId ?? state.club.shortCode,
+    state.world?.seasonNumber ?? state.season.season,
+    state.season.season,
+    state.season.fixtureIndex,
     state.week,
     state.seasonStats.apps,
-    Date.now().toString(36),
-    Math.random().toString(36).slice(2, 8),
   ].join("-");
 }
 

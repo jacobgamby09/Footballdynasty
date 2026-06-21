@@ -4,6 +4,7 @@ import { getAttributeGrowthPressure, getAttributeXpRequirement } from "../system
 import { getContractStatusLabel } from "../systems/contracts";
 import { formatFixtureTitle, formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
 import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getOvrBreakdown } from "../systems/ovr";
+import { getPrestigeStatus } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
 import { getUpcomingMatch } from "../systems/selection";
@@ -11,7 +12,7 @@ import { getNextSupportTrackPurchase, getSupportTrackProgress } from "../systems
 import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
 import { clamp } from "../utils";
 import { FixtureStatusBadge, InfoRow, InfoTile, LeagueTableRowView, ProgressBar, ProgressRow } from "./shared";
-import { Activity, BadgeDollarSign, BarChart3, CalendarDays, ChevronRight, Flame, Gauge, HeartPulse, ShieldCheck, Trophy, UsersRound } from "lucide-react";
+import { Activity, BadgeDollarSign, BarChart3, CalendarDays, ChevronRight, Flame, Gauge, HeartPulse, ShieldCheck, Sparkles, Trophy, UsersRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey, PositionModule } from "../positionRoles";
 import type { Attribute, Contract, DynastySeason, GameState, LastMatchSummary, LeagueTableRow, SeasonState, SeasonStats, SupportTrackDefinition, SupportUpgradeId } from "../types";
@@ -309,6 +310,44 @@ export function ReadinessStrip({ game }: { game: GameState }) {
 }
 
 
+export function PrestigeStatusCard({ game }: { game: GameState }) {
+  const prestige = getPrestigeStatus(game.prestige);
+  const progressLabel = prestige.next
+    ? `${prestige.points}/${prestige.next.threshold}`
+    : `${prestige.points} prestige`;
+  const nextCopy = prestige.next
+    ? `${prestige.pointsToNext} prestige to ${prestige.next.label}`
+    : "Maximum prestige tier reached";
+
+  return (
+    <section className="card prestige-card">
+      <div className="section-heading">
+        <div>
+          <span className="metric-label">Prestige</span>
+          <h2>{prestige.current.label}</h2>
+        </div>
+        <Sparkles size={19} />
+      </div>
+
+      <div className="prestige-hero">
+        <strong>{prestige.points}</strong>
+        <div>
+          <span>{progressLabel}</span>
+          <ProgressBar value={prestige.progressPercent} />
+          <small>{nextCopy}</small>
+        </div>
+      </div>
+
+      <div className="next-grid">
+        <InfoTile label="Status" value={prestige.current.label} tone="gold" />
+        <InfoTile label="Sponsor" value={prestige.sponsorInterest} />
+        <InfoTile label="Next unlock" value={prestige.next?.sponsorUnlock ?? "Legacy brand"} />
+      </div>
+    </section>
+  );
+}
+
+
 export function getReadinessDetails(game: GameState, label: string) {
   const upcomingMatch = getUpcomingMatch(game);
   const averageRating = getAverageRating(game.seasonStats.ratings);
@@ -520,11 +559,12 @@ export function SeasonSnapshot({ stats }: { stats: SeasonStats }) {
 
 
 export function RelationshipsCard({ game }: { game: GameState }) {
+  const prestige = getPrestigeStatus(game.prestige);
   const relationships = [
     { label: "Manager", status: getTrustStatus(game.trust), value: game.trust },
     { label: "Teammates", status: "Neutral", value: 51 },
     { label: "Agent", status: "Basic", value: 34 },
-    { label: "Fans", status: game.prestige > 18 ? "Noticing" : "Unknown", value: Math.min(100, 18 + game.prestige) },
+    { label: "Fans", status: prestige.current.label, value: prestige.progressPercent },
   ];
 
   return (
@@ -557,6 +597,7 @@ export function ContractMarketCard({ game }: { game: GameState }) {
   const marketValue = 18 + Math.round((calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights) - 50) * 2.5) + game.seasonStats.goals * 2;
   const contract = game.contract;
   const status = getContractStatusLabel(game);
+  const prestige = getPrestigeStatus(game.prestige);
 
   return (
     <section className="card contract-card">
@@ -594,8 +635,8 @@ export function ContractMarketCard({ game }: { game: GameState }) {
             ? game.contractOffer.source === "external-club"
               ? `${game.contractOffer.club} has made an offer.`
               : "The club has new terms ready for you."
-            : game.prestige > 20
-              ? "Regional interest is building."
+            : prestige.tierIndex >= 1
+              ? `${prestige.current.label}. Your name is starting to matter in contract talks.`
               : "Local interest. Strong output can improve the next package."}
         </span>
       </div>

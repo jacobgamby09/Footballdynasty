@@ -4,6 +4,7 @@ import { initialAttributes } from "../data/attributes";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
 import { seedWorld } from "../data/world";
 import { createSeasonFixturesFromWorld, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
+import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
@@ -47,6 +48,7 @@ export function cloneGameState(state: GameState): GameState {
     dynasty: { ...state.dynasty },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
     contract: { ...state.contract },
+    sponsor: state.sponsor ? cloneSponsorDeal(state.sponsor) : undefined,
     contractOffer: state.contractOffer ? { ...state.contractOffer } : undefined,
     supportUpgrades: { ...state.supportUpgrades },
     activeMatch: undefined,
@@ -144,6 +146,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
     dynasty: { ...fallback.dynasty, ...(saved.dynasty ?? {}) },
     dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
+    sponsor: saved.sponsor ? cloneSponsorDeal(saved.sponsor) : undefined,
     contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
     supportUpgrades: { ...fallback.supportUpgrades, ...(saved.supportUpgrades ?? {}) },
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],

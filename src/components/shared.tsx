@@ -1,4 +1,5 @@
 import { initialClub } from "../data/leagues";
+import { formatPrestigeCompact } from "../systems/prestige";
 import { clamp } from "../utils";
 import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, Sparkles, UserRound } from "lucide-react";
 import { useMemo } from "react";
@@ -39,7 +40,7 @@ export function Header({ game }: { game: GameState }) {
 
       <div className="resource-stack" aria-label="Resources">
         <ResourcePill icon={<BadgeDollarSign size={14} />} value={`$${game.cash}`} />
-        <ResourcePill icon={<Sparkles size={14} />} value={`${game.prestige}`} />
+        <ResourcePill icon={<Sparkles size={14} />} value={formatPrestigeCompact(game.prestige)} />
       </div>
     </header>
   );

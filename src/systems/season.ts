@@ -3,6 +3,7 @@ import { createLeagueTeams, createSeasonFixturesFromWorld } from "./club";
 import { contractFromOffer, getContractOfferSummary, getPromisedRole } from "./contracts";
 import { getAverageRating, roundToNearest } from "./formatting";
 import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
+import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
 import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
@@ -104,11 +105,24 @@ export function createDynastySeasonSnapshot(state: GameState, review = getSeason
 
 export function getSeasonContractOffer(game: GameState, review = getSeasonReview(game)): ContractOffer {
   const current = game.contract;
+  const tier = getContractLeagueTier(current);
   const agentLevel = getSupportLevel(game, "agent");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const rolePromise = getPromisedRole(review.selection.score, current.rolePromise);
-  const performanceWage = 90 + review.selection.score * 3 + Math.max(0, review.averageRating - 6.2) * 90 + game.seasonStats.goals * 14 + game.seasonStats.assists * 9;
-  const weeklyWage = roundToNearest(Math.max(current.weeklyWage, performanceWage) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.035), 10);
+  const performanceWage =
+    tier.wageRange[0] +
+    review.selection.score * 0.9 +
+    Math.max(0, review.averageRating - 6.2) * 32 +
+    Math.min(90, game.seasonStats.goals * 3 + game.seasonStats.assists * 2);
+  const roleCapRatio: Record<typeof rolePromise, number> = {
+    Bench: 0.45,
+    "Impact Sub": 0.58,
+    "Rotation Starter": 0.74,
+    Starter: 0.9,
+  };
+  const wageCap = tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * roleCapRatio[rolePromise];
+  const leverage = 1 + agentLevel * 0.022 + careerBreakthroughs * 0.018;
+  const weeklyWage = roundToNearest(clamp(Math.max(current.weeklyWage, performanceWage) * leverage, tier.wageRange[0], wageCap), 10);
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
   const title = weeklyWage > current.weeklyWage || rolePromise !== current.rolePromise ? "Improved terms" : "Contract extended";
 
@@ -119,17 +133,17 @@ export function getSeasonContractOffer(game: GameState, review = getSeasonReview
     weeklyWage,
     weeks: 12,
     rolePromise,
-    appearanceBonus: roundToNearest(18 + weeklyWage * 0.16, 5),
-    goalBonus: roundToNearest(30 + weeklyWage * 0.28, 5),
-    assistBonus: roundToNearest(22 + weeklyWage * 0.22, 5),
+    appearanceBonus: roundToNearest(12 + weeklyWage * 0.08, 5),
+    goalBonus: roundToNearest(20 + weeklyWage * 0.14, 5),
+    assistBonus: roundToNearest(16 + weeklyWage * 0.11, 5),
     signingBonus: roundToNearest(
-      weeklyWage * (review.verdict.grade === "A" ? 2.2 : review.verdict.grade === "B" ? 1.5 : 0.8) * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06),
+      weeklyWage * (review.verdict.grade === "A" ? 0.9 : review.verdict.grade === "B" ? 0.6 : 0.35) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03),
       10,
     ),
     pressureModifier,
     summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
     source: "current-club",
-    tierId: getContractLeagueTier(current).id,
+    tierId: tier.id,
   };
 }
 
@@ -203,22 +217,19 @@ export function getSeasonReview(game: GameState) {
   const ratingBonus = Math.max(0, Math.round((averageRating - 6.3) * 120));
   const tableBonus = Math.max(0, 9 - (clubRow?.position ?? 8)) * 15;
   const cashReward = 180 + game.seasonStats.apps * 25 + outputBonus + ratingBonus + tableBonus;
-  const prestigeReward = Math.max(
-    1,
-    Math.round(
-      game.seasonStats.goals * 0.8 +
-        game.seasonStats.assists * 0.6 +
-        Math.max(0, averageRating - 6.2) * 4 +
-        Math.max(0, goalDifference) * 0.15 +
-        Math.max(0, 8 - (clubRow?.position ?? 8)) * 0.7,
-    ),
-  );
+  const tablePosition = clubRow?.position ?? table.length;
+  const prestigeReward = getSeasonPrestigeReward({
+    game,
+    averageRating,
+    tablePosition,
+    goalDifference,
+  });
   const verdict = getSeasonVerdict(game, clubRow?.position ?? table.length, averageRating);
 
   return {
     record,
     goals,
-    tablePosition: clubRow?.position ?? table.length,
+    tablePosition,
     averageRating,
     selection,
     cashReward,
@@ -266,10 +277,11 @@ export function getSeasonVerdict(game: GameState, tablePosition: number, average
 
 
 export function getMarketInterest(selectionScore: number, averageRating: number, prestige: number) {
-  if (selectionScore >= 70 || averageRating >= 7.2 || prestige >= 35) {
+  const prestigeLeverage = getPrestigeLeverageScore(prestige);
+  if (selectionScore >= 70 || averageRating >= 7.2 || prestigeLeverage >= 30) {
     return "Regional clubs";
   }
-  if (selectionScore >= 55 || averageRating >= 6.8 || prestige >= 20) {
+  if (selectionScore >= 55 || averageRating >= 6.8 || prestigeLeverage >= 18) {
     return "Local attention";
   }
   return "Club pathway";

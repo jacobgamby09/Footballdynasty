@@ -500,6 +500,62 @@ button {
   gap: 12px;
 }
 
+.prestige-card {
+  border-color: rgba(244, 200, 74, 0.24);
+  background:
+    radial-gradient(circle at 86% 0%, rgba(244, 200, 74, 0.12), transparent 8rem),
+    linear-gradient(145deg, rgba(244, 200, 74, 0.055), rgba(255, 255, 255, 0.018)),
+    var(--surface);
+}
+
+.prestige-card .section-heading svg {
+  color: var(--gold);
+}
+
+.prestige-hero {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.prestige-hero > strong {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  border: 1px solid rgba(244, 200, 74, 0.24);
+  border-radius: 13px;
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.08);
+  font-size: 27px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(244, 200, 74, 0.16);
+}
+
+.prestige-hero > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.prestige-hero span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.prestige-hero small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.prestige-card .progress-track span {
+  background: linear-gradient(90deg, var(--gold), #ffe982);
+}
+
 .attribute-topline > span {
   color: var(--text);
   font-size: 15px;
@@ -723,7 +779,7 @@ button {
 
 .subtab-control {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 5px;
   margin-top: 6px;
   padding: 5px;
@@ -900,6 +956,75 @@ button {
   color: var(--muted);
   background: rgba(255, 255, 255, 0.06);
   cursor: not-allowed;
+}
+
+.sponsor-offer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sponsor-offer-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.sponsor-offer-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sponsor-offer-main h3 {
+  margin: 2px 0 4px;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.05;
+}
+
+.sponsor-offer-main p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.sponsor-offer-main > strong {
+  flex: 0 0 auto;
+  color: var(--lime);
+  font-size: 15px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.sponsor-offer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sponsor-offer-footer span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.sponsor-offer-footer button {
+  min-width: 92px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  color: #10140d;
+  background: var(--lime);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
 }
 
 .dynasty-card {

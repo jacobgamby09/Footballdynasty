@@ -12,6 +12,7 @@ import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 300);
 const careerSeasons = Number(process.argv.find((arg) => arg.startsWith("--career-seasons="))?.split("=")[1] ?? 1);
 const generationCount = Number(process.argv.find((arg) => arg.startsWith("--generations="))?.split("=")[1] ?? 1);
+const labCountry = process.argv.find((arg) => arg.startsWith("--country="))?.split("=")[1] ?? "denmark";
 const leagueAverageOvr = 15;
 const teamStrength = 15;
 const initialContract = {
@@ -25,19 +26,19 @@ const initialContract = {
   pressureModifier: 0,
 };
 
-const fixtures = [
-  { id: "md1-aalborg", opponent: "Aalborg", venue: "Away", opponentStrength: 17, opponentForm: "Good", serviceLevel: "Mixed" },
-  { id: "md2-roskilde", opponent: "Roskilde", venue: "Home", opponentStrength: 14, opponentForm: "Mixed", serviceLevel: "Good" },
-  { id: "md3-viborg", opponent: "Viborg", venue: "Away", opponentStrength: 21, opponentForm: "Hot", serviceLevel: "Low" },
-  { id: "md4-kolding", opponent: "Kolding", venue: "Home", opponentStrength: 12, opponentForm: "Poor", serviceLevel: "Good" },
-  { id: "md5-horsens", opponent: "Horsens", venue: "Away", opponentStrength: 15, opponentForm: "Mixed", serviceLevel: "Mixed" },
-  { id: "md6-esbjerg", opponent: "Esbjerg", venue: "Home", opponentStrength: 19, opponentForm: "Good", serviceLevel: "Low" },
-  { id: "md7-fredericia", opponent: "Fredericia", venue: "Away", opponentStrength: 11, opponentForm: "Poor", serviceLevel: "Good" },
-  { id: "md8-naestved", opponent: "Naestved", venue: "Home", opponentStrength: 22, opponentForm: "Hot", serviceLevel: "Mixed" },
-  { id: "md9-silkeborg", opponent: "Silkeborg", venue: "Away", opponentStrength: 18, opponentForm: "Good", serviceLevel: "Low" },
-  { id: "md10-randers", opponent: "Randers", venue: "Home", opponentStrength: 16, opponentForm: "Mixed", serviceLevel: "Good" },
-  { id: "md11-vejle", opponent: "Vejle", venue: "Away", opponentStrength: 22, opponentForm: "Good", serviceLevel: "Mixed" },
-  { id: "md12-hobro", opponent: "Hobro", venue: "Home", opponentStrength: 20, opponentForm: "Mixed", serviceLevel: "Good" },
+const countryTierModels = {
+  england: ["elite", "top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  spain: ["elite", "top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  italy: ["elite", "top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  germany: ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  france: ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  holland: ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+  denmark: ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"],
+};
+const tierOrder = ["grassroots-dev", "local-semi-pro", "regional-pro", "national-pro", "top-flight", "elite"];
+const opponentNames = [
+  "Aalborg", "Roskilde", "Viborg", "Kolding", "Horsens", "Esbjerg", "Fredericia", "Naestved", "Silkeborg", "Randers",
+  "Vejle", "Hobro", "Odense", "Aarhus", "Skive", "Bramming", "Slagelse", "Farum", "Ballerup",
 ];
 
 const baseAttributes = {
@@ -92,12 +93,28 @@ const trainingSpecialists = [
   { id: "mental", name: "Mental coach", attributes: ["Work Rate", "Positioning", "Composure"] },
 ];
 const leagueTiers = [
-  { id: "grassroots-dev", label: "Grassroots", averageOvr: 15, facilityLevel: 1 },
-  { id: "local-semi-pro", label: "Semi-Pro", averageOvr: 28, facilityLevel: 2 },
-  { id: "regional-pro", label: "Regional Pro", averageOvr: 42, facilityLevel: 3 },
-  { id: "national-pro", label: "National Pro", averageOvr: 58, facilityLevel: 4 },
-  { id: "top-flight", label: "Top Flight", averageOvr: 74, facilityLevel: 5 },
-  { id: "elite", label: "Elite", averageOvr: 88, facilityLevel: 6 },
+  { id: "grassroots-dev", label: "Grassroots", averageOvr: 15, teamRange: [10, 22], wageRange: [25, 90], facilityLevel: 1, prestigeMultiplier: 0.45 },
+  { id: "local-semi-pro", label: "Semi-Pro", averageOvr: 28, teamRange: [22, 36], wageRange: [90, 240], facilityLevel: 2, prestigeMultiplier: 0.75 },
+  { id: "regional-pro", label: "Regional Pro", averageOvr: 45, teamRange: [37, 54], wageRange: [240, 650], facilityLevel: 3, prestigeMultiplier: 1 },
+  { id: "national-pro", label: "National Pro", averageOvr: 62, teamRange: [55, 70], wageRange: [650, 1800], facilityLevel: 4, prestigeMultiplier: 1.35 },
+  { id: "top-flight", label: "Top Flight", averageOvr: 78, teamRange: [70, 86], wageRange: [1800, 6500], facilityLevel: 5, prestigeMultiplier: 1.8 },
+  { id: "elite", label: "Elite", averageOvr: 90, teamRange: [86, 98], wageRange: [6500, 30000], facilityLevel: 6, prestigeMultiplier: 2.5 },
+];
+const prestigeTiers = [
+  { id: "local-prospect", label: "Local Prospect", threshold: 0 },
+  { id: "known-talent", label: "Known Talent", threshold: 350 },
+  { id: "regional-name", label: "Regional Name", threshold: 1500 },
+  { id: "national-profile", label: "National Profile", threshold: 7500 },
+  { id: "star-player", label: "Star Player", threshold: 20000 },
+  { id: "icon", label: "Icon", threshold: 50000 },
+  { id: "legend", label: "Legend", threshold: 100000 },
+];
+const sponsorDefinitions = [
+  { id: "local-boot-room", prestigeRequired: 350, weeklyRetainer: 35, objectiveBonus: 120, objective: { type: "goal", target: 1 }, pressureModifier: 1, weeksRemaining: 8 },
+  { id: "recovery-drink", prestigeRequired: 350, weeklyRetainer: 28, objectiveBonus: 90, objective: { type: "rating", target: 7 }, pressureModifier: 0, weeksRemaining: 6 },
+  { id: "academy-ambassador", prestigeRequired: 350, weeklyRetainer: 24, objectiveBonus: 75, objective: { type: "appearance", target: 1 }, pressureModifier: -1, weeksRemaining: 6 },
+  { id: "regional-sportswear", prestigeRequired: 1500, weeklyRetainer: 95, objectiveBonus: 260, objective: { type: "goal", target: 1 }, pressureModifier: 3, weeksRemaining: 10 },
+  { id: "technical-gear", prestigeRequired: 1500, weeklyRetainer: 80, objectiveBonus: 220, objective: { type: "assist", target: 1 }, pressureModifier: 2, weeksRemaining: 10 },
 ];
 const supportUpgradeDefinitions = [
   { id: "boots", maxLevel: 12, baseCost: 180 },
@@ -151,16 +168,19 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     pressure: 26,
     ratings: [],
     cash: 420,
+    prestige: 12,
     tier: leagueTiers[0],
     supportUpgrades: createInitialSupportUpgrades(),
     attributes: createGenerationAttributes(generation),
     trainingSpecialist: "finishing",
     contract: { ...initialContract },
+    sponsor: undefined,
     seasonGoals: 0,
     seasonAssists: 0,
   };
   const startOvr = calculateOvr(flattenAttributes(state.attributes));
   const stats = {
+    scheduledMatches: 0,
     apps: 0,
     starts: 0,
     minutes: 0,
@@ -181,6 +201,11 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     trust: [],
     cashEarned: 0,
     cashSpent: 0,
+    prestigeGained: 0,
+    sponsorEarned: 0,
+    sponsorDeals: 0,
+    firstSponsorUnlockWeek: undefined,
+    firstSponsorDealWeek: undefined,
     supportPurchases: 0,
     contractOffers: 0,
   };
@@ -188,10 +213,13 @@ function simulateCareer(runIndex, scenario, generation = 1) {
 
   for (let careerSeason = 0; careerSeason < careerSeasons; careerSeason += 1) {
     state.tier = getCareerTier(careerSeason);
+    const seasonFixtures = createWorldSeasonFixtures(state.tier, careerSeason, runIndex);
     const seasonStartOvr = calculateOvr(flattenAttributes(state.attributes));
     const seasonStats = createRunStats();
-    fixtures.forEach((fixture, weekIndex) => {
-      const absoluteWeekIndex = careerSeason * fixtures.length + weekIndex;
+    stats.scheduledMatches += seasonFixtures.length;
+    seasonStats.scheduledMatches += seasonFixtures.length;
+    seasonFixtures.forEach((fixture, weekIndex) => {
+      const absoluteWeekIndex = getSeasonStartWeek(careerSeason, labCountry) + weekIndex;
       const weekSeed = `run-${runIndex}-season-${careerSeason}-week-${weekIndex}-${fixture.id}-${scenario.id}`;
       const preTrainingSpend = buySupportUpgrades(state, scenario);
       stats.cashSpent += preTrainingSpend.spent;
@@ -235,27 +263,58 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       seasonStats.matchXp += sumXp(match.xp);
       seasonStats.matchLevelUps += matchLevelUps;
       state.trust = clamp(state.trust + match.trustDelta, 0, 100);
-      state.pressure = clamp(state.pressure + match.playerGoals * 2 - getLifestylePressureRelief(state), 0, 100);
+      state.pressure = clamp(state.pressure + match.playerGoals * 2 + (state.sponsor?.pressureModifier ?? 0) - getLifestylePressureRelief(state), 0, 100);
       const environment = getDevelopmentEnvironment(state.tier);
+      const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+      const effectiveRecoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
+      const effectiveNutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
       const weeklyRecoveryBonus =
+        1 +
         environment.recoveryBonus +
-        getRecoveryBreakthroughRelief(getSupportTrackBreakthroughCount(state, "recovery")) +
-        getWeeklySupportRecoveryBonus(
-          getSupportLevel(state, "recovery") * environment.supportEfficiency,
-          getSupportLevel(state, "nutrition") * environment.supportEfficiency,
-        );
-      state.fitness = clamp(state.fitness + match.fitnessDelta + weeklyRecoveryBonus, 0, 100);
+        getRecoveryBreakthroughRelief(recoveryBreakthroughs) +
+        getWeeklySupportRecoveryBonus(effectiveRecoveryLevel, effectiveNutritionLevel);
+      const projectedFitness = clamp(state.fitness + match.fitnessDelta + weeklyRecoveryBonus, 0, 100);
+      const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+      const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+      state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
       state.morale = clamp(state.morale + (match.minutes > 0 ? (match.rating >= 7 ? 3 : -2) : 0), 0, 100);
+      const prestigeGain = getMatchPrestigeDelta(match, state.tier, context, match.minutes > 0);
+      state.prestige += prestigeGain;
+      stats.prestigeGained += prestigeGain;
+      seasonStats.prestigeGained += prestigeGain;
+      if (state.prestige >= prestigeTiers[1].threshold && stats.firstSponsorUnlockWeek === undefined) {
+        stats.firstSponsorUnlockWeek = absoluteWeekIndex + 1;
+        seasonStats.firstSponsorUnlockWeek = weekIndex + 1;
+      }
+      if (!state.sponsor) {
+        const sponsorOffer = getBestSponsorOffer(state);
+        if (sponsorOffer) {
+          state.sponsor = { ...sponsorOffer, objective: { ...sponsorOffer.objective } };
+          stats.sponsorDeals += 1;
+          seasonStats.sponsorDeals += 1;
+          if (stats.firstSponsorDealWeek === undefined) {
+            stats.firstSponsorDealWeek = absoluteWeekIndex + 1;
+          }
+          if (seasonStats.firstSponsorDealWeek === undefined) {
+            seasonStats.firstSponsorDealWeek = weekIndex + 1;
+          }
+        }
+      }
+      const sponsorPayout = getSponsorPayout(state.sponsor, match);
       const cashEarned = Math.round(
         state.contract.weeklyWage +
           (match.minutes > 0 ? state.contract.appearanceBonus : 0) +
           match.playerGoals * state.contract.goalBonus +
-          match.playerAssists * state.contract.assistBonus,
+          match.playerAssists * state.contract.assistBonus +
+          sponsorPayout.total,
       );
       state.cash += cashEarned;
       stats.cashEarned += cashEarned;
       seasonStats.cashEarned += cashEarned;
+      stats.sponsorEarned += sponsorPayout.total;
+      seasonStats.sponsorEarned += sponsorPayout.total;
       state.contract.weeksRemaining = Math.max(0, state.contract.weeksRemaining - 1);
+      state.sponsor = advanceSponsorWeek(state.sponsor);
       const contractOffer = getClubContractOffer(state, match, fixture);
       if (contractOffer && shouldAcceptContractOffer(state.contract, contractOffer)) {
         state.contract = contractFromOffer(contractOffer);
@@ -275,6 +334,14 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       seasonStats.fitness.push(state.fitness);
       seasonStats.trust.push(state.trust);
     });
+    const seasonPrestigeReward = getSeasonPrestigeReward(state, seasonStats);
+    state.prestige += seasonPrestigeReward;
+    stats.prestigeGained += seasonPrestigeReward;
+    seasonStats.prestigeGained += seasonPrestigeReward;
+    if (state.prestige >= prestigeTiers[1].threshold && stats.firstSponsorUnlockWeek === undefined) {
+      stats.firstSponsorUnlockWeek = getSeasonStartWeek(careerSeason, labCountry) + seasonFixtures.length;
+      seasonStats.firstSponsorUnlockWeek = seasonFixtures.length;
+    }
     seasonReports.push(createSeasonReport(careerSeason + 1, state, seasonStats, seasonStartOvr));
     state.seasonGoals = 0;
     state.seasonAssists = 0;
@@ -287,6 +354,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     endOvr,
     potentialOvr,
     ovrGain: endOvr - startOvr,
+    scheduledMatches: stats.scheduledMatches,
     apps: stats.apps,
     starts: stats.starts,
     minutes: stats.minutes,
@@ -312,6 +380,13 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     endFitness: state.fitness,
     cashEarned: stats.cashEarned,
     cashSpent: stats.cashSpent,
+    prestigeGained: stats.prestigeGained,
+    sponsorEarned: stats.sponsorEarned,
+    sponsorDeals: stats.sponsorDeals,
+    firstSponsorUnlockWeek: stats.firstSponsorUnlockWeek,
+    firstSponsorDealWeek: stats.firstSponsorDealWeek,
+    endPrestige: state.prestige,
+    prestigeTier: getPrestigeStatus(state.prestige).current.label,
     contractOffers: stats.contractOffers,
     endCash: state.cash,
     supportPurchases: stats.supportPurchases,
@@ -326,6 +401,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
 
 function createRunStats() {
   return {
+    scheduledMatches: 0,
     apps: 0,
     starts: 0,
     minutes: 0,
@@ -346,6 +422,11 @@ function createRunStats() {
     trust: [],
     cashEarned: 0,
     cashSpent: 0,
+    prestigeGained: 0,
+    sponsorEarned: 0,
+    sponsorDeals: 0,
+    firstSponsorUnlockWeek: undefined,
+    firstSponsorDealWeek: undefined,
     supportPurchases: 0,
     contractOffers: 0,
   };
@@ -368,6 +449,7 @@ function createSeasonReport(season, state, stats, startOvr) {
   return {
     season,
     tier: state.tier.label,
+    scheduledMatches: stats.scheduledMatches,
     startOvr,
     endOvr,
     growthProfileOvr,
@@ -396,6 +478,13 @@ function createSeasonReport(season, state, stats, startOvr) {
     cashEarned: stats.cashEarned,
     cashSpent: stats.cashSpent,
     netCash: stats.cashEarned - stats.cashSpent,
+    prestigeGained: stats.prestigeGained,
+    sponsorEarned: stats.sponsorEarned,
+    sponsorDeals: stats.sponsorDeals,
+    firstSponsorUnlockWeek: stats.firstSponsorUnlockWeek,
+    firstSponsorDealWeek: stats.firstSponsorDealWeek,
+    endPrestige: state.prestige,
+    prestigeTier: getPrestigeStatus(state.prestige).current.label,
     contractOffers: stats.contractOffers,
     supportPurchases: stats.supportPurchases,
     supportLevels: Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0),
@@ -434,7 +523,7 @@ function applyTraining(state, focuses, seed) {
   const effectiveRecoveryLevel = recoveryLevel * environment.supportEfficiency;
 
   if (state.fitness < 12) {
-    state.fitness = clamp(state.fitness + 14 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel), 0, 100);
+    state.fitness = clamp(state.fitness + 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel), 0, 100);
     state.trust = clamp(state.trust - 1, 0, 100);
     return { xp: 0, specialistXp: 0, levelUps: 0, quality: "Poor" };
   }
@@ -468,7 +557,11 @@ function applyTraining(state, focuses, seed) {
     xpGain[attribute] = (xpGain[attribute] ?? 0) + value;
   });
   const levelUps = addAttributeXp(state.attributes, xpGain);
-  state.fitness = clamp(state.fitness + Math.min(0, -4 + environment.recoveryBonus + getTrainingFatigueRelief(effectiveNutritionLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs)), 0, 100);
+  const fitnessDelta = Math.min(0, -4 + getTrainingFatigueRelief(effectiveNutritionLevel));
+  const projectedFitness = clamp(state.fitness + fitnessDelta, 0, 100);
+  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   state.trust = clamp(state.trust + 1, 0, 100);
   return { xp: sumXp(xpGain), specialistXp: sumXp(specialistXpGain), levelUps, quality: qualityProfile.quality };
 }
@@ -496,10 +589,10 @@ function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvi
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    nutritionLevel * 1.7 +
-    recoveryLevel * 1.1 +
-    trainingBreakthroughs * 7 +
-    recoveryBreakthroughs * 4;
+    nutritionLevel * 1.05 +
+    recoveryLevel * 0.35 +
+    trainingBreakthroughs * 5 +
+    recoveryBreakthroughs * 1.5;
   const qualityScore = readinessScore + Math.round(seededNoise(`${seed}-quality`) * 34) - 17;
   if (qualityScore >= 88) return { quality: "Breakthrough", xpMultiplier: 1.42 };
   if (qualityScore >= 68) return { quality: "Sharp", xpMultiplier: 1.18 };
@@ -522,7 +615,7 @@ function getSpecialistXpGain(state, focuses, environment, qualityProfile) {
 function getSpecialistBaseXpBonus(state, environment) {
   const coachLevel = getSupportLevel(state, "coach");
   const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  return Math.round(10 + environment.facilityLevel * 3 + coachLevel * 2.8 + trainingBreakthroughs * 7);
+  return Math.round(8 + environment.facilityLevel * 2 + coachLevel * 1.6 + trainingBreakthroughs * 4);
 }
 
 function getCoachSupportFocuses(state, activeFocuses) {
@@ -757,12 +850,14 @@ function getFollowUpTemplate(moment, result) {
 
 function buildChoiceXp(choice, tier, moment) {
   const tierBase = { Poor: 7, Okay: 10, Good: 14, Great: 18 };
+  const adjustedTierBase = { Poor: 5, Okay: 8, Good: 11, Great: 15 };
+  const chainMultiplier = moment.chainDepth && moment.chainDepth > 0 ? 0.65 : 1;
   const xp = {};
   choice.uses.forEach((key, index) => {
-    xp[key] = (xp[key] ?? 0) + tierBase[tier] + (index === 0 ? 4 : 0);
+    xp[key] = (xp[key] ?? 0) + Math.max(1, Math.round(adjustedTierBase[tier] * chainMultiplier)) + (index === 0 ? 3 : 0);
   });
   if (forwardPreferredCategories.includes(moment.category)) {
-    xp[choice.uses[0]] = (xp[choice.uses[0]] ?? 0) + 2;
+    xp[choice.uses[0]] = (xp[choice.uses[0]] ?? 0) + Math.max(1, Math.round(2 * chainMultiplier));
   }
   return xp;
 }
@@ -917,16 +1012,121 @@ function getSelectionReport(state, fixture, importance = "Normal") {
     0,
     100,
   );
-  return { score, role: state.fitness < 12 ? "Bench" : getPlayerMatchRole(score) };
+  return { score, role: state.fitness < 12 ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), getFitnessAvailability(state.fitness)) };
+}
+
+function getFitnessAvailability(fitness) {
+  if (fitness < 12) return "Out";
+  if (fitness < 25) return "Critical";
+  if (fitness < 45) return "Heavy";
+  if (fitness < 62) return "Tired";
+  if (fitness < 78) return "Playable";
+  return "Ready";
 }
 
 function getFitnessSelectionImpact(fitness) {
   if (fitness < 12) return -45;
   if (fitness < 25) return -30;
   if (fitness < 45) return -18;
-  if (fitness < 62) return -9;
-  if (fitness < 78) return -2;
-  return Math.round((fitness - 78) * 0.12);
+  if (fitness < 62) return -8;
+  if (fitness < 78) return 0;
+  return Math.min(1, Math.round((fitness - 78) * 0.08));
+}
+
+function capRoleByFitness(role, availability) {
+  if (availability === "Critical") return "Bench";
+  if (availability === "Heavy" && (role === "Starter" || role === "Rotation Starter")) return "Impact Sub";
+  if (availability === "Tired" && role === "Starter") return "Rotation Starter";
+  return role;
+}
+
+function getPrestigeStatus(prestige) {
+  const current = [...prestigeTiers].reverse().find((tier) => prestige >= tier.threshold) ?? prestigeTiers[0];
+  const currentIndex = prestigeTiers.findIndex((tier) => tier.id === current.id);
+  const next = prestigeTiers[currentIndex + 1];
+  const span = next ? next.threshold - current.threshold : Math.max(1, current.threshold);
+  const pointsInTier = Math.max(0, prestige - current.threshold);
+  return {
+    current,
+    next,
+    pointsToNext: next ? Math.max(0, next.threshold - prestige) : 0,
+    progressPercent: next ? clamp(Math.round((pointsInTier / span) * 100), 0, 100) : 100,
+  };
+}
+
+function getPrestigeLeverageScore(prestige) {
+  return clamp(Math.round(Math.sqrt(Math.max(0, prestige)) * 1.35), 0, 100);
+}
+
+function getBestSponsorOffer(state) {
+  const available = sponsorDefinitions.filter((deal) => state.prestige >= deal.prestigeRequired);
+  return available.sort((a, b) => getSponsorExpectedValue(b) - getSponsorExpectedValue(a))[0];
+}
+
+function getSponsorExpectedValue(sponsor) {
+  const pressureCost = Math.max(0, sponsor.pressureModifier) * 12;
+  return sponsor.weeklyRetainer * sponsor.weeksRemaining + sponsor.objectiveBonus * 0.35 - pressureCost;
+}
+
+function getSponsorPayout(sponsor, match) {
+  if (!sponsor) {
+    return { total: 0, retainer: 0, objectiveBonus: 0 };
+  }
+
+  const completed = isSponsorObjectiveCompleted(sponsor, match);
+  const objectiveBonus = completed ? sponsor.objectiveBonus : 0;
+  return {
+    retainer: sponsor.weeklyRetainer,
+    objectiveBonus,
+    total: sponsor.weeklyRetainer + objectiveBonus,
+  };
+}
+
+function isSponsorObjectiveCompleted(sponsor, match) {
+  switch (sponsor.objective.type) {
+    case "appearance":
+      return match.minutes > 0;
+    case "goal":
+      return match.playerGoals >= sponsor.objective.target;
+    case "assist":
+      return match.playerAssists >= sponsor.objective.target;
+    case "rating":
+      return match.minutes > 0 && match.rating >= sponsor.objective.target;
+    default:
+      return false;
+  }
+}
+
+function advanceSponsorWeek(sponsor) {
+  if (!sponsor) {
+    return undefined;
+  }
+
+  const weeksRemaining = sponsor.weeksRemaining - 1;
+  return weeksRemaining > 0 ? { ...sponsor, objective: { ...sponsor.objective }, weeksRemaining } : undefined;
+}
+
+function getMatchPrestigeDelta(match, tier, context, playerAppeared) {
+  if (!playerAppeared) {
+    return 0;
+  }
+  const importanceMultiplier = context.matchImportance === "High" ? 1.35 : context.matchImportance === "Low" ? 0.8 : 1;
+  const appearanceBonus = 2;
+  const resultBonus = match.teamGoals > match.opponentGoals ? 3 : match.teamGoals === match.opponentGoals ? 1 : 0;
+  const ratingBonus = Math.max(0, match.rating - 6.2) * 5;
+  const standoutBonus = match.rating >= 7.5 ? 5 : match.rating >= 7 ? 3 : 0;
+  const outputBonus = match.playerGoals * 18 + match.playerAssists * 12 + match.chancesCreated * 4;
+  const base = appearanceBonus + resultBonus + ratingBonus + standoutBonus + outputBonus;
+  return Math.max(0, Math.round(base * tier.prestigeMultiplier * importanceMultiplier));
+}
+
+function getSeasonPrestigeReward(state, stats) {
+  const averageRating = average(stats.ratings, 6.4);
+  const appearanceBonus = stats.apps * 1.2 + stats.starts * 1.8;
+  const outputBonus = stats.goals * 14 + stats.assists * 9;
+  const ratingBonus = Math.max(0, averageRating - 6.3) * 55;
+  const consistencyBonus = stats.apps >= 20 ? 18 : stats.apps >= 12 ? 8 : 0;
+  return Math.max(1, Math.round((appearanceBonus + outputBonus + ratingBonus + consistencyBonus) * state.tier.prestigeMultiplier));
 }
 
 function isAvailableForSquad(fitness, seed) {
@@ -941,13 +1141,13 @@ function getPlayerMomentCount(role, involvementScore, minutes, matchSeed) {
     return 0;
   }
 
-  const roleRatesPer90 = { Bench: 0, "Impact Sub": 3.0, "Rotation Starter": 3.6, Starter: 4.0 };
-  const involvementModifier = clamp((involvementScore - 50) / 38, -0.55, 0.8);
+  const roleRatesPer90 = { Bench: 0, "Impact Sub": 2.4, "Rotation Starter": 3.0, Starter: 3.35 };
+  const involvementModifier = clamp((involvementScore - 50) / 46, -0.45, 0.45);
   const expectedMoments = Math.max(0, (minutes / 90) * roleRatesPer90[role] * (1 + involvementModifier));
   const baseMoments = Math.floor(expectedMoments);
   const extraMoment = seededNoise(`${matchSeed}-${role}-${minutes}-moment-volume`) < expectedMoments - baseMoments ? 1 : 0;
   const lateSubCeiling = minutes < 18 ? 1 : minutes < 32 ? 2 : 3;
-  const roleCeiling = role === "Starter" ? 5 : role === "Rotation Starter" ? 4 : lateSubCeiling;
+  const roleCeiling = role === "Starter" ? 4 : role === "Rotation Starter" ? 3 : lateSubCeiling;
 
   return clamp(baseMoments + extraMoment, 0, roleCeiling);
 }
@@ -1045,6 +1245,7 @@ function summarizeSeasons(items) {
   return {
     seasons: items.length,
     careerSeasons,
+    scheduledMatches: stat(items.map((item) => item.scheduledMatches)),
     apps: stat(items.map((item) => item.apps)),
     starts: stat(items.map((item) => item.starts)),
     minutes: stat(items.map((item) => item.minutes)),
@@ -1072,6 +1273,13 @@ function summarizeSeasons(items) {
     endFitness: stat(items.map((item) => item.endFitness)),
     cashEarned: stat(items.map((item) => item.cashEarned)),
     cashSpent: stat(items.map((item) => item.cashSpent)),
+    prestigeGained: stat(items.map((item) => item.prestigeGained)),
+    sponsorEarned: stat(items.map((item) => item.sponsorEarned)),
+    sponsorDeals: stat(items.map((item) => item.sponsorDeals)),
+    firstSponsorUnlockWeek: statOptional(items.map((item) => item.firstSponsorUnlockWeek)),
+    firstSponsorDealWeek: statOptional(items.map((item) => item.firstSponsorDealWeek)),
+    endPrestige: stat(items.map((item) => item.endPrestige)),
+    prestigeTier: getMostCommon(items.map((item) => item.prestigeTier)),
     contractOffers: stat(items.map((item) => item.contractOffers)),
     endCash: stat(items.map((item) => item.endCash)),
     supportPurchases: stat(items.map((item) => item.supportPurchases)),
@@ -1096,6 +1304,7 @@ function summarizeSeasonCurve(items) {
     curve.push({
       season: index + 1,
       tier: getMostCommon(seasonItems.map((item) => item.tier)),
+      scheduledMatches: stat(seasonItems.map((item) => item.scheduledMatches)),
       startOvr: stat(seasonItems.map((item) => item.startOvr)),
       endOvr: stat(seasonItems.map((item) => item.endOvr)),
       growthProfileOvr: stat(seasonItems.map((item) => item.growthProfileOvr)),
@@ -1124,6 +1333,13 @@ function summarizeSeasonCurve(items) {
       cashEarned: stat(seasonItems.map((item) => item.cashEarned)),
       cashSpent: stat(seasonItems.map((item) => item.cashSpent)),
       netCash: stat(seasonItems.map((item) => item.netCash)),
+      prestigeGained: stat(seasonItems.map((item) => item.prestigeGained)),
+      sponsorEarned: stat(seasonItems.map((item) => item.sponsorEarned)),
+      sponsorDeals: stat(seasonItems.map((item) => item.sponsorDeals)),
+      firstSponsorUnlockWeek: statOptional(seasonItems.map((item) => item.firstSponsorUnlockWeek)),
+      firstSponsorDealWeek: statOptional(seasonItems.map((item) => item.firstSponsorDealWeek)),
+      endPrestige: stat(seasonItems.map((item) => item.endPrestige)),
+      prestigeTier: getMostCommon(seasonItems.map((item) => item.prestigeTier)),
       contractOffers: stat(seasonItems.map((item) => item.contractOffers)),
       supportPurchases: stat(seasonItems.map((item) => item.supportPurchases)),
       supportLevels: stat(seasonItems.map((item) => item.supportLevels)),
@@ -1143,6 +1359,7 @@ function printSeasonReport(report, scenario, generation) {
     `\n=== Season balance lab: Gen ${generation} ${generationProfile.label} - ${scenario.label} (${report.seasons} runs, ${horizon}) ===`,
   );
   printStat("Apps", report.apps);
+  printStat("Scheduled matches", report.scheduledMatches);
   printStat("Starts", report.starts);
   printStat("Minutes", report.minutes);
   printStat("Goals", report.goals);
@@ -1169,6 +1386,13 @@ function printSeasonReport(report, scenario, generation) {
   printStat("End fitness", report.endFitness);
   printStat("Cash earned", report.cashEarned);
   printStat("Cash spent", report.cashSpent);
+  printStat("Prestige gained", report.prestigeGained);
+  printStat("Sponsor earned", report.sponsorEarned);
+  printStat("Sponsor deals", report.sponsorDeals);
+  printOptionalStat("First sponsor unlock week", report.firstSponsorUnlockWeek);
+  printOptionalStat("First sponsor deal week", report.firstSponsorDealWeek);
+  printStat("End prestige", report.endPrestige);
+  console.log(`Prestige tier: ${report.prestigeTier}`);
   printStat("Contract offers", report.contractOffers);
   printStat("End cash", report.endCash);
   printStat("Support purchases", report.supportPurchases);
@@ -1186,13 +1410,14 @@ function printSeasonReport(report, scenario, generation) {
 
 function printCareerCurve(report) {
   console.log("Career curve avg:");
-  console.log("S | Tier | OVR | Target | +/- | + | XP T/M/S | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | Cash net | Support");
+  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M/S | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | Cash net | Prestige | Support");
   report.seasonCurve.forEach((season) => {
     const target = getTargetOvrForCareerSeason(season.season);
     console.log(
       [
         season.season,
         season.tier,
+        format(season.scheduledMatches.avg),
         `${format(season.startOvr.avg)}->${format(season.endOvr.avg)}`,
         format(target),
         format(season.endOvr.avg - target),
@@ -1205,6 +1430,7 @@ function printCareerCurve(report) {
         `${format(season.goalsPer90.avg)}/${format(season.assistsPer90.avg)}/${format(season.chancesCreatedPer90.avg)}`,
         format(season.endFitness.avg),
         formatMoney(season.netCash.avg),
+        `${format(season.endPrestige.avg)} ${season.prestigeTier}`,
         format(season.supportLevels.avg),
       ].join(" | "),
     );
@@ -1320,6 +1546,15 @@ function printStat(label, value) {
   console.log(`${label}: avg ${format(value.avg)} | p10 ${format(value.p10)} | p50 ${format(value.p50)} | p90 ${format(value.p90)}`);
 }
 
+function printOptionalStat(label, value) {
+  if (!value || value.count === 0) {
+    console.log(`${label}: none`);
+    return;
+  }
+
+  console.log(`${label}: avg ${format(value.avg)} | p10 ${format(value.p10)} | p50 ${format(value.p50)} | p90 ${format(value.p90)} | count ${value.count}`);
+}
+
 function stat(values) {
   const sorted = [...values].sort((a, b) => a - b);
   return {
@@ -1327,6 +1562,14 @@ function stat(values) {
     p10: percentile(sorted, 0.1),
     p50: percentile(sorted, 0.5),
     p90: percentile(sorted, 0.9),
+  };
+}
+
+function statOptional(values) {
+  const defined = values.filter((value) => Number.isFinite(value));
+  return {
+    ...stat(defined),
+    count: defined.length,
   };
 }
 
@@ -1421,7 +1664,10 @@ function getAffordableSupportUpgrades(state, upgradeIds, cashReserve) {
 }
 
 function getSupportUpgradeCost(upgrade, currentLevel) {
-  return Math.round(upgrade.baseCost * (1 + currentLevel * 0.62 + Math.pow(currentLevel, 2) * 0.16));
+  const earlyRamp = 1 + currentLevel * 0.78 + Math.pow(currentLevel, 2) * 0.24;
+  const lateRamp = currentLevel >= 6 ? Math.pow(currentLevel - 5, 2) * 0.55 : 0;
+  const eliteRamp = currentLevel >= 10 ? Math.pow(currentLevel - 9, 2) * 1.1 : 0;
+  return Math.round(upgrade.baseCost * (earlyRamp + lateRamp + eliteRamp));
 }
 
 function getSupportLevel(state, upgradeId) {
@@ -1447,7 +1693,7 @@ function getSupportTrackBreakthroughCount(state, trackId) {
 }
 
 function getRecoveryBreakthroughRelief(breakthroughs) {
-  return Math.floor(breakthroughs / 2);
+  return Math.min(1, Math.floor(breakthroughs / 3));
 }
 
 function getLifestylePressureRelief(state) {
@@ -1469,11 +1715,11 @@ function getClubContractOffer(state, match, fixture) {
       (match.playerGoals > 0 || match.playerAssists > 0 || selection.score >= getRoleThreshold(current.rolePromise) + 6),
   );
   const roleBase = { Bench: 45, "Impact Sub": 75, "Rotation Starter": 130, Starter: 220 };
-  const formBonus = Math.max(0, averageRating - 6.2) * 55;
-  const outputBonus = state.seasonGoals * 8 + state.seasonAssists * 6;
-  const selectionWage = 40 + selection.score * 0.9 + ovr * 0.85 + formBonus + outputBonus;
+  const formBonus = Math.max(0, averageRating - 6.2) * 26;
+  const outputBonus = Math.min(80, state.seasonGoals * 3 + state.seasonAssists * 2);
+  const selectionWage = 34 + selection.score * 0.55 + ovr * 0.55 + formBonus + outputBonus;
   const rawWage = Math.max(current.weeklyWage + (expiringSoon ? 20 : 0), roleBase[rolePromise], selectionWage);
-  const weeklyWage = roundToNearest(rawWage * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.035), 5);
+  const weeklyWage = roundToNearest(clamp(rawWage * getContractLeverage(agentLevel, careerBreakthroughs), state.tier.wageRange[0], getTierWageCap(state.tier, rolePromise)), 5);
   const meaningfulUpgrade = weeklyWage >= current.weeklyWage + 15 || rolePromise !== current.rolePromise;
 
   if (!expiringSoon && (!performanceSpike || !meaningfulUpgrade)) {
@@ -1488,10 +1734,10 @@ function getClubContractOffer(state, match, fixture) {
     weeklyWage,
     weeks,
     rolePromise,
-    appearanceBonus: roundToNearest(10 + weeklyWage * 0.14, 5),
-    goalBonus: roundToNearest(18 + weeklyWage * 0.26, 5),
-    assistBonus: roundToNearest(14 + weeklyWage * 0.2, 5),
-    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 1.1 : 0.7) * (1 + agentLevel * 0.08 + careerBreakthroughs * 0.06), 10),
+    appearanceBonus: roundToNearest(8 + weeklyWage * 0.08, 5),
+    goalBonus: roundToNearest(14 + weeklyWage * 0.14, 5),
+    assistBonus: roundToNearest(11 + weeklyWage * 0.11, 5),
+    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 0.7 : 0.35) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03), 10),
     pressureModifier,
   };
 }
@@ -1526,47 +1772,144 @@ function roundToNearest(value, step) {
   return Math.round(value / step) * step;
 }
 
+function getTierWageCap(tier, role) {
+  const roleCapRatio = { Bench: 0.45, "Impact Sub": 0.58, "Rotation Starter": 0.74, Starter: 0.9 };
+  return Math.round(tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * roleCapRatio[role]);
+}
+
+function getContractLeverage(agentLevel, careerBreakthroughs) {
+  return 1 + agentLevel * 0.022 + careerBreakthroughs * 0.018;
+}
+
+function createWorldSeasonFixtures(tier, careerSeason, runIndex) {
+  const clubCount = tier.id === "elite" ? 20 : 16;
+  const opponentCount = clubCount - 1;
+  const [low, high] = (leagueTiers.find((item) => item.id === "grassroots-dev") ?? leagueTiers[0]).teamRange;
+  const opponents = Array.from({ length: opponentCount }, (_, index) => {
+    const strength = Math.round(low + ((high - low) * index) / Math.max(1, opponentCount - 1));
+    const seed = `${labCountry}-${tier.id}-${careerSeason}-${runIndex}-${index}`;
+    return {
+      key: `opp-${index + 1}`,
+      name: opponentNames[index % opponentNames.length],
+      strength,
+      form: getSeededForm(seed),
+      service: getSeededService(seed),
+    };
+  });
+
+  return opponents.flatMap((opponent, index) => {
+    const firstVenue = (index + careerSeason + runIndex) % 2 === 0 ? "Home" : "Away";
+    const secondVenue = firstVenue === "Home" ? "Away" : "Home";
+    return [
+      createWorldFixture(opponent, firstVenue, index + 1, careerSeason, "a"),
+      createWorldFixture(opponent, secondVenue, index + 1 + opponentCount, careerSeason, "b"),
+    ];
+  });
+}
+
+function createWorldFixture(opponent, venue, matchNumber, careerSeason, leg) {
+  return {
+    id: `s${careerSeason + 1}-m${matchNumber}-${opponent.key}-${leg}`,
+    opponent: opponent.name,
+    venue,
+    opponentStrength: opponent.strength,
+    opponentForm: opponent.form,
+    serviceLevel: opponent.service,
+    competition: "League",
+  };
+}
+
+function getSeededForm(seed) {
+  const roll = seededNoise(`${seed}-form`);
+  if (roll > 0.82) return "Hot";
+  if (roll > 0.56) return "Good";
+  if (roll < 0.18) return "Poor";
+  return "Mixed";
+}
+
+function getSeededService(seed) {
+  const roll = seededNoise(`${seed}-service`);
+  if (roll > 0.68) return "Good";
+  if (roll < 0.26) return "Low";
+  return "Mixed";
+}
+
+function getSeasonStartWeek(careerSeason, countryId) {
+  let total = 0;
+  for (let season = 0; season < careerSeason; season += 1) {
+    const tier = getCareerTier(season, countryId);
+    total += tier.id === "elite" ? 38 : 30;
+  }
+  return total;
+}
+
 function getCareerTier(careerSeason) {
-  if (careerSeason >= 12) return leagueTiers[4];
-  if (careerSeason >= 9) return leagueTiers[3];
-  if (careerSeason >= 6) return leagueTiers[2];
-  if (careerSeason >= 3) return leagueTiers[1];
-  return leagueTiers[0];
+  const countryTiers = countryTierModels[labCountry] ?? countryTierModels.denmark;
+  const bottomTierId = countryTiers[countryTiers.length - 1];
+  const maxClimb = Math.min(Math.floor(careerSeason / 3), countryTiers.length - 1);
+  const targetTierId = tierOrder[Math.min(tierOrder.length - 1, tierOrder.indexOf(bottomTierId) + maxClimb)];
+  return leagueTiers.find((tier) => tier.id === targetTierId) ?? leagueTiers[0];
 }
 
 function getDevelopmentEnvironment(tier) {
   const level = tier.facilityLevel;
   return {
     facilityLevel: level,
-    xpMultiplier: 1 + (level - 1) * 0.18,
-    xpFloorBonus: (level - 1) * 4,
-    recoveryBonus: Math.floor((level - 1) / 3),
-    supportEfficiency: 1 + (level - 1) * 0.1,
+    xpMultiplier: 1 + (level - 1) * 0.12,
+    xpFloorBonus: (level - 1) * 3,
+    recoveryBonus: level >= 4 ? 1 : 0,
+    supportEfficiency: 1 + (level - 1) * 0.06,
   };
 }
 
 function getTrainingXpFloorBonus(level) {
-  return Math.round(level * 10);
+  return Math.round(level * 5.5);
 }
 
 function getTrainingXpCeilingBonus(level) {
-  return Math.round(level * 9);
+  return Math.round(level * 5);
 }
 
 function getTrainingFatigueRelief(level) {
-  return Math.min(10, Math.round(level * 0.78));
+  return Math.min(7, Math.round(level * 0.52));
 }
 
 function getRecoverySessionBonus(recoveryLevel, nutritionLevel) {
-  return Math.min(26, Math.round(recoveryLevel * 2.2 + nutritionLevel * 0.9));
+  return Math.min(12, Math.round(recoveryLevel * 0.8 + nutritionLevel * 0.45));
 }
 
 function getWeeklySupportRecoveryBonus(recoveryLevel, nutritionLevel) {
-  return Math.min(9, Math.round(recoveryLevel * 0.55 + nutritionLevel * 0.75));
+  return Math.min(3, Math.round(recoveryLevel * 0.18 + nutritionLevel * 0.28));
 }
 
 function getMatchActionRecoveryRelief(level) {
-  return Math.min(7, Math.round(level * 0.5));
+  return Math.min(2, Math.round(level * 0.16));
+}
+
+function getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, breakthroughs = 0) {
+  return Math.min(58, 12 + Math.round(recoveryLevel * 0.85 + nutritionLevel * 0.55 + breakthroughs * 3));
+}
+
+function getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, breakthroughs = 0) {
+  return Math.min(82, 68 + Math.round(recoveryLevel * 0.35 + nutritionLevel * 0.25 + breakthroughs * 2));
+}
+
+function applyRecoveryFloor(currentFitness, projectedFitness, floor) {
+  if (projectedFitness >= floor) {
+    return projectedFitness;
+  }
+
+  const pull = Math.min(5, Math.ceil((floor - projectedFitness) * 0.28));
+  return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
+}
+
+function applyRecoveryCeiling(projectedFitness, ceiling) {
+  if (projectedFitness <= ceiling) {
+    return projectedFitness;
+  }
+
+  const overflow = projectedFitness - ceiling;
+  return clamp(ceiling + Math.round(overflow * 0.25), 0, 100);
 }
 
 function getBootsActionBoost(bootsLevel) {

@@ -553,6 +553,48 @@ Avoid vague copy such as `improves performance` as the only payoff. Every suppor
 
 When Training Setup unlocks more focus slots, the support card should state it directly as a current bonus, for example `2 focus slots`.
 
+## Prestige And Sponsor UI
+
+Prestige should be presented as career status, not as spendable cash.
+
+Use a compact tier card where the player can instantly read:
+
+- current prestige tier
+- current prestige points
+- progress to next tier
+- next meaningful unlock
+
+Example:
+
+- Tier: `Known Talent`
+- Progress: `1,240 / 2,000`
+- Unlock: `Regional sponsor interest`
+
+The prestige card should use the same single-bar language as attribute/support progress. The bar fills toward the next tier, while the total prestige score can keep growing beyond 100.
+
+Sponsor UI should appear only when the player has enough prestige or a relevant trigger. Sponsor offers should be shown like contract offers: clear comparison, concrete payouts and clear obligations.
+
+Sponsors and contracts should live together in a dedicated `Deals` surface under Home. Player screen can show high-level career status, but detailed contract terms, commercial eligibility and sponsor slots belong in Home -> Deals.
+
+Each sponsor card should show:
+
+- weekly retainer
+- objective bonus
+- objective condition
+- pressure or obligation impact
+- contract length
+
+Avoid vague sponsor copy such as `improves fame`. Sponsors should say exactly what they pay and what they ask for, for example:
+
+- `$120/wk`
+- `+$400 for 3 goals this month`
+- `Pressure +2 while active`
+- `Requires Known Talent`
+
+Core UI rule:
+
+`Cash is shown as spendable money. Prestige is shown as status progress. Legacy Points are shown as dynasty spending power.`
+
 ## Match Moment UI Direction
 
 Match moments should feel like tense football decisions, not long text adventures.
@@ -747,3 +789,23 @@ Start med:
 - Match choices show relevant stats and risk/reward, not exact percentages.
 - Bottom navigation has four smaller destinations plus a larger central advance-time button.
 - Player screen uses one vertical scroll with critical information in the first viewport and expandable secondary detail sections below.
+
+## Deals UI V1
+
+Home -> Deals is the dedicated career-economy surface.
+
+Current structure:
+
+- Overview card: weekly wage, prestige tier and sponsor status.
+- Contract card: current contract terms and renewal/market context.
+- Sponsor card: active sponsor or available sponsor offers.
+
+Sponsor offer cards must show concrete numbers:
+
+- weekly retainer
+- objective label
+- objective bonus
+- pressure modifier
+- duration
+
+The player should never have to guess whether a sponsor is cosmetic. If a deal affects cash or pressure, the card should say so directly.

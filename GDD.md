@@ -593,6 +593,77 @@ Core rule:
 
 Prestige skal gerne give muligheder og pres, men spilleren skal ikke bruge prestige som en almindelig butik-valuta.
 
+### Prestige Tiers And Sponsor Access
+
+Prestige should be an unbounded career score with readable status tiers, not a 0-100 bar.
+
+Core rule:
+
+`Prestige is accumulated reputation. Prestige tiers unlock opportunities; they are not spent directly.`
+
+The UI should show both the current tier and progress to the next tier, for example:
+
+- `Known Talent`
+- `1,240 / 2,000 prestige`
+- `760 prestige to Regional Name`
+
+Example tier direction:
+
+- Local Prospect: 0 prestige
+- Known Talent: 350 prestige
+- Regional Name: 1,500 prestige
+- National Profile: 7,500 prestige
+- Star Player: 20,000 prestige
+- Icon: 50,000 prestige
+- Legend: 100,000 prestige
+
+Prestige should scale with context. A goal in a higher division, a cup upset, promotion, a decisive derby moment or a strong season at a visible club should be worth more than routine output in a low-pressure match.
+
+Prestige gain sources:
+
+- goals and assists
+- chances created and high ratings
+- starts and apps at higher club tiers
+- promotions, trophies and cup runs
+- awards and season milestones
+- signing for a bigger club
+- clutch match moments
+- sponsor objective completion
+
+Prestige should eventually create pressure too. A higher-profile player gets better sponsors and more interest, but bad runs should carry more scrutiny.
+
+### Sponsors
+
+Sponsors are the bridge between career status and late-run cash growth.
+
+Sponsor offers should be unlocked by prestige tier, player role, club visibility, recent output and agent/career setup. They should not be available immediately in the first weeks of a grassroots career.
+
+Sponsor deals can provide:
+
+- weekly cash retainers
+- performance bonuses
+- objective-based payouts
+- short-term campaign rewards
+- pressure or obligation modifiers
+
+Sponsor deals should create interesting choices, not just free money. A high-paying sponsor can add pressure, require starts/goals/ratings, or fit a certain player identity. A safer sponsor can pay less but be easier to complete.
+
+Contracts and sponsors should share a `Career Deals` surface. The contract is the guaranteed income layer; sponsors are status-gated commercial opportunities. This keeps sponsor decisions connected to the player's professional career instead of making them feel like a separate shop.
+
+Sponsor examples:
+
+- Local Boot Deal: small weekly retainer, bonus for goals or decisive actions.
+- Regional Fitness Brand: bonus for high availability and strong fitness.
+- Youth Academy Ambassador: bonus for apps/starts and morale stability.
+- Technical Gear Partner: bonus for chance creation or skill moments.
+- National Sportswear Deal: larger retainer, higher pressure, unlocked by strong prestige.
+
+Core rule:
+
+`Contracts are the early cash engine. Sponsors are the mid/late cash accelerator unlocked by prestige.`
+
+This protects the loop: early careers depend on weekly wage and careful cash spending; later careers can break through support-cost walls by earning status, sponsors and better contract leverage.
+
 ### Legacy Points
 
 Legacy Points er dynastyens spendable currency.
@@ -1066,3 +1137,24 @@ Design direction:
 Important rule:
 
 `There should be no hard potential wall. Past the player's natural growth profile, progress should become slower and more expensive unless the player has earned better conditions through generation quality, dynasty upgrades, club facilities, career choices or special development events.`
+
+### Sponsor Deals V1
+
+Sponsor deals are part of the active-career economy, not dynasty spending.
+
+Core V1 rules:
+
+- Prestige unlocks sponsor access.
+- Cash from sponsors is spendable in the current run only.
+- The player can hold one active sponsor deal at a time.
+- Each sponsor has a weekly retainer, one match objective bonus, a duration and a pressure modifier.
+- Sponsor objectives are concrete: appearance, goal, assist or rating target.
+- Sponsor deals expire after their duration and can be replaced by new offers.
+
+Design intent:
+
+- Contracts fund the early run.
+- Prestige unlocks sponsor access.
+- Sponsors help bridge mid-career upgrade walls.
+- Sponsor pressure makes bigger deals a tradeoff instead of a strict upgrade.
+- Sponsor balance must be tested together with minutes, output, recovery and upgrade prices.

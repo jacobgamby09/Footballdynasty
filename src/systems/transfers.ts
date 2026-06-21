@@ -3,6 +3,7 @@ import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { getAverageRating } from "./formatting";
 import { calculateOvr, getContractLeagueTier, getLeagueTierIndex } from "./ovr";
+import { getPrestigeLeverageScore } from "./prestige";
 import { getCurrentFixture } from "./seasonState";
 import { getSelectionReport } from "./selection";
 import type { ClubState, GameState, LastMatchSummary, WorldClub } from "../types";
@@ -21,6 +22,7 @@ export function getInterestedWorldClubs(game: GameState, lastMatch?: LastMatchSu
   const selection = getSelectionReport(game, getCurrentFixture(game.season));
   const averageRating = getAverageRating(game.seasonStats.ratings);
   const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+  const prestigeLeverage = getPrestigeLeverageScore(game.prestige);
   const formSignal =
     Math.max(0, averageRating - 6.4) * 8 + game.seasonStats.goals * 1.6 + game.seasonStats.assists * 1.2 + (lastMatch?.rating ?? 6.5) - 6.5;
   // Can reach one tier above the current level when the player is clearly outperforming it.
@@ -38,11 +40,11 @@ export function getInterestedWorldClubs(game: GameState, lastMatch?: LastMatchSu
       const tierGap = getLeagueTierIndex(club.tierId) - currentTierIndex;
       const lowerTierBias = tierGap < 0 ? 16 : tierGap === 0 ? 9 : -10;
       // Higher-reputation clubs are pickier: they cool on a player who is below their level.
-      const reputationResistance = Math.max(0, club.reputation - (ovr + game.prestige * 0.5)) * 0.5;
+      const reputationResistance = Math.max(0, club.reputation - (ovr + prestigeLeverage * 0.5)) * 0.5;
       const interest =
         selection.score * 0.42 +
         ovr * 0.4 +
-        game.prestige * 0.24 +
+        prestigeLeverage * 0.24 +
         formSignal +
         lowerTierBias -
         reputationResistance +

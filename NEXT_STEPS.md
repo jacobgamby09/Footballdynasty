@@ -223,3 +223,90 @@ Næste designsession bør fokusere på en af to retninger:
 - Build transfer/division progression so the player can move from grassroots to higher league tiers.
 - Add club tier data for facilities, wage ranges, reputation and expected squad OVR.
 - Rebalance start OVR, training XP and attribute XP cost curve against the new 1-100 dynasty scale.
+
+## Next Economy Layer
+
+Core direction:
+
+- Keep cash as active-career spending only.
+- Keep prestige as career status and sponsor access, not a spendable wallet.
+- Convert career achievements and final prestige into Legacy Points at retirement.
+
+Recommended implementation order:
+
+1. Stabilize cash economy with weekly wages, contracts, support prices and upgrade impact across 30/38 match seasons.
+2. Done: add prestige tier definitions and a UI card that shows current tier, total prestige and progress to the next tier.
+3. Done V1: add prestige gains from goals, assists, ratings, starts, club tier and season output.
+4. Done foundation: add Home -> Deals as the permanent contract/sponsor surface with current contract terms and sponsor eligibility. Next: add Sponsor V1 offers with weekly retainers, concrete objectives, payouts and pressure tradeoffs.
+5. Later: add retirement conversion from final prestige plus career achievements into Legacy Points.
+
+Balance principle:
+
+`Contracts fund the early run. Prestige unlocks sponsors. Sponsors help the player break through mid/late support-cost walls. Legacy Points are earned at retirement and improve future generations.`
+
+## Next After Sponsor Deals V1
+
+Done V1:
+
+- Home -> Deals contains current contract info and sponsor offers.
+- Sponsor offers are prestige-gated and pay weekly retainer plus objective bonus.
+- Sponsor payouts are included in match/week economy and season balance lab output.
+
+Recommended next steps:
+
+1. Tune recovery/minutes/output balance, because recovery-heavy upgrade paths now create very high minutes, goals, assists and sponsor income.
+2. Add sponsor tiers beyond Known Talent / Regional Name only after the early-mid economy feels stable.
+3. Add clearer contract screen details and negotiation timing around expiring deals.
+4. Later: add fame/media/sponsor identity as a separate layer once prestige and sponsor cash are stable.
+
+Balance note:
+
+Sponsors should help the player break through cash upgrade walls, but they must not become guaranteed passive income that makes contracts irrelevant. Objective bonuses should matter, while weekly retainers should stay supportive rather than dominant.
+
+## Next After Recovery Balance Patch V1
+
+Recovery is now a stabilizer instead of a pure accelerator.
+
+Recommended next checks:
+
+1. Playtest 8-12 weeks manually and check whether low fitness feels recoverable rather than punishing.
+2. Decide whether recovery-track focus should remain a valid availability build, or whether role/trust/ability should further cap minutes.
+3. Revisit prestige thresholds and sponsor unlock timing, because the reduced output means Known Talent is reached later in balanced builds.
+4. Add lab metrics for missed squads, weeks below 25 fitness and weeks above 45 fitness to make recovery tuning easier.
+
+Current balance read:
+
+- Balanced/development/recovery spending now end near the target OVR curve by season 4.
+- No-upgrade, performance-only, career-only and lifestyle-only builds fall behind, which is acceptable if the game teaches that development/recovery support matters.
+- Pure recovery-track still creates high availability but sacrifices OVR growth, which may be a good tradeoff if it feels clear in UI.
+
+## Next After Prestige Unlock Patch V1
+
+Prestige now unlocks the first sponsor tier earlier:
+
+- Known Talent: 350 prestige
+- Regional Name: 1,500 prestige
+
+Current recommendation:
+
+1. Manual playtest to see whether sponsor unlock around late season 4 feels too late, just right or still invisible.
+2. If it feels too late in real play, add small milestone prestige events rather than lowering thresholds again.
+3. Candidate milestone events:
+   - first senior appearance
+   - first goal
+   - first assist
+   - first start
+   - first 7.0+ rating
+   - first role promotion
+4. Keep goals/assists important, but let reputation grow through visible career steps too.
+
+## Next After Recovery Ceiling Patch V1
+
+Recovery now has both a soft floor and a soft ceiling.
+
+Recommended next checks:
+
+1. Run long career labs and compare balanced, development, recovery and recovery-track end fitness.
+2. Manual playtest a recovery-heavy route and check whether it feels strong without removing fatigue decisions.
+3. If pure recovery still sits too close to 100 fitness, lower the ceiling overflow from 25% to 15%.
+4. If balanced builds feel too punished, raise the ceiling cap slightly before changing match fatigue.

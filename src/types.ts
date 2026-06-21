@@ -13,7 +13,7 @@ export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
 export type ClubView = "overview" | "fixtures" | "table";
-export type HomeView = "base" | "support" | "dynasty";
+export type HomeView = "base" | "support" | "deals" | "dynasty";
 export type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
 export type SupportTrackId = "training" | "recovery" | "performance" | "career" | "lifestyle";
 export type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
@@ -231,6 +231,33 @@ export type ContractOffer = Omit<Contract, "weeksRemaining"> & {
   clubId?: ClubId;
 };
 
+export type SponsorObjective = {
+  type: "appearance" | "goal" | "assist" | "rating";
+  target: number;
+  label: string;
+};
+
+export type SponsorDeal = {
+  id: string;
+  name: string;
+  tierLabel: string;
+  prestigeRequired: number;
+  weeklyRetainer: number;
+  objectiveBonus: number;
+  objective: SponsorObjective;
+  pressureModifier: number;
+  weeksRemaining: number;
+  summary: string;
+};
+
+export type SponsorPayout = {
+  retainer: number;
+  objectiveBonus: number;
+  total: number;
+  objectiveCompleted: boolean;
+  sponsorName?: string;
+};
+
 export type SupportUpgradeDefinition = {
   id: SupportUpgradeId;
   name: string;
@@ -274,6 +301,7 @@ export type GameState = {
   dynasty: DynastyState;
   dynastyHistory: DynastySeason[];
   contract: Contract;
+  sponsor?: SponsorDeal;
   supportUpgrades: Record<SupportUpgradeId, number>;
   lastEvent: string;
   activeMatch?: MatchState;
@@ -474,6 +502,11 @@ export type LastMatchSummary = MatchTotals & {
   appearanceBonus: number;
   goalBonus: number;
   assistBonus: number;
+  sponsorRetainer: number;
+  sponsorObjectiveBonus: number;
+  sponsorCashDelta: number;
+  sponsorObjectiveCompleted: boolean;
+  sponsorName?: string;
   prestigeDelta: number;
   moraleDelta: number;
   roleBefore: MatchRole;

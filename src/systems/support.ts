@@ -48,7 +48,10 @@ export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgra
 
 
 export function getSupportUpgradeCost(upgrade: SupportUpgradeDefinition, currentLevel: number) {
-  return Math.round(upgrade.baseCost * (1 + currentLevel * 0.62 + Math.pow(currentLevel, 2) * 0.16));
+  const earlyRamp = 1 + currentLevel * 0.78 + Math.pow(currentLevel, 2) * 0.24;
+  const lateRamp = currentLevel >= 6 ? Math.pow(currentLevel - 5, 2) * 0.55 : 0;
+  const eliteRamp = currentLevel >= 10 ? Math.pow(currentLevel - 9, 2) * 1.1 : 0;
+  return Math.round(upgrade.baseCost * (earlyRamp + lateRamp + eliteRamp));
 }
 
 
@@ -101,7 +104,7 @@ export function getSupportTrackBreakthroughCount(state: Pick<GameState, "support
 
 
 export function getRecoveryBreakthroughRelief(breakthroughs: number) {
-  return Math.floor(breakthroughs / 2);
+  return Math.min(1, Math.floor(breakthroughs / 3));
 }
 
 
@@ -134,32 +137,62 @@ export function getSupportLevel(state: GameState, upgradeId: SupportUpgradeId) {
 
 
 export function getTrainingXpFloorBonus(level: number) {
-  return Math.round(level * 10);
+  return Math.round(level * 5.5);
 }
 
 
 export function getTrainingXpCeilingBonus(level: number) {
-  return Math.round(level * 9);
+  return Math.round(level * 5);
 }
 
 
 export function getTrainingFatigueRelief(level: number) {
-  return Math.min(10, Math.round(level * 0.78));
+  return Math.min(7, Math.round(level * 0.52));
 }
 
 
 export function getRecoverySessionBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(26, Math.round(recoveryLevel * 2.2 + nutritionLevel * 0.9));
+  return Math.min(12, Math.round(recoveryLevel * 0.8 + nutritionLevel * 0.45));
 }
 
 
 export function getWeeklySupportRecoveryBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(9, Math.round(recoveryLevel * 0.55 + nutritionLevel * 0.75));
+  return Math.min(3, Math.round(recoveryLevel * 0.18 + nutritionLevel * 0.28));
 }
 
 
 export function getMatchActionRecoveryRelief(level: number) {
-  return Math.min(7, Math.round(level * 0.5));
+  return Math.min(2, Math.round(level * 0.16));
+}
+
+
+export function getRecoveryFitnessFloor(recoveryLevel: number, nutritionLevel: number, breakthroughs = 0) {
+  return Math.min(58, 12 + Math.round(recoveryLevel * 0.85 + nutritionLevel * 0.55 + breakthroughs * 3));
+}
+
+
+export function getRecoveryFitnessCeiling(recoveryLevel: number, nutritionLevel: number, breakthroughs = 0) {
+  return Math.min(82, 68 + Math.round(recoveryLevel * 0.35 + nutritionLevel * 0.25 + breakthroughs * 2));
+}
+
+
+export function applyRecoveryFloor(currentFitness: number, projectedFitness: number, floor: number) {
+  if (projectedFitness >= floor) {
+    return projectedFitness;
+  }
+
+  const pull = Math.min(5, Math.ceil((floor - projectedFitness) * 0.28));
+  return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
+}
+
+
+export function applyRecoveryCeiling(projectedFitness: number, ceiling: number) {
+  if (projectedFitness <= ceiling) {
+    return projectedFitness;
+  }
+
+  const overflow = projectedFitness - ceiling;
+  return clamp(ceiling + Math.round(overflow * 0.25), 0, 100);
 }
 
 

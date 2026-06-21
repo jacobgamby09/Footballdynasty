@@ -12,6 +12,7 @@ import { getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/sele
 import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
+import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
@@ -46,11 +47,13 @@ export function PlayerScreen({ game }: { game: GameState }) {
 
 
 export function ContractOfferScreen({
+  game,
   current,
   offers,
   onAccept,
   onDecline,
 }: {
+  game: GameState;
   current: Contract;
   offers: ContractOffer[];
   onAccept: (offer: ContractOffer) => void;
@@ -67,39 +70,14 @@ export function ContractOfferScreen({
       />
 
       {offers.map((offer, index) => (
-        <div className="card contract-offer-card" key={offer.clubId ?? offer.club ?? index}>
-          <div className="section-heading">
-            <div>
-              <span className="metric-label">{offer.club}</span>
-              <h2>{offer.label}</h2>
-            </div>
-            <BadgeDollarSign size={19} />
-          </div>
-          <div className="contract-hero">
-            <div>
-              <span>Weekly wage</span>
-              <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
-            </div>
-            <div>
-              <span>Role promise</span>
-              <strong>{offer.rolePromise}</strong>
-            </div>
-          </div>
-          <div className="stat-grid">
-            <InfoTile label="Length" value={`${offer.weeks} wks`} />
-            <InfoTile label="Signing" value={`+$${offer.signingBonus}`} tone="good" />
-            <InfoTile label="Appearance" value={`+$${offer.appearanceBonus}`} />
-            <InfoTile label="Goal" value={`+$${offer.goalBonus}`} tone="gold" />
-            <InfoTile label="Assist" value={`+$${offer.assistBonus}`} />
-            <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
-          </div>
-          <p>{offer.summary}</p>
-          {multiple && (
-            <button className="primary-action" type="button" onClick={() => onAccept(offer)}>
-              Accept {offer.club}
-            </button>
-          )}
-        </div>
+        <ContractOfferCard
+          current={current}
+          game={game}
+          key={offer.clubId ?? offer.club ?? index}
+          multiple={multiple}
+          offer={offer}
+          onAccept={onAccept}
+        />
       ))}
 
       <div className="card">
@@ -115,6 +93,59 @@ export function ContractOfferScreen({
         Decline {multiple ? "all" : "for now"}
       </button>
     </section>
+  );
+}
+
+
+function ContractOfferCard({
+  current,
+  game,
+  multiple,
+  offer,
+  onAccept,
+}: {
+  current: Contract;
+  game: GameState;
+  multiple: boolean;
+  offer: ContractOffer;
+  onAccept: (offer: ContractOffer) => void;
+}) {
+  const country = getCountryForClub(game.world, offer.clubId);
+
+  return (
+    <div className="card contract-offer-card">
+      <div className="section-heading">
+        <div>
+          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}{offer.club}</span>
+          <h2>{offer.label}</h2>
+        </div>
+        <BadgeDollarSign size={19} />
+      </div>
+      <div className="contract-hero">
+        <div>
+          <span>Weekly wage</span>
+          <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
+        </div>
+        <div>
+          <span>Role promise</span>
+          <strong>{offer.rolePromise}</strong>
+        </div>
+      </div>
+      <div className="stat-grid">
+        <InfoTile label="Length" value={`${offer.weeks} wks`} />
+        <InfoTile label="Signing" value={`+$${offer.signingBonus}`} tone="good" />
+        <InfoTile label="Appearance" value={`+$${offer.appearanceBonus}`} />
+        <InfoTile label="Goal" value={`+$${offer.goalBonus}`} tone="gold" />
+        <InfoTile label="Assist" value={`+$${offer.assistBonus}`} />
+        <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
+      </div>
+      <p>{offer.summary}</p>
+      {multiple && (
+        <button className="primary-action" type="button" onClick={() => onAccept(offer)}>
+          Accept {offer.club}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -870,6 +901,7 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
   const goals = getSeasonGoals(game.season.results);
   const goalDifference = goals.for - goals.against;
   const prestigeAfterReward = getPrestigeStatus(game.prestige + review.prestigeReward);
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
     <section className="simple-screen season-review-screen">
@@ -877,7 +909,7 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
 
       <div className="card season-review-hero">
         <div>
-          <span className="metric-label">{game.contract.club}</span>
+          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}{game.contract.club}</span>
           <h2>{review.tablePosition}. place</h2>
           <p>
             {review.record.wins}-{review.record.draws}-{review.record.losses}, {review.record.points} pts
@@ -1142,6 +1174,7 @@ export function ClubScreen({ game }: { game: GameState }) {
   const goals = getSeasonGoals(game.season.results);
   const table = getLeagueTable(game);
   const leagueTier = getClubLeagueTier(game.club);
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   if (clubView === "fixtures") {
     return <ClubFixturesView game={game} onBack={() => setClubView("overview")} />;
@@ -1153,9 +1186,10 @@ export function ClubScreen({ game }: { game: GameState }) {
 
   return (
     <section className="simple-screen">
-      <ScreenTitle label="Club" title={game.club.name} />
+      <ScreenTitle label={country ? `${country.flag} ${country.name}` : "Club"} title={game.club.name} />
       <div className="card">
         <InfoRow label="League tier" value={leagueTier.name} />
+        {country && <InfoRow label="Country" value={`${country.flag} ${country.name}`} />}
         <InfoRow label="Squad role" value={upcomingMatch?.playerRole ?? "Season Review"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
         <ProgressRow label="Team form" value={getTeamFormScore(game.season.results)} display={getRecentFormText(game.season.results)} accent="neutral" />
@@ -1258,9 +1292,11 @@ export function ClubScreen({ game }: { game: GameState }) {
 
 
 export function ClubFixturesView({ game, onBack }: { game: GameState; onBack: () => void }) {
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+
   return (
     <section className="simple-screen club-detail-screen">
-      <DetailHeader label="Club" title="Fixtures" onBack={onBack} />
+      <DetailHeader label={country ? `${country.flag} ${country.name}` : "Club"} title="Fixtures" onBack={onBack} />
       <div className="card">
         <span className="metric-label">Season schedule</span>
         <div className="fixture-list">
@@ -1298,10 +1334,11 @@ export function ClubFixturesView({ game, onBack }: { game: GameState; onBack: ()
 
 export function ClubTableView({ game, onBack }: { game: GameState; onBack: () => void }) {
   const table = getLeagueTable(game);
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
     <section className="simple-screen club-detail-screen">
-      <DetailHeader label="Club" title="League Table" onBack={onBack} />
+      <DetailHeader label={country ? `${country.flag} ${country.name}` : "Club"} title="League Table" onBack={onBack} />
       <div className="card">
         <div className="table-header">
           <span>#</span>
@@ -1596,34 +1633,18 @@ export function SupportShopView({
 
 export function CountrySelectScreen({ countries, onPick }: { countries: Country[]; onPick: (id: CountryId) => void }) {
   return (
-    <section className="simple-screen">
+    <section className="simple-screen country-select-screen">
       <ScreenTitle label="New career" title="Choose your country" />
 
-      <div className="card">
-        <p>
-          You start at the bottom of your chosen country and climb. Big footballing nations let you reach the world
-          top with one club; smaller nations cap lower &mdash; you&rsquo;ll need a move abroad to reach the elite.
-        </p>
-      </div>
-
-      {countries.map((country) => {
-        const reachesTop = country.tiers[0] === "elite";
-        return (
-          <button key={country.id} className="card country-option" type="button" onClick={() => onPick(country.id)}>
-            <div className="section-heading">
-              <div>
-                <span className="metric-label">{country.tiers.length} divisions</span>
-                <h2>{country.name}</h2>
-              </div>
-            </div>
-            <p>
-              {reachesTop
-                ? "Deep pyramid — climb all the way to the world top (Tier 1) with one club."
-                : "Tops at Tier 2 — dominate locally, then transfer abroad to reach the elite."}
-            </p>
-          </button>
-        );
-      })}
+      {countries.map((country) => (
+        <button key={country.id} className="card country-option" type="button" onClick={() => onPick(country.id)}>
+          <span className="country-flag" aria-label={country.name}>{country.flag}</span>
+          <div>
+            <h2>{country.name}</h2>
+            <span>{country.tiers.length} divisions</span>
+          </div>
+        </button>
+      ))}
     </section>
   );
 }

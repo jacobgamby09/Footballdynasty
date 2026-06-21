@@ -2,7 +2,7 @@ import { getPositionModule } from "../positionRoles";
 import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, TrainingSummary, World } from "../types";
 import { initialAttributes } from "../data/attributes";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
-import { seedWorld } from "../data/world";
+import { COUNTRIES, seedWorld } from "../data/world";
 import { createSeasonFixturesFromWorld, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
 import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
@@ -11,10 +11,14 @@ const SAVE_KEY = "football-dynasty-save";
 const SAVE_VERSION = 9;
 
 function cloneWorld(world: World): World {
+  const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
+
   return {
     seasonNumber: world.seasonNumber,
     tierOrder: [...world.tierOrder],
-    countries: Object.fromEntries(Object.entries(world.countries ?? {}).map(([id, c]) => [id, { ...c, tiers: [...c.tiers] }])) as World["countries"],
+    countries: Object.fromEntries(
+      Object.entries(world.countries ?? {}).map(([id, c]) => [id, { ...countryDefaults[id], ...c, tiers: [...c.tiers] }]),
+    ) as World["countries"],
     clubs: Object.fromEntries(Object.entries(world.clubs).map(([id, club]) => [id, { ...club }])),
     leagues: Object.fromEntries(Object.entries(world.leagues).map(([id, league]) => [id, { ...league, clubIds: [...league.clubIds] }])),
     leagueSeasons: Object.fromEntries(

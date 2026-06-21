@@ -10,6 +10,7 @@ import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtu
 import { getUpcomingMatch } from "../systems/selection";
 import { getNextSupportTrackPurchase, getSupportTrackProgress } from "../systems/support";
 import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
+import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { FixtureStatusBadge, InfoRow, InfoTile, LeagueTableRowView, ProgressBar, ProgressRow } from "./shared";
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, ChevronRight, Flame, Gauge, HeartPulse, ShieldCheck, Sparkles, Trophy, UsersRound } from "lucide-react";
@@ -598,12 +599,13 @@ export function ContractMarketCard({ game }: { game: GameState }) {
   const contract = game.contract;
   const status = getContractStatusLabel(game);
   const prestige = getPrestigeStatus(game.prestige);
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
     <section className="card contract-card">
       <div className="section-heading">
         <div>
-          <span className="metric-label">Contract</span>
+          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}Contract</span>
           <h2>{contract.label}</h2>
         </div>
         <BadgeDollarSign size={19} />

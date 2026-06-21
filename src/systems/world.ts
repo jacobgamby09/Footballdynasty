@@ -1,12 +1,22 @@
 import { leagueTiers } from "../data/leagues";
 import { emptyClubSeasonRecord } from "../data/world";
-import type { ClubSeasonRecord, LeagueId, LeagueTableRow, LeagueTierId, World, WorldClub, WorldLeague } from "../types";
+import type { ClubId, ClubSeasonRecord, Country, LeagueId, LeagueTableRow, LeagueTierId, World, WorldClub, WorldLeague } from "../types";
 
 // Stage 1 links the player's embedded club to the world by shortCode; the clubId
 // migration is Stage 4 (see WORLD_MODEL.md).
 export function findLeagueByClubShortCode(world: World, shortCode: string): WorldLeague | undefined {
   const club = Object.values(world.clubs).find((c) => c.shortCode === shortCode);
   return club ? world.leagues[club.leagueId] : undefined;
+}
+
+export function findWorldClub(world: World, clubId?: ClubId, shortCode?: string): WorldClub | undefined {
+  return (clubId ? world.clubs[clubId] : undefined) ?? (shortCode ? Object.values(world.clubs).find((c) => c.shortCode === shortCode) : undefined);
+}
+
+export function getCountryForClub(world: World, clubId?: ClubId, shortCode?: string): Country | undefined {
+  const club = findWorldClub(world, clubId, shortCode);
+  const league = club ? world.leagues[club.leagueId] : undefined;
+  return league ? world.countries[league.countryId] : undefined;
 }
 
 export function findLeagueByTier(world: World, tierId: LeagueTierId): WorldLeague | undefined {

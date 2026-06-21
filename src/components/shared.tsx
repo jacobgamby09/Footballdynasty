@@ -1,5 +1,6 @@
 import { initialClub } from "../data/leagues";
 import { formatPrestigeCompact } from "../systems/prestige";
+import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, Sparkles, UserRound } from "lucide-react";
 import { useMemo } from "react";
@@ -15,6 +16,8 @@ export const navItems = [
 
 
 export function Header({ game }: { game: GameState }) {
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+
   return (
     <header className="hero-header">
       <div className="avatar-card">
@@ -33,7 +36,7 @@ export function Header({ game }: { game: GameState }) {
           <span>{game.archetype}</span>
         </div>
         <div className="club-chip">
-          <span className="club-dot" />
+          {country ? <span className="flag-icon" aria-label={country.name}>{country.flag}</span> : <span className="club-dot" />}
           {game.club.name}
         </div>
       </div>

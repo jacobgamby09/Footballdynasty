@@ -21,13 +21,13 @@ const BIG3_TIERS: LeagueTierId[] = ["elite", "top-flight", "national-pro", "regi
 const MID_TIERS: LeagueTierId[] = ["top-flight", "national-pro", "regional-pro", "local-semi-pro", "grassroots-dev"];
 
 export const COUNTRIES: Country[] = [
-  { id: "england", name: "England", tiers: BIG3_TIERS },
-  { id: "spain", name: "Spain", tiers: BIG3_TIERS },
-  { id: "italy", name: "Italy", tiers: BIG3_TIERS },
-  { id: "germany", name: "Germany", tiers: MID_TIERS },
-  { id: "france", name: "France", tiers: MID_TIERS },
-  { id: "holland", name: "Holland", tiers: MID_TIERS },
-  { id: "denmark", name: "Denmark", tiers: MID_TIERS },
+  { id: "england", name: "England", flag: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}", tiers: BIG3_TIERS },
+  { id: "spain", name: "Spain", flag: "\u{1F1EA}\u{1F1F8}", tiers: BIG3_TIERS },
+  { id: "italy", name: "Italy", flag: "\u{1F1EE}\u{1F1F9}", tiers: BIG3_TIERS },
+  { id: "germany", name: "Germany", flag: "\u{1F1E9}\u{1F1EA}", tiers: MID_TIERS },
+  { id: "france", name: "France", flag: "\u{1F1EB}\u{1F1F7}", tiers: MID_TIERS },
+  { id: "holland", name: "Holland", flag: "\u{1F1F3}\u{1F1F1}", tiers: MID_TIERS },
+  { id: "denmark", name: "Denmark", flag: "\u{1F1E9}\u{1F1F0}", tiers: MID_TIERS },
 ];
 
 const TIER1_CLUBS = 20;

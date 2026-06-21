@@ -545,6 +545,7 @@ function App() {
           {activeScreen === "week-summary" && <WeekSummaryScreen game={game} />}
           {activeScreen === "contract-offer" && (game.contractOffers?.length || game.contractOffer) && (
             <ContractOfferScreen
+              game={game}
               current={game.contract}
               offers={game.contractOffers ?? (game.contractOffer ? [game.contractOffer] : [])}
               onAccept={acceptContractOffer}

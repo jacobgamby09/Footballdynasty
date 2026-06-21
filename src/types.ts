@@ -116,6 +116,7 @@ export type CountryId = "england" | "spain" | "italy" | "germany" | "france" | "
 export type Country = {
   id: CountryId;
   name: string;
+  flag: string;
   tiers: LeagueTierId[]; // top -> bottom: the global tiers this country's divisions occupy
 };
 

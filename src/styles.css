@@ -166,6 +166,22 @@ button {
   font-size: 12px;
 }
 
+.flag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35em;
+  min-width: 1.35em;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.country-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .club-dot {
   width: 8px;
   height: 8px;
@@ -2174,6 +2190,57 @@ button {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.country-select-screen {
+  gap: 10px;
+}
+
+.country-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.country-option:hover,
+.country-option:focus-visible {
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.country-flag {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(200, 243, 95, 0.2);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(200, 243, 95, 0.16), transparent 3.2rem),
+    rgba(255, 255, 255, 0.05);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.country-option h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.country-option span:not(.country-flag) {
+  display: block;
+  margin-top: 5px;
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .week-summary-screen {

@@ -9,7 +9,7 @@ import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFi
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { getMatchPrestigeDelta } from "./prestige";
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
-import { applyBootsActionBoost, applyRecoveryCeiling, applyRecoveryFloor, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
 import type { AttributeKey, PositionModule } from "../positionRoles";
@@ -48,27 +48,25 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const rawTotals = summarizeMatchResults(results, simTotals);
   const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
-  const effectiveRecoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
-  const effectiveNutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+  const effectiveRecoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline") * environment.supportEfficiency;
   const weeklyRecoveryBonus =
     1 +
     environment.recoveryBonus +
-    getRecoveryBreakthroughRelief(recoveryBreakthroughs) +
-    getWeeklySupportRecoveryBonus(
-      effectiveRecoveryLevel,
-      effectiveNutritionLevel,
-    );
+    getWeeklySupportRecoveryBonus(effectiveRecoveryBaselineLevel);
   const baseFitnessDelta = match ? getMatchFitnessDelta(match, results) + weeklyRecoveryBonus : rawTotals.fitnessDelta + weeklyRecoveryBonus;
   const projectedFitness = clamp(state.fitness + baseFitnessDelta, 0, 100);
-  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
-  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
+  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   const adjustedFitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);
   const moraleDelta = playerAppeared ? (totals.rating >= 7 ? 3 : -2) : 0;
   const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
-  const sponsorPayout = getSponsorPayout(state.sponsor, totals, playerAppeared);
+  const sponsorPayout = applySponsorAppealBonus(
+    getSponsorPayout(state.sponsor, totals, playerAppeared),
+    getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")),
+  );
   const cashDelta = contractEarnings.total + sponsorPayout.total;
   const prestigeDelta =
     match
@@ -81,8 +79,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
       : 0;
   const pressureDelta =
     totals.goals * 2 +
-    (state.sponsor?.pressureModifier ?? 0) -
-    getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), getSupportTrackBreakthroughCount(state, "lifestyle"));
+    (state.sponsor?.pressureModifier ?? 0);
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season));
   const postMatchState = {
     ...state,
@@ -193,6 +190,21 @@ export function didPlayerAppear(match?: MatchState) {
   }
 
   return match.entryMinute <= 90 && (!match.exitMinute || match.exitMinute > match.entryMinute);
+}
+
+function applySponsorAppealBonus<T extends { retainer: number; objectiveBonus: number; total: number }>(payout: T, bonusRatio: number): T {
+  if (bonusRatio <= 0 || payout.total <= 0) {
+    return payout;
+  }
+
+  const retainer = Math.round(payout.retainer * (1 + bonusRatio));
+  const objectiveBonus = Math.round(payout.objectiveBonus * (1 + bonusRatio));
+  return {
+    ...payout,
+    retainer,
+    objectiveBonus,
+    total: retainer + objectiveBonus,
+  };
 }
 
 
@@ -886,7 +898,7 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
   const leagueTier = getClubLeagueTier(state.club);
-  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes, leagueTier), getSupportLevel(state, "boots"));
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes, leagueTier);
   const matchOpponentProfile = state.activeMatch
     ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile, leagueTier)
     : undefined;
@@ -1072,18 +1084,18 @@ export function getFollowUpTemplate(moment: MatchMoment, result: MatchResult): O
 
 
 export function applyMatchSupportEffects<T extends { rating: number; fitnessDelta: number }>(state: GameState, result: T): T {
-  const recoveryLevel = getSupportLevel(state, "recovery");
-  const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const matchRecoveryLevel = getSupportLevel(state, "matchRecovery") * environment.supportEfficiency;
 
   return {
     ...result,
-    fitnessDelta: Math.min(0, result.fitnessDelta + getMatchActionRecoveryRelief(recoveryLevel) + getRecoveryBreakthroughRelief(recoveryBreakthroughs)),
+    fitnessDelta: Math.min(0, result.fitnessDelta + getMatchActionRecoveryRelief(matchRecoveryLevel)),
   };
 }
 
 
 export function simulateRemainingPlayerMoments(state: GameState, match: MatchState): MatchResult[] {
-  const matchAttributeValues = applyBootsActionBoost(getLeagueAdjustedAttributeValueMap(state.attributes, getClubLeagueTier(state.club)), getSupportLevel(state, "boots"));
+  const matchAttributeValues = getLeagueAdjustedAttributeValueMap(state.attributes, getClubLeagueTier(state.club));
   return match.events
     .slice(match.currentEventIndex)
     .filter((event): event is PlayerMatchEvent => event.type === "player_moment")

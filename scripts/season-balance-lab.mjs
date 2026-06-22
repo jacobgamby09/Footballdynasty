@@ -84,14 +84,6 @@ const ovrWeights = {
 const focusCycle = ["Finishing", "Off Ball", "Composure", "First Touch", "Acceleration", "Work Rate"];
 const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "hold_up", "aerial_duel", "late_pressure"];
 const forwardPerformanceWeights = { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 };
-const bootsActionAttributes = ["Finishing", "First Touch", "Dribbling", "Acceleration", "Pace"];
-const trainingSpecialists = [
-  { id: "finishing", name: "Finishing coach", attributes: ["Finishing", "Composure"] },
-  { id: "movement", name: "Movement coach", attributes: ["Off Ball", "Acceleration", "Pace"] },
-  { id: "technical", name: "Technical coach", attributes: ["First Touch", "Dribbling", "Passing"] },
-  { id: "strength", name: "Strength coach", attributes: ["Strength", "Heading", "Stamina"] },
-  { id: "mental", name: "Mental coach", attributes: ["Work Rate", "Positioning", "Composure"] },
-];
 const leagueTiers = [
   { id: "grassroots-dev", label: "Grassroots", averageOvr: 15, teamRange: [10, 22], wageRange: [25, 90], facilityLevel: 1, prestigeMultiplier: 0.45 },
   { id: "local-semi-pro", label: "Semi-Pro", averageOvr: 28, teamRange: [22, 36], wageRange: [90, 240], facilityLevel: 2, prestigeMultiplier: 0.75 },
@@ -117,32 +109,32 @@ const sponsorDefinitions = [
   { id: "technical-gear", prestigeRequired: 1500, weeklyRetainer: 80, objectiveBonus: 220, objective: { type: "assist", target: 1 }, pressureModifier: 2, weeksRemaining: 10 },
 ];
 const supportUpgradeDefinitions = [
-  { id: "boots", maxLevel: 12, baseCost: 180 },
-  { id: "recovery", maxLevel: 15, baseCost: 160 },
-  { id: "coach", maxLevel: 15, baseCost: 220 },
-  { id: "nutrition", maxLevel: 15, baseCost: 140 },
-  { id: "analyst", maxLevel: 10, baseCost: 260 },
-  { id: "agent", maxLevel: 10, baseCost: 300 },
-  { id: "lifestyle", maxLevel: 12, baseCost: 150 },
+  { id: "xpFloor", maxLevel: 160, baseCost: 90 },
+  { id: "xpCeiling", maxLevel: 160, baseCost: 100 },
+  { id: "focusSlot2Unlock", maxLevel: 5, baseCost: 180 },
+  { id: "focusSlot2Efficiency", maxLevel: 60, baseCost: 120, requires: { focusSlot2Unlock: 5 } },
+  { id: "focusSlot3Unlock", maxLevel: 8, baseCost: 260, requires: { focusSlot2Unlock: 5 } },
+  { id: "focusSlot3Efficiency", maxLevel: 50, baseCost: 150, requires: { focusSlot3Unlock: 8 } },
+  { id: "trainingLoad", maxLevel: 60, baseCost: 130 },
+  { id: "matchRecovery", maxLevel: 60, baseCost: 145 },
+  { id: "recoveryBaseline", maxLevel: 80, baseCost: 125 },
+  { id: "agentNegotiation", maxLevel: 80, baseCost: 220 },
+  { id: "sponsorshipAppeal", maxLevel: 80, baseCost: 260 },
 ];
 const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 const supportTrackDefinitions = [
-  { id: "training", upgradeIds: ["coach"], breakpoints: [3, 7, 12, 15] },
-  { id: "recovery", upgradeIds: ["nutrition", "recovery"], breakpoints: [4, 9, 15, 24, 30] },
-  { id: "performance", upgradeIds: ["boots", "analyst"], breakpoints: [4, 9, 15, 22] },
-  { id: "career", upgradeIds: ["agent"], breakpoints: [2, 5, 8, 10] },
-  { id: "lifestyle", upgradeIds: ["lifestyle"], breakpoints: [3, 6, 9, 12] },
+  { id: "training", upgradeIds: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], breakpoints: [5, 15, 28, 48, 75, 110] },
+  { id: "recovery", upgradeIds: ["trainingLoad", "matchRecovery", "recoveryBaseline"], breakpoints: [6, 16, 32, 55, 85, 120] },
+  { id: "career", upgradeIds: ["agentNegotiation", "sponsorshipAppeal"], breakpoints: [4, 12, 28, 50, 80, 120] },
 ];
 const supportScenarios = [
   { id: "none", label: "No upgrades", priorities: [], cashReserve: 999999 },
-  { id: "balanced", label: "Balanced spending", priorities: ["nutrition", "coach", "recovery", "boots", "analyst", "agent", "lifestyle"], cashReserve: 80, spread: true },
-  { id: "development", label: "Development spending", priorities: ["coach", "nutrition", "analyst", "boots", "recovery", "agent", "lifestyle"], cashReserve: 60 },
-  { id: "recovery", label: "Recovery spending", priorities: ["nutrition", "recovery", "coach", "lifestyle", "boots", "analyst", "agent"], cashReserve: 60 },
-  { id: "training-track", label: "Training track focus", priorities: ["coach"], cashReserve: 60, focusTrack: "training", focusCashReserve: 20, focusOnly: true },
-  { id: "recovery-track", label: "Recovery track focus", priorities: ["nutrition", "recovery"], cashReserve: 60, focusTrack: "recovery", focusCashReserve: 20, focusOnly: true },
-  { id: "performance-track", label: "Performance track focus", priorities: ["boots", "analyst"], cashReserve: 60, focusTrack: "performance", focusCashReserve: 20, focusOnly: true },
-  { id: "career-track", label: "Career track focus", priorities: ["agent"], cashReserve: 60, focusTrack: "career", focusCashReserve: 20, focusOnly: true },
-  { id: "lifestyle-track", label: "Lifestyle track focus", priorities: ["lifestyle"], cashReserve: 60, focusTrack: "lifestyle", focusCashReserve: 20, focusOnly: true },
+  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
+  { id: "development", label: "Development spending", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency", "recoveryBaseline", "trainingLoad", "agentNegotiation"], cashReserve: 60 },
+  { id: "recovery", label: "Recovery spending", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery", "xpFloor", "xpCeiling", "agentNegotiation"], cashReserve: 60 },
+  { id: "training-track", label: "Training track focus", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 60, focusTrack: "training", focusCashReserve: 20, focusOnly: true },
+  { id: "recovery-track", label: "Recovery track focus", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery"], cashReserve: 60, focusTrack: "recovery", focusCashReserve: 20, focusOnly: true },
+  { id: "career-track", label: "Career track focus", priorities: ["agentNegotiation", "sponsorshipAppeal"], cashReserve: 60, focusTrack: "career", focusCashReserve: 20, focusOnly: true },
 ];
 
 const activeSupportScenarios =
@@ -172,7 +164,6 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     tier: leagueTiers[0],
     supportUpgrades: createInitialSupportUpgrades(),
     attributes: createGenerationAttributes(generation),
-    trainingSpecialist: "finishing",
     contract: { ...initialContract },
     sponsor: undefined,
     seasonGoals: 0,
@@ -191,7 +182,6 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     levelUps: 0,
     trainingXp: 0,
     matchXp: 0,
-    specialistXp: 0,
     trainingLevelUps: 0,
     matchLevelUps: 0,
     qualityCounts: new Map(),
@@ -229,16 +219,13 @@ function simulateCareer(runIndex, scenario, generation = 1) {
 
       const focuses = chooseTrainingFocuses(state, absoluteWeekIndex);
       state.trainingFocuses = focuses;
-      state.trainingSpecialist = chooseTrainingSpecialist(focuses);
       const training = applyTraining(state, focuses, weekSeed);
       stats.levelUps += training.levelUps;
       stats.trainingXp += training.xp;
-      stats.specialistXp += training.specialistXp;
       stats.trainingLevelUps += training.levelUps;
       increment(stats.qualityCounts, training.quality);
       seasonStats.levelUps += training.levelUps;
       seasonStats.trainingXp += training.xp;
-      seasonStats.specialistXp += training.specialistXp;
       seasonStats.trainingLevelUps += training.levelUps;
       increment(seasonStats.qualityCounts, training.quality);
 
@@ -263,19 +250,17 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       seasonStats.matchXp += sumXp(match.xp);
       seasonStats.matchLevelUps += matchLevelUps;
       state.trust = clamp(state.trust + match.trustDelta, 0, 100);
-      state.pressure = clamp(state.pressure + match.playerGoals * 2 + (state.sponsor?.pressureModifier ?? 0) - getLifestylePressureRelief(state), 0, 100);
+      state.pressure = clamp(state.pressure + match.playerGoals * 2 + (state.sponsor?.pressureModifier ?? 0), 0, 100);
       const environment = getDevelopmentEnvironment(state.tier);
       const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
-      const effectiveRecoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
-      const effectiveNutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+      const effectiveRecoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline") * environment.supportEfficiency;
       const weeklyRecoveryBonus =
         1 +
         environment.recoveryBonus +
-        getRecoveryBreakthroughRelief(recoveryBreakthroughs) +
-        getWeeklySupportRecoveryBonus(effectiveRecoveryLevel, effectiveNutritionLevel);
+        getWeeklySupportRecoveryBonus(effectiveRecoveryBaselineLevel);
       const projectedFitness = clamp(state.fitness + match.fitnessDelta + weeklyRecoveryBonus, 0, 100);
-      const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
-      const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+      const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
+      const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
       state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
       state.morale = clamp(state.morale + (match.minutes > 0 ? (match.rating >= 7 ? 3 : -2) : 0), 0, 100);
       const prestigeGain = getMatchPrestigeDelta(match, state.tier, context, match.minutes > 0);
@@ -300,7 +285,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
           }
         }
       }
-      const sponsorPayout = getSponsorPayout(state.sponsor, match);
+      const sponsorPayout = applySponsorAppealBonus(getSponsorPayout(state.sponsor, match), getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")));
       const cashEarned = Math.round(
         state.contract.weeklyWage +
           (match.minutes > 0 ? state.contract.appearanceBonus : 0) +
@@ -365,7 +350,6 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     levelUps: stats.levelUps,
     trainingXp: stats.trainingXp,
     matchXp: stats.matchXp,
-    specialistXp: stats.specialistXp,
     trainingLevelUps: stats.trainingLevelUps,
     matchLevelUps: stats.matchLevelUps,
     trainingXpShare: stats.trainingXp + stats.matchXp > 0 ? stats.trainingXp / (stats.trainingXp + stats.matchXp) : 0,
@@ -412,7 +396,6 @@ function createRunStats() {
     levelUps: 0,
     trainingXp: 0,
     matchXp: 0,
-    specialistXp: 0,
     trainingLevelUps: 0,
     matchLevelUps: 0,
     qualityCounts: new Map(),
@@ -468,7 +451,6 @@ function createSeasonReport(season, state, stats, startOvr) {
     levelUps: stats.levelUps,
     trainingXp: stats.trainingXp,
     matchXp: stats.matchXp,
-    specialistXp: stats.specialistXp,
     trainingLevelUps: stats.trainingLevelUps,
     matchLevelUps: stats.matchLevelUps,
     trainingXpShare: stats.trainingXp + stats.matchXp > 0 ? stats.trainingXp / (stats.trainingXp + stats.matchXp) : 0,
@@ -505,83 +487,69 @@ function chooseTrainingFocuses(state, weekIndex) {
   return [primaryFocus, ...extraFocuses].slice(0, capacity);
 }
 
-function chooseTrainingSpecialist(focuses) {
-  return focuses.map((focus) => trainingSpecialists.find((specialist) => specialist.attributes.includes(focus))?.id).find(Boolean) ?? "finishing";
-}
-
 function applyTraining(state, focuses, seed) {
   const activeFocuses = focuses.length > 0 ? focuses : ["Finishing"];
   const environment = getDevelopmentEnvironment(state.tier);
   const qualityProfile = getTrainingQualityProfile(state, seed, environment);
-  const coachLevel = getSupportLevel(state, "coach");
-  const nutritionLevel = getSupportLevel(state, "nutrition");
-  const recoveryLevel = getSupportLevel(state, "recovery");
-  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  const xpFloorLevel = getSupportLevel(state, "xpFloor");
+  const xpCeilingLevel = getSupportLevel(state, "xpCeiling");
+  const trainingLoadLevel = getSupportLevel(state, "trainingLoad");
+  const recoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline");
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
-  const effectiveCoachLevel = coachLevel * environment.supportEfficiency;
-  const effectiveNutritionLevel = nutritionLevel * environment.supportEfficiency;
-  const effectiveRecoveryLevel = recoveryLevel * environment.supportEfficiency;
+  const effectiveXpFloorLevel = xpFloorLevel * environment.supportEfficiency;
+  const effectiveXpCeilingLevel = xpCeilingLevel * environment.supportEfficiency;
+  const effectiveTrainingLoadLevel = trainingLoadLevel * environment.supportEfficiency;
+  const effectiveRecoveryBaselineLevel = recoveryBaselineLevel * environment.supportEfficiency;
 
   if (state.fitness < 12) {
-    state.fitness = clamp(state.fitness + 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel), 0, 100);
+    state.fitness = clamp(state.fitness + 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel), 0, 100);
     state.trust = clamp(state.trust - 1, 0, 100);
-    return { xp: 0, specialistXp: 0, levelUps: 0, quality: "Poor" };
+    return { xp: 0, levelUps: 0, quality: "Poor" };
   }
 
   const xpGain = {};
   activeFocuses.forEach((focus, index) => {
     const roll = seededNoise(`${seed}-training-${focus}`);
-    const focusWeight = getTrainingFocusWeight(index);
+    const focusWeight = getTrainingFocusWeight(state, index);
     const min = Math.round(
-      (12 + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveCoachLevel) + trainingBreakthroughs * 8) *
+      (12 + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel)) *
         focusWeight *
         environment.xpMultiplier *
         qualityProfile.xpMultiplier,
     );
     const max = Math.round(
-      (55 + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveCoachLevel) + trainingBreakthroughs * 12) *
+      (55 + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel)) *
         focusWeight *
         environment.xpMultiplier *
         qualityProfile.xpMultiplier,
     );
     xpGain[focus] = (xpGain[focus] ?? 0) + Math.round(min + roll * (max - min));
   });
-  getCoachSupportFocuses(state, activeFocuses).forEach((supportFocus) => {
-    const supportRoll = seededNoise(`${seed}-coach-support-${supportFocus}`);
-    const supportMin = Math.max(1, Math.round(effectiveCoachLevel * 2.5 * environment.xpMultiplier * qualityProfile.xpMultiplier));
-    const supportMax = Math.max(1, Math.round(effectiveCoachLevel * 6 * environment.xpMultiplier * qualityProfile.xpMultiplier));
-    xpGain[supportFocus] = (xpGain[supportFocus] ?? 0) + Math.round(supportMin + supportRoll * (supportMax - supportMin));
-  });
-  const specialistXpGain = getSpecialistXpGain(state, activeFocuses, environment, qualityProfile);
-  Object.entries(specialistXpGain).forEach(([attribute, value]) => {
-    xpGain[attribute] = (xpGain[attribute] ?? 0) + value;
-  });
   const levelUps = addAttributeXp(state.attributes, xpGain);
-  const fitnessDelta = Math.min(0, -4 + getTrainingFatigueRelief(effectiveNutritionLevel));
+  const fitnessDelta = Math.min(0, -4 + getTrainingFatigueRelief(effectiveTrainingLoadLevel));
   const projectedFitness = clamp(state.fitness + fitnessDelta, 0, 100);
-  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
-  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryLevel, effectiveNutritionLevel, recoveryBreakthroughs);
+  const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
+  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   state.trust = clamp(state.trust + 1, 0, 100);
-  return { xp: sumXp(xpGain), specialistXp: sumXp(specialistXpGain), levelUps, quality: qualityProfile.quality };
+  return { xp: sumXp(xpGain), levelUps, quality: qualityProfile.quality };
 }
 
 function getTrainingFocusCapacity(state) {
-  const breakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  if (breakthroughs >= 3) return 3;
-  if (breakthroughs >= 1) return 2;
+  if (getSupportLevel(state, "focusSlot3Unlock") >= supportUpgradeMap.focusSlot3Unlock.maxLevel) return 3;
+  if (getSupportLevel(state, "focusSlot2Unlock") >= supportUpgradeMap.focusSlot2Unlock.maxLevel) return 2;
   return 1;
 }
 
-function getTrainingFocusWeight(index) {
+function getTrainingFocusWeight(state, index) {
   if (index === 0) return 1;
-  if (index === 1) return 0.62;
-  return 0.42;
+  if (index === 1) return getFocusSlot2Efficiency(state);
+  return getFocusSlot3Efficiency(state);
 }
 
 function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvironment(state.tier)) {
-  const nutritionLevel = getSupportLevel(state, "nutrition");
-  const recoveryLevel = getSupportLevel(state, "recovery");
+  const trainingLoadLevel = getSupportLevel(state, "trainingLoad");
+  const recoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline");
   const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
   const readinessScore =
@@ -589,8 +557,8 @@ function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvi
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    nutritionLevel * 1.05 +
-    recoveryLevel * 0.35 +
+    trainingLoadLevel * 0.25 +
+    recoveryBaselineLevel * 0.2 +
     trainingBreakthroughs * 5 +
     recoveryBreakthroughs * 1.5;
   const qualityScore = readinessScore + Math.round(seededNoise(`${seed}-quality`) * 34) - 17;
@@ -598,39 +566,6 @@ function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvi
   if (qualityScore >= 68) return { quality: "Sharp", xpMultiplier: 1.18 };
   if (qualityScore >= 42) return { quality: "Solid", xpMultiplier: 1 };
   return { quality: "Poor", xpMultiplier: 0.72 };
-}
-
-function getSpecialistXpGain(state, focuses, environment, qualityProfile) {
-  const specialist = trainingSpecialists.find((item) => item.id === state.trainingSpecialist) ?? trainingSpecialists[0];
-  const matchingFocuses = focuses.filter((focus) => specialist.attributes.includes(focus));
-  if (matchingFocuses.length === 0) {
-    return {};
-  }
-
-  const baseBonus = getSpecialistBaseXpBonus(state, environment);
-  const bonus = Math.max(2, Math.round(baseBonus * environment.supportEfficiency * qualityProfile.xpMultiplier));
-  return Object.fromEntries(matchingFocuses.map((focus) => [focus, bonus]));
-}
-
-function getSpecialistBaseXpBonus(state, environment) {
-  const coachLevel = getSupportLevel(state, "coach");
-  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  return Math.round(8 + environment.facilityLevel * 2 + coachLevel * 1.6 + trainingBreakthroughs * 4);
-}
-
-function getCoachSupportFocuses(state, activeFocuses) {
-  const coachLevel = getSupportLevel(state, "coach");
-  if (coachLevel <= 0) {
-    return [];
-  }
-  const focusCount = coachLevel >= 8 ? 2 : 1;
-  const activeSet = new Set(activeFocuses);
-  return Object.entries(ovrWeights)
-    .map(([attribute]) => ({ attribute, value: state.attributes[attribute].value }))
-    .filter((item) => !activeSet.has(item.attribute))
-    .sort((a, b) => a.value - b.value)
-    .slice(0, focusCount)
-    .map((item) => item.attribute);
 }
 
 function buildContext(state, fixture, matchSeed) {
@@ -680,8 +615,7 @@ function simulateMatch(state, context, matchSeed) {
   });
   const appearance = getAppearanceWindow(context.playerRole, state, context, simEvents, matchSeed);
   const minutes = getPlayerMinutesPlayed(context, appearance);
-  const adjustedAttributes = getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier);
-  const actionAttributes = applyBootsActionBoost(adjustedAttributes, getSupportLevel(state, "boots"));
+  const actionAttributes = getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier);
   const adjustedOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile, state.tier);
   const involvementScore =
     state.trust * 0.35 +
@@ -748,7 +682,7 @@ function simulateMatch(state, context, matchSeed) {
     playerMomentCount: playerResults.length,
     rating: Number(clamp(playerRating + simRatingDelta, 5.4, 9.6).toFixed(1)),
     trustDelta: sum(playerResults.map((result) => result.trustDelta)),
-    fitnessDelta: Math.min(0, getMatchFitnessDelta(minutes, playerResults, getSupportLevel(state, "recovery")) + getRecoveryBreakthroughRelief(getSupportTrackBreakthroughCount(state, "recovery"))),
+    fitnessDelta: getMatchFitnessDelta(state, minutes, playerResults),
     xp,
   };
 }
@@ -757,7 +691,7 @@ function createMatchResult(state, context, moment, choice, resultSeed) {
   const result = resolvePlayerChoice({
     moment,
     choice,
-    attributeValues: applyBootsActionBoost(getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier), getSupportLevel(state, "boots")),
+    attributeValues: getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier),
     fitness: state.fitness,
     trust: state.trust,
     playerRole: context.playerRole,
@@ -981,14 +915,16 @@ function getPlayerMinutesPlayed(context, appearance) {
   return Math.max(0, end - start);
 }
 
-function getMatchFitnessDelta(minutes, results, recoveryLevel = 0) {
+function getMatchFitnessDelta(state, minutes, results) {
   if (minutes <= 0) {
     return 0;
   }
+  const environment = getDevelopmentEnvironment(state.tier);
+  const matchRecoveryLevel = getSupportLevel(state, "matchRecovery") * environment.supportEfficiency;
   const minuteLoad = -Math.max(1, Math.round(minutes / 18));
   const actionLoad = sum(results.map((result) => Math.min(0, result.fitnessDelta)));
   const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
-  return clamp(minuteLoad + scaledActionLoad + getMatchActionRecoveryRelief(recoveryLevel), -12, 0);
+  return clamp(minuteLoad + scaledActionLoad + getMatchActionRecoveryRelief(matchRecoveryLevel), -12, 0);
 }
 
 function getSelectionReport(state, fixture, importance = "Normal") {
@@ -1005,10 +941,9 @@ function getSelectionReport(state, fixture, importance = "Normal") {
   const abilityImpact = clamp(Math.round((playerOvr - tier.averageOvr) * 0.8), -8, 10);
   const fixtureGap = (fixture.opponentStrength + tierOffset) - (teamStrength + tierOffset);
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
-  const analystImpact = getSupportLevel(state, "analyst") * 2 + getSupportTrackBreakthroughCount(state, "performance") * 2;
   const pressureImpact = -Math.round((state.pressure ?? 0) * 0.08);
   const score = clamp(
-    22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + abilityImpact + analystImpact + pressureImpact,
+    22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + abilityImpact + pressureImpact,
     0,
     100,
   );
@@ -1080,6 +1015,16 @@ function getSponsorPayout(sponsor, match) {
     objectiveBonus,
     total: sponsor.weeklyRetainer + objectiveBonus,
   };
+}
+
+function applySponsorAppealBonus(payout, bonusRatio) {
+  if (bonusRatio <= 0 || payout.total <= 0) {
+    return payout;
+  }
+
+  const retainer = Math.round(payout.retainer * (1 + bonusRatio));
+  const objectiveBonus = Math.round(payout.objectiveBonus * (1 + bonusRatio));
+  return { ...payout, retainer, objectiveBonus, total: retainer + objectiveBonus };
 }
 
 function isSponsorObjectiveCompleted(sponsor, match) {
@@ -1264,7 +1209,6 @@ function summarizeSeasons(items) {
     levelUps: stat(items.map((item) => item.levelUps)),
     trainingXp: stat(items.map((item) => item.trainingXp)),
     matchXp: stat(items.map((item) => item.matchXp)),
-    specialistXp: stat(items.map((item) => item.specialistXp)),
     trainingLevelUps: stat(items.map((item) => item.trainingLevelUps)),
     matchLevelUps: stat(items.map((item) => item.matchLevelUps)),
     trainingXpShare: stat(items.map((item) => item.trainingXpShare)),
@@ -1323,7 +1267,6 @@ function summarizeSeasonCurve(items) {
       levelUps: stat(seasonItems.map((item) => item.levelUps)),
       trainingXp: stat(seasonItems.map((item) => item.trainingXp)),
       matchXp: stat(seasonItems.map((item) => item.matchXp)),
-      specialistXp: stat(seasonItems.map((item) => item.specialistXp)),
       trainingLevelUps: stat(seasonItems.map((item) => item.trainingLevelUps)),
       matchLevelUps: stat(seasonItems.map((item) => item.matchLevelUps)),
       trainingXpShare: stat(seasonItems.map((item) => item.trainingXpShare)),
@@ -1377,7 +1320,6 @@ function printSeasonReport(report, scenario, generation) {
   printStat("Level-ups", report.levelUps);
   printStat("Training XP", report.trainingXp);
   printStat("Match XP", report.matchXp);
-  printStat("Specialist XP", report.specialistXp);
   printStat("Training level-ups", report.trainingLevelUps);
   printStat("Match level-ups", report.matchLevelUps);
   printStat("Training XP share", report.trainingXpShare);
@@ -1410,7 +1352,7 @@ function printSeasonReport(report, scenario, generation) {
 
 function printCareerCurve(report) {
   console.log("Career curve avg:");
-  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M/S | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | Cash net | Prestige | Support");
+  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | Cash net | Prestige | Support");
   report.seasonCurve.forEach((season) => {
     const target = getTargetOvrForCareerSeason(season.season);
     console.log(
@@ -1422,7 +1364,7 @@ function printCareerCurve(report) {
         format(target),
         format(season.endOvr.avg - target),
         format(season.ovrGain.avg),
-        `${format(season.trainingXp.avg)}/${format(season.matchXp.avg)}/${format(season.specialistXp.avg)}`,
+        `${format(season.trainingXp.avg)}/${format(season.matchXp.avg)}`,
         `${format(season.trainingLevelUps.avg)}/${format(season.matchLevelUps.avg)}`,
         getMostCommon([...season.qualityCounts.entries()].flatMap(([quality, count]) => Array.from({ length: count }, () => quality))),
         `${format(season.apps.avg)}/${format(season.starts.avg)}`,
@@ -1653,6 +1595,9 @@ function getAffordableSupportUpgrades(state, upgradeIds, cashReserve) {
     if (!upgrade) {
       return false;
     }
+    if (!isSupportUpgradeUnlocked(state, upgrade)) {
+      return false;
+    }
     const currentLevel = getSupportLevel(state, upgradeId);
     if (currentLevel >= upgrade.maxLevel) {
       return false;
@@ -1663,10 +1608,15 @@ function getAffordableSupportUpgrades(state, upgradeIds, cashReserve) {
   return affordable;
 }
 
+function isSupportUpgradeUnlocked(state, upgrade) {
+  const requirements = upgrade.requires ?? {};
+  return Object.entries(requirements).every(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId) >= requiredLevel);
+}
+
 function getSupportUpgradeCost(upgrade, currentLevel) {
-  const earlyRamp = 1 + currentLevel * 0.78 + Math.pow(currentLevel, 2) * 0.24;
-  const lateRamp = currentLevel >= 6 ? Math.pow(currentLevel - 5, 2) * 0.55 : 0;
-  const eliteRamp = currentLevel >= 10 ? Math.pow(currentLevel - 9, 2) * 1.1 : 0;
+  const earlyRamp = 1 + currentLevel * 0.34 + Math.pow(currentLevel, 2) * 0.055;
+  const lateRamp = currentLevel >= 30 ? Math.pow(currentLevel - 29, 2) * 0.025 : 0;
+  const eliteRamp = currentLevel >= 70 ? Math.pow(currentLevel - 69, 2) * 0.06 : 0;
   return Math.round(upgrade.baseCost * (earlyRamp + lateRamp + eliteRamp));
 }
 
@@ -1692,20 +1642,12 @@ function getSupportTrackBreakthroughCount(state, trackId) {
   return track.breakpoints.filter((breakpoint) => total >= breakpoint).length;
 }
 
-function getRecoveryBreakthroughRelief(breakthroughs) {
-  return Math.min(1, Math.floor(breakthroughs / 3));
-}
-
-function getLifestylePressureRelief(state) {
-  return Math.min(6, Math.floor(getSupportLevel(state, "lifestyle") / 3) + getSupportTrackBreakthroughCount(state, "lifestyle"));
-}
-
 function getClubContractOffer(state, match, fixture) {
   const current = state.contract;
   const selection = getSelectionReport(state, fixture);
   const averageRating = average(state.ratings, 6.4);
   const ovr = calculateOvr(flattenAttributes(state.attributes));
-  const agentLevel = getSupportLevel(state, "agent");
+  const agentLevel = getSupportLevel(state, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(state, "career");
   const rolePromise = getPromisedRole(selection.score, current.rolePromise);
   const expiringSoon = current.weeksRemaining <= 1;
@@ -1737,7 +1679,7 @@ function getClubContractOffer(state, match, fixture) {
     appearanceBonus: roundToNearest(8 + weeklyWage * 0.08, 5),
     goalBonus: roundToNearest(14 + weeklyWage * 0.14, 5),
     assistBonus: roundToNearest(11 + weeklyWage * 0.11, 5),
-    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 0.7 : 0.35) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03), 10),
+    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 0.7 : 0.35) * (1 + getAgentSigningBonusLeverage(agentLevel) + careerBreakthroughs * 0.03), 10),
     pressureModifier,
   };
 }
@@ -1778,7 +1720,7 @@ function getTierWageCap(tier, role) {
 }
 
 function getContractLeverage(agentLevel, careerBreakthroughs) {
-  return 1 + agentLevel * 0.022 + careerBreakthroughs * 0.018;
+  return 1 + getAgentWageLeverage(agentLevel) + careerBreakthroughs * 0.018;
 }
 
 function createWorldSeasonFixtures(tier, careerSeason, runIndex) {
@@ -1863,35 +1805,49 @@ function getDevelopmentEnvironment(tier) {
 }
 
 function getTrainingXpFloorBonus(level) {
-  return Math.round(level * 5.5);
+  return Math.floor(level);
 }
 
 function getTrainingXpCeilingBonus(level) {
-  return Math.round(level * 5);
+  return Math.floor(level);
+}
+
+function getFocusSlot2Efficiency(state) {
+  if (getSupportLevel(state, "focusSlot2Unlock") < supportUpgradeMap.focusSlot2Unlock.maxLevel) {
+    return 0;
+  }
+  return clamp(0.2 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.2, 0.8);
+}
+
+function getFocusSlot3Efficiency(state) {
+  if (getSupportLevel(state, "focusSlot3Unlock") < supportUpgradeMap.focusSlot3Unlock.maxLevel) {
+    return 0;
+  }
+  return clamp(0.1 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.1, 0.6);
 }
 
 function getTrainingFatigueRelief(level) {
-  return Math.min(7, Math.round(level * 0.52));
+  return Math.min(14, Math.floor(level / 4));
 }
 
-function getRecoverySessionBonus(recoveryLevel, nutritionLevel) {
-  return Math.min(12, Math.round(recoveryLevel * 0.8 + nutritionLevel * 0.45));
+function getRecoverySessionBonus(baselineLevel) {
+  return Math.min(12, Math.round(baselineLevel * 0.32));
 }
 
-function getWeeklySupportRecoveryBonus(recoveryLevel, nutritionLevel) {
-  return Math.min(3, Math.round(recoveryLevel * 0.18 + nutritionLevel * 0.28));
+function getWeeklySupportRecoveryBonus(baselineLevel) {
+  return Math.min(5, Math.floor(baselineLevel / 8));
 }
 
 function getMatchActionRecoveryRelief(level) {
-  return Math.min(2, Math.round(level * 0.16));
+  return Math.min(10, Math.floor(level / 5));
 }
 
-function getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, breakthroughs = 0) {
-  return Math.min(58, 12 + Math.round(recoveryLevel * 0.85 + nutritionLevel * 0.55 + breakthroughs * 3));
+function getRecoveryFitnessFloor(baselineLevel, breakthroughs = 0) {
+  return Math.min(58, 12 + Math.round(baselineLevel * 0.45 + breakthroughs * 2));
 }
 
-function getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, breakthroughs = 0) {
-  return Math.min(82, 68 + Math.round(recoveryLevel * 0.35 + nutritionLevel * 0.25 + breakthroughs * 2));
+function getRecoveryFitnessCeiling(baselineLevel, breakthroughs = 0) {
+  return Math.min(82, 68 + Math.round(baselineLevel * 0.2 + breakthroughs * 1.5));
 }
 
 function applyRecoveryFloor(currentFitness, projectedFitness, floor) {
@@ -1912,20 +1868,16 @@ function applyRecoveryCeiling(projectedFitness, ceiling) {
   return clamp(ceiling + Math.round(overflow * 0.25), 0, 100);
 }
 
-function getBootsActionBoost(bootsLevel) {
-  return Math.min(7, Math.floor(bootsLevel / 2));
+function getAgentWageLeverage(level) {
+  return level / 100;
 }
 
-function applyBootsActionBoost(attributeValues, bootsLevel) {
-  const boost = getBootsActionBoost(bootsLevel);
-  if (boost <= 0) {
-    return attributeValues;
-  }
+function getAgentSigningBonusLeverage(level) {
+  return (level * 2) / 100;
+}
 
-  return {
-    ...attributeValues,
-    ...Object.fromEntries(bootsActionAttributes.map((attribute) => [attribute, clamp((attributeValues[attribute] ?? 50) + boost, 1, 100)])),
-  };
+function getSponsorAppealBonus(level) {
+  return (level * 2) / 100;
 }
 
 function cloneAttributes(attributes) {

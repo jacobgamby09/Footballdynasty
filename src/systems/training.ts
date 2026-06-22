@@ -1,14 +1,12 @@
 import { currentLeagueTier } from "../data/leagues";
-import { trainingSpecialistMap } from "../data/support";
 import { seededNoise } from "../engine/matchEngineCore";
-import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { getAttributeGrowthPressure, getAttributeXpRequirement, getBaseAttributeXpRequirement } from "./attributeXp";
 import { formatPercentDelta, formatSigned } from "./formatting";
-import { getAttributeValue, getClubLeagueTier, getXpPercent } from "./ovr";
+import { getClubLeagueTier, getXpPercent } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
 import { getSelectionReport } from "./selection";
-import { applyRecoveryCeiling, applyRecoveryFloor, getBootsActionBoost, getLifestylePressureRelief, getMatchActionRecoveryRelief, getRecoveryBreakthroughRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getRecoverySessionBonus, getSupportLevel, getSupportTrackBreakthroughCount, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getAgentSigningBonusLeverage, getAgentWageLeverage, getFocusSlot2Efficiency, getFocusSlot3Efficiency, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getRecoverySessionBonus, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus, isFocusSlot2Unlocked, isFocusSlot3Unlocked } from "./support";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, AttributeLevelUp, DevelopmentEnvironment, GameState, Intensity, LeagueTier, SupportTrackDefinition, SupportUpgradeId, TrainingQuality, TrainingQualityProfile, TrainingSummary } from "../types";
 
@@ -21,58 +19,27 @@ export function getSupportInvestmentImpactLine(state: GameState, track: SupportT
       [upgradeId]: currentLevel + 1,
     },
   };
-  const beforeBreakthroughs = getSupportTrackBreakthroughCount(state, track.id);
-  const afterBreakthroughs = getSupportTrackBreakthroughCount(nextState, track.id);
-  const breakthroughDelta = afterBreakthroughs - beforeBreakthroughs;
-
-  if (upgradeId === "coach") {
-    const beforeCapacity = getTrainingFocusCapacity(state);
-    const afterCapacity = getTrainingFocusCapacity(nextState);
-    if (afterCapacity > beforeCapacity) {
-      return `Unlock ${afterCapacity} training focus slots`;
-    }
-    const beforeFloor = getTrainingXpFloorBonus(currentLevel) + beforeBreakthroughs * 8;
-    const afterFloor = getTrainingXpFloorBonus(currentLevel + 1) + afterBreakthroughs * 8;
-    const beforeCeiling = getTrainingXpCeilingBonus(currentLevel) + beforeBreakthroughs * 12;
-    const afterCeiling = getTrainingXpCeilingBonus(currentLevel + 1) + afterBreakthroughs * 12;
-    return `+${afterFloor - beforeFloor} XP floor, +${afterCeiling - beforeCeiling} XP ceiling`;
+  if (upgradeId === "xpFloor") return "+1 XP floor";
+  if (upgradeId === "xpCeiling") return "+1 XP ceiling";
+  if (upgradeId === "focusSlot2Unlock") return currentLevel + 1 >= 5 ? "Unlock focus slot 2" : "Progress toward focus slot 2";
+  if (upgradeId === "focusSlot2Efficiency") return "+1% slot 2 XP";
+  if (upgradeId === "focusSlot3Unlock") return currentLevel + 1 >= 8 ? "Unlock focus slot 3" : "Progress toward focus slot 3";
+  if (upgradeId === "focusSlot3Efficiency") return "+1% slot 3 XP";
+  if (upgradeId === "trainingLoad") {
+    const before = getTrainingFatigueRelief(currentLevel);
+    const after = getTrainingFatigueRelief(currentLevel + 1);
+    return after > before ? `+${after - before} training relief` : "Progress toward +1 training relief";
   }
-
-  if (upgradeId === "nutrition") {
-    const delta = getTrainingFatigueRelief(currentLevel + 1) - getTrainingFatigueRelief(currentLevel);
-    return delta > 0 ? `+${delta} training fatigue relief` : "Progress toward +1 training fatigue relief";
+  if (upgradeId === "matchRecovery") {
+    const before = getMatchActionRecoveryRelief(currentLevel);
+    const after = getMatchActionRecoveryRelief(currentLevel + 1);
+    return after > before ? `+${after - before} match relief` : "Progress toward +1 match relief";
   }
+  if (upgradeId === "recoveryBaseline") return "+1 baseline recovery level";
+  if (upgradeId === "agentNegotiation") return "+1% wage, +2% signing";
+  if (upgradeId === "sponsorshipAppeal") return "+2% sponsor payouts";
 
-  if (upgradeId === "recovery") {
-    const before = getMatchActionRecoveryRelief(currentLevel) + getRecoveryBreakthroughRelief(beforeBreakthroughs);
-    const after = getMatchActionRecoveryRelief(currentLevel + 1) + getRecoveryBreakthroughRelief(afterBreakthroughs);
-    return after > before ? `+${after - before} match fatigue relief` : "Progress toward +1 match fatigue relief";
-  }
-
-  if (upgradeId === "boots") {
-    const before = getBootsActionBoost(currentLevel);
-    const after = getBootsActionBoost(currentLevel + 1);
-    return after > before ? `+${after - before} action attribute boost` : "Progress toward +1 action attribute boost";
-  }
-
-  if (upgradeId === "analyst") {
-    const selectionDelta = 2 + breakthroughDelta * 2;
-    return `+${selectionDelta} selection score support`;
-  }
-
-  if (upgradeId === "agent") {
-    const wageDelta = 4 + breakthroughDelta * 3.5;
-    const signingDelta = 8 + breakthroughDelta * 6;
-    return `+${formatPercentDelta(wageDelta)} wage, +${formatPercentDelta(signingDelta)} signing bonus`;
-  }
-
-  if (upgradeId === "lifestyle") {
-    const before = getLifestylePressureRelief(currentLevel, beforeBreakthroughs);
-    const after = getLifestylePressureRelief(currentLevel + 1, afterBreakthroughs);
-    return after > before ? `-${after - before} weekly pressure` : "Progress toward -1 weekly pressure";
-  }
-
-  return "Small support improvement";
+  return `${nextState.supportUpgrades[upgradeId] ?? 0} ${track.name} levels`;
 }
 
 
@@ -81,38 +48,32 @@ export function getSupportTrackCurrentBonusLines(state: GameState, track: Suppor
   const breakthroughs = getSupportTrackBreakthroughCount(state, track.id);
 
   if (track.id === "training") {
-    const coachLevel = getSupportLevel(state, "coach") * environment.supportEfficiency;
-    const floor = getTrainingXpFloorBonus(coachLevel) + breakthroughs * 8;
-    const ceiling = getTrainingXpCeilingBonus(coachLevel) + breakthroughs * 12;
-    const specialist = getSpecialistBaseXpBonus(state, environment);
-    return [`${getTrainingFocusCapacity(state)} focus slot${getTrainingFocusCapacity(state) > 1 ? "s" : ""}`, `+${floor} XP floor`, `+${ceiling} XP ceiling`, `+${specialist} specialist XP`];
+    const floor = getTrainingXpFloorBonus(getSupportLevel(state, "xpFloor") * environment.supportEfficiency);
+    const ceiling = getTrainingXpCeilingBonus(getSupportLevel(state, "xpCeiling") * environment.supportEfficiency);
+    return [
+      `${getTrainingFocusCapacity(state)} focus slot${getTrainingFocusCapacity(state) > 1 ? "s" : ""}`,
+      `+${floor} XP floor`,
+      `+${ceiling} XP ceiling`,
+      `${Math.round(getFocusSlot2Efficiency(state) * 100)}% slot 2`,
+    ];
   }
 
   if (track.id === "recovery") {
-    const recoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
-    const nutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
-    const floor = getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, breakthroughs);
-    const ceiling = getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, breakthroughs);
+    const baselineLevel = getSupportLevel(state, "recoveryBaseline") * environment.supportEfficiency;
+    const floor = getRecoveryFitnessFloor(baselineLevel, breakthroughs);
+    const ceiling = getRecoveryFitnessCeiling(baselineLevel, breakthroughs);
     return [
-      `+${getWeeklySupportRecoveryBonus(recoveryLevel, nutritionLevel)} weekly recovery`,
-      `+${getTrainingFatigueRelief(nutritionLevel)} training relief`,
-      `+${getMatchActionRecoveryRelief(recoveryLevel) + getRecoveryBreakthroughRelief(breakthroughs)} match relief`,
+      `+${getWeeklySupportRecoveryBonus(baselineLevel)} weekly recovery`,
+      `+${getTrainingFatigueRelief(getSupportLevel(state, "trainingLoad") * environment.supportEfficiency)} training relief`,
+      `+${getMatchActionRecoveryRelief(getSupportLevel(state, "matchRecovery") * environment.supportEfficiency)} match relief`,
       `${floor}-${ceiling} fitness band`,
     ];
   }
 
-  if (track.id === "performance") {
-    const analystSupport = getSupportLevel(state, "analyst") * 2 + breakthroughs * 2;
-    return [`+${getBootsActionBoost(getSupportLevel(state, "boots"))} action attributes`, `+${analystSupport} selection score`];
-  }
-
   if (track.id === "career") {
-    const agentLevel = getSupportLevel(state, "agent");
-    return [`+${formatPercentDelta(agentLevel * 4 + breakthroughs * 3.5)} wage`, `+${formatPercentDelta(agentLevel * 8 + breakthroughs * 6)} signing bonus`];
-  }
-
-  if (track.id === "lifestyle") {
-    return [`-${getLifestylePressureRelief(getSupportLevel(state, "lifestyle"), breakthroughs)} weekly pressure`, "Sponsor-ready later"];
+    const agentLevel = getSupportLevel(state, "agentNegotiation");
+    const sponsorLevel = getSupportLevel(state, "sponsorshipAppeal");
+    return [`+${formatPercentDelta(getAgentWageLeverage(agentLevel) * 100)} wage`, `+${formatPercentDelta(getAgentSigningBonusLeverage(agentLevel) * 100)} signing`, `+${formatPercentDelta(getSponsorAppealBonus(sponsorLevel) * 100)} sponsor`];
   }
 
   return ["No active bonus yet"];
@@ -122,7 +83,7 @@ export function getSupportTrackCurrentBonusLines(state: GameState, track: Suppor
 export function applyTrainingWeek(state: GameState): GameState {
   const projection = getTrainingProjection(state);
   const rolledXp = rollTrainingXp(state, projection.ranges, createTrainingSeed(state));
-  const combinedXp = mergeAttributeXp(rolledXp, projection.specialistXp);
+  const combinedXp = rolledXp;
   const selectionBefore = getSelectionReport(state, getCurrentFixture(state.season)).score;
   const attributeResult = addAttributeXpDetailed(state.attributes, combinedXp);
   const fitness = getProjectedTrainingFitness(state, projection.fitnessDelta);
@@ -141,10 +102,8 @@ export function applyTrainingWeek(state: GameState): GameState {
     week: state.week,
     focuses: getCurrentTrainingFocuses(state),
     intensity: state.intensity,
-    specialist: state.trainingSpecialist,
     quality: projection.quality,
     qualityLabel: projection.qualityLabel,
-    specialistXp: projection.specialistXp,
     ranges: projection.ranges,
     xp: combinedXp,
     fitnessDelta: actualFitnessDelta,
@@ -246,14 +205,15 @@ export function getTrainingProjection(state: GameState) {
   const intensity = getIntensityProfile(state.intensity);
   const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
   const qualityProfile = getTrainingQualityProfile(state, createTrainingSeed(state), environment);
-  const coachLevel = getSupportLevel(state, "coach");
-  const nutritionLevel = getSupportLevel(state, "nutrition");
-  const recoveryLevel = getSupportLevel(state, "recovery");
-  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
+  const xpFloorLevel = getSupportLevel(state, "xpFloor");
+  const xpCeilingLevel = getSupportLevel(state, "xpCeiling");
+  const trainingLoadLevel = getSupportLevel(state, "trainingLoad");
+  const recoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline");
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
-  const effectiveCoachLevel = coachLevel * environment.supportEfficiency;
-  const effectiveNutritionLevel = nutritionLevel * environment.supportEfficiency;
-  const effectiveRecoveryLevel = recoveryLevel * environment.supportEfficiency;
+  const effectiveXpFloorLevel = xpFloorLevel * environment.supportEfficiency;
+  const effectiveXpCeilingLevel = xpCeilingLevel * environment.supportEfficiency;
+  const effectiveTrainingLoadLevel = trainingLoadLevel * environment.supportEfficiency;
+  const effectiveRecoveryBaselineLevel = recoveryBaselineLevel * environment.supportEfficiency;
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
 
   if (state.fitness < 12) {
@@ -262,8 +222,7 @@ export function getTrainingProjection(state: GameState) {
       quality: "Poor" as TrainingQuality,
       qualityLabel: "Recovery session",
       qualityProfile: getTrainingQualityProfileByQuality("Poor"),
-      specialistXp: {} as Partial<Record<AttributeKey, number>>,
-      fitnessDelta: 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryLevel, effectiveNutritionLevel),
+      fitnessDelta: 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel),
       moraleDelta: 1,
       trustDelta: -1,
     };
@@ -271,12 +230,12 @@ export function getTrainingProjection(state: GameState) {
 
   getCurrentTrainingFocuses(state).forEach((focus, index) => {
     const baseRange = getBaseTrainingRange(state, focus);
-    const focusWeight = getTrainingFocusWeight(index);
+    const focusWeight = getTrainingFocusWeight(state, index);
     ranges[focus] = {
       min: Math.max(
         1,
         Math.round(
-          (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveCoachLevel) + trainingBreakthroughs * 8) *
+          (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel)) *
             focusWeight *
             environment.xpMultiplier *
             qualityProfile.xpMultiplier,
@@ -285,7 +244,7 @@ export function getTrainingProjection(state: GameState) {
       max: Math.max(
         1,
         Math.round(
-          (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveCoachLevel) + trainingBreakthroughs * 12) *
+          (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel)) *
             focusWeight *
             environment.xpMultiplier *
             qualityProfile.xpMultiplier,
@@ -293,16 +252,10 @@ export function getTrainingProjection(state: GameState) {
       ),
     };
   });
-  getCoachSupportFocuses(state).forEach((focus) => {
-    ranges[focus] = {
-      min: Math.max(1, Math.round(effectiveCoachLevel * 2.5 * environment.xpMultiplier * qualityProfile.xpMultiplier)),
-      max: Math.max(1, Math.round(effectiveCoachLevel * 6 * environment.xpMultiplier * qualityProfile.xpMultiplier)),
-    };
-  });
 
   const rawFitnessDelta =
     intensity.fitnessDelta < 0
-      ? Math.min(0, intensity.fitnessDelta + getTrainingFatigueRelief(effectiveNutritionLevel))
+      ? Math.min(0, intensity.fitnessDelta + getTrainingFatigueRelief(effectiveTrainingLoadLevel))
       : intensity.fitnessDelta + environment.recoveryBonus;
 
   return {
@@ -310,7 +263,6 @@ export function getTrainingProjection(state: GameState) {
     quality: qualityProfile.quality,
     qualityLabel: qualityProfile.label,
     qualityProfile,
-    specialistXp: getProjectedSpecialistXp(state, environment, qualityProfile),
     fitnessDelta: getProjectedTrainingFitness(state, rawFitnessDelta) - state.fitness,
     moraleDelta: intensity.moraleDelta,
     trustDelta: intensity.trustDelta,
@@ -334,19 +286,18 @@ export function getDevelopmentEnvironment(tier: LeagueTier): DevelopmentEnvironm
 function getProjectedTrainingFitness(state: GameState, fitnessDelta: number) {
   const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
-  const recoveryLevel = getSupportLevel(state, "recovery") * environment.supportEfficiency;
-  const nutritionLevel = getSupportLevel(state, "nutrition") * environment.supportEfficiency;
+  const baselineLevel = getSupportLevel(state, "recoveryBaseline") * environment.supportEfficiency;
   const projectedFitness = clamp(state.fitness + fitnessDelta, 0, 100);
-  const floor = getRecoveryFitnessFloor(recoveryLevel, nutritionLevel, recoveryBreakthroughs);
-  const ceiling = getRecoveryFitnessCeiling(recoveryLevel, nutritionLevel, recoveryBreakthroughs);
+  const floor = getRecoveryFitnessFloor(baselineLevel, recoveryBreakthroughs);
+  const ceiling = getRecoveryFitnessCeiling(baselineLevel, recoveryBreakthroughs);
 
   return applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, floor), ceiling);
 }
 
 
 export function getTrainingQualityProfile(state: GameState, seed: string, environment = getDevelopmentEnvironment(currentLeagueTier)): TrainingQualityProfile {
-  const nutritionLevel = getSupportLevel(state, "nutrition");
-  const recoveryLevel = getSupportLevel(state, "recovery");
+  const trainingLoadLevel = getSupportLevel(state, "trainingLoad");
+  const recoveryBaselineLevel = getSupportLevel(state, "recoveryBaseline");
   const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
   const recoveryBreakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
   const readinessScore =
@@ -354,8 +305,8 @@ export function getTrainingQualityProfile(state: GameState, seed: string, enviro
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    nutritionLevel * 1.05 +
-    recoveryLevel * 0.35 +
+    trainingLoadLevel * 0.25 +
+    recoveryBaselineLevel * 0.2 +
     trainingBreakthroughs * 5 +
     recoveryBreakthroughs * 1.5 +
     (state.intensity === "Hard" ? -6 : state.intensity === "Light" ? 4 : 0);
@@ -407,33 +358,6 @@ export function getTrainingQualityProfileByQuality(quality: TrainingQuality): Tr
 }
 
 
-export function getProjectedSpecialistXp(
-  state: GameState,
-  environment = getDevelopmentEnvironment(currentLeagueTier),
-  qualityProfile = getTrainingQualityProfile(state, createTrainingSeed(state), environment),
-): Partial<Record<AttributeKey, number>> {
-  const specialist = trainingSpecialistMap[state.trainingSpecialist] ?? trainingSpecialistMap.finishing;
-  const focuses = getCurrentTrainingFocuses(state);
-  const matchingFocuses = focuses.filter((focus) => specialist.attributes.includes(focus));
-  if (matchingFocuses.length === 0) {
-    return {};
-  }
-
-  const coachLevel = getSupportLevel(state, "coach");
-  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  const baseBonus = getSpecialistBaseXpBonus(state, environment);
-  const bonus = Math.max(2, Math.round(baseBonus * environment.supportEfficiency * qualityProfile.xpMultiplier));
-  return Object.fromEntries(matchingFocuses.map((focus) => [focus, bonus])) as Partial<Record<AttributeKey, number>>;
-}
-
-
-export function getSpecialistBaseXpBonus(state: GameState, environment = getDevelopmentEnvironment(currentLeagueTier)) {
-  const coachLevel = getSupportLevel(state, "coach");
-  const trainingBreakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  return Math.round(8 + environment.facilityLevel * 2 + coachLevel * 1.6 + trainingBreakthroughs * 4);
-}
-
-
 export function getCurrentTrainingFocuses(state: GameState): AttributeKey[] {
   const capacity = getTrainingFocusCapacity(state);
   const uniqueFocuses = Array.from(new Set(state.trainingFocuses.length > 0 ? state.trainingFocuses : ["Finishing"]));
@@ -442,25 +366,24 @@ export function getCurrentTrainingFocuses(state: GameState): AttributeKey[] {
 
 
 export function getTrainingFocusCapacity(state: Pick<GameState, "supportUpgrades">) {
-  const breakthroughs = getSupportTrackBreakthroughCount(state, "training");
-  if (breakthroughs >= 3) {
+  if (isFocusSlot3Unlocked(state)) {
     return 3;
   }
-  if (breakthroughs >= 1) {
+  if (isFocusSlot2Unlocked(state)) {
     return 2;
   }
   return 1;
 }
 
 
-export function getTrainingFocusWeight(index: number) {
+export function getTrainingFocusWeight(state: Pick<GameState, "supportUpgrades">, index: number) {
   if (index === 0) {
     return 1;
   }
   if (index === 1) {
-    return 0.62;
+    return getFocusSlot2Efficiency(state);
   }
-  return 0.42;
+  return getFocusSlot3Efficiency(state);
 }
 
 
@@ -473,24 +396,6 @@ export function getTrainingFocusUnlockLabel(state: Pick<GameState, "supportUpgra
     return "2 focus slots";
   }
   return "1 focus slot";
-}
-
-
-export function getCoachSupportFocuses(state: GameState): AttributeKey[] {
-  const coachLevel = getSupportLevel(state, "coach");
-  if (coachLevel <= 0) {
-    return [];
-  }
-
-  const activeFocuses = new Set(getCurrentTrainingFocuses(state));
-  const positionModule = getPositionModule(state.positionGroup);
-  const focusCount = coachLevel >= 8 ? 2 : 1;
-  return positionModule.keyAttributes
-    .filter((attribute) => !activeFocuses.has(attribute))
-    .map((attribute) => ({ attribute, value: getAttributeValue(state.attributes, attribute) }))
-    .sort((a, b) => a.value - b.value)
-    .slice(0, focusCount)
-    .map((item) => item.attribute);
 }
 
 
@@ -552,16 +457,21 @@ export function getAttributeGrowthDetail(state: GameState, attribute: Attribute)
   const pressure = getAttributeGrowthPressure(attribute);
   const baseRequirement = getBaseAttributeXpRequirement(attribute.value);
   const requirement = getAttributeXpRequirement(attribute);
-  const isSelected = getCurrentTrainingFocuses(state).includes(attribute.label);
-  const isCoachSupported = getCoachSupportFocuses(state).includes(attribute.label);
+  const currentFocuses = getCurrentTrainingFocuses(state);
+  const focusIndex = currentFocuses.indexOf(attribute.label);
+  const isSelected = focusIndex >= 0;
   const modifiers = [
     `Facilities x${environment.xpMultiplier.toFixed(2)}`,
     `Facility floor +${environment.xpFloorBonus}`,
-    `Coach Lv ${getSupportLevel(state, "coach")}`,
+    `XP floor +${getTrainingXpFloorBonus(getSupportLevel(state, "xpFloor") * environment.supportEfficiency)}`,
+    `XP ceiling +${getTrainingXpCeilingBonus(getSupportLevel(state, "xpCeiling") * environment.supportEfficiency)}`,
   ];
 
-  if (isCoachSupported) {
-    modifiers.push("Coach support XP");
+  if (focusIndex === 1) {
+    modifiers.push(`Slot 2 efficiency ${Math.round(getFocusSlot2Efficiency(state) * 100)}%`);
+  }
+  if (focusIndex === 2) {
+    modifiers.push(`Slot 3 efficiency ${Math.round(getFocusSlot3Efficiency(state) * 100)}%`);
   }
 
   if (getSupportTrackBreakthroughCount(state, "training") > 0) {
@@ -575,7 +485,7 @@ export function getAttributeGrowthDetail(state: GameState, attribute: Attribute)
     progress: getXpPercent(attribute.xp, requirement),
     xpToNext: Math.max(0, requirement - attribute.xp),
     isSelected,
-    trainingRange: range ? `${range.min}-${range.max} XP` : isCoachSupported ? "Support XP" : "Not focused",
+    trainingRange: range ? `${range.min}-${range.max} XP` : "Not focused",
     modifiers,
     improvementTips: [
       "Train this stat",

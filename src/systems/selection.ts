@@ -5,7 +5,6 @@ import { clamp } from "../utils";
 import { getFormLabel, getFormScore, getPressureLabel } from "./formatting";
 import { calculateOvr, getClubLeagueTier } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
-import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import type { MatchRole, PositionModule } from "../positionRoles";
 import type { Contract, FitnessAvailability, Fixture, GameState, SelectionReport, UpcomingMatch } from "../types";
 
@@ -68,10 +67,9 @@ export function getSelectionReport(
   const fixtureGap = fixture.opponentStrength - state.club.strength;
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
   const promiseImpact = Math.round(getRoleThreshold(state.contract.rolePromise) * 0.12);
-  const analystImpact = getSupportLevel(state, "analyst") * 2 + getSupportTrackBreakthroughCount(state, "performance") * 2;
   const pressureImpact = -Math.round(state.pressure * 0.08);
   const score = clamp(
-    22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + analystImpact + abilityImpact + pressureImpact,
+    22 + trustImpact + fitnessImpact + formImpact + ratingImpact + importanceImpact + fixtureImpact + promiseImpact + abilityImpact + pressureImpact,
     0,
     100,
   );
@@ -126,12 +124,6 @@ export function getSelectionReport(
         value: state.contract.rolePromise,
         impact: promiseImpact,
         tone: promiseImpact >= 7 ? "good" : "neutral",
-      },
-      {
-        label: "Analyst",
-        value: `Lv ${getSupportLevel(state, "analyst")}`,
-        impact: analystImpact,
-        tone: analystImpact > 0 ? "good" : "neutral",
       },
       {
         label: "Pressure",

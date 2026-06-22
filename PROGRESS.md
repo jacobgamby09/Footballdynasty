@@ -60,7 +60,7 @@
 - Training Setup breakthroughs now unlock more weekly focus capacity: one focus by default, two focus slots after the first Training breakthrough and three after the third Training breakthrough.
 - Training focus selection now supports multiple active stats while keeping at least one selected focus.
 - Secondary focus slots use reduced XP weights, so extra slots feel like better training capacity rather than a flat XP duplication.
-- Specialist programs can bonus multiple selected focuses when the active specialist covers those attributes.
+- Specialist programs were later removed from the active weekly loop; extra focus capacity now comes from Training Setup.
 - Support cards now show focus-slot capacity as a concrete current Training Setup bonus.
 - Season balance lab now mirrors multi-focus training unlocks and weighted secondary focus XP.
 
@@ -68,9 +68,9 @@
 
 - Support track cards now show `Current bonuses` in compact chips, so the player can see what a track is already doing before buying again.
 - Training support was strengthened: Personal Coach now gives a larger XP floor/ceiling, and training breakthroughs add more visible range improvement.
-- Specialist program XP now scales more clearly with club facilities, coach level and training breakthroughs.
+- Coach/support XP now scales with club facilities, coach level and training breakthroughs.
 - Recovery support was moderately strengthened through weekly recovery, training fatigue relief and match fatigue relief, while still keeping caps so fatigue remains relevant.
-- The season balance lab mirrors the same support, recovery, specialist and training-quality scaling as the playable app.
+- The season balance lab mirrors the same support, recovery and training-quality scaling as the playable app.
 - GDD and DESIGN now state that every support track should show both `Next investment` and `Current bonuses`.
 
 ### Support Tracks And Breakthroughs V1
@@ -134,7 +134,7 @@
 
 - Added five active training specialist programs: Finishing coach, Movement coach, Technical coach, Strength coach and Mental coach.
 - The Training screen now lets the player choose one active specialist program before starting the weekly session.
-- Specialist programs add bonus XP when the selected training focus matches the specialist's attribute group.
+- Historical note: specialist programs added bonus XP when selected focus matched their group; this was later removed from the active loop.
 - Added weekly training quality: Poor, Solid, Sharp and Breakthrough.
 - Training quality is driven by fitness, morale, pressure, facility level, nutrition, recovery and support breakthroughs.
 - Training quality modifies the weekly XP range and is shown in both the Training screen and Development Summary.
@@ -1298,3 +1298,41 @@ Command: `npm run balance:season -- --seasons=8 --career-seasons=10 --generation
 - Recovery-track focus: 50.0 end OVR, 83.5 end fitness.
 
 This keeps pure recovery clearly better at availability, but no longer lets it sit at permanent 95-100 readiness.
+
+## 2026-06-22 - Specialist Program Removed
+
+### Implemented
+
+- Removed specialist program selection from the weekly Training screen.
+- Removed specialist XP from training projection, training summary and development recap.
+- Removed active specialist data/types from the current game model.
+- Kept the training loop focused on stat focus, intensity, readiness, facilities and support upgrades.
+
+### Design Decision
+
+- A freely switchable weekly specialist was not a meaningful choice; optimal play was just matching the specialist to the chosen stat.
+- Specialists may return later as paid, time-limited economy commitments rather than a free dropdown.
+
+## 2026-06-22 - Support Model V2
+
+### Implemented
+
+- Replaced the old support catalog with three active tracks: Training, Recovery and Career.
+- Split Training support into XP Floor, XP Ceiling, Focus Slot unlocks and separate Slot 2/Slot 3 efficiency upgrades.
+- Focus slot 2 now unlocks through a 5-step track, starts at 20% XP efficiency and improves by 1 percentage point per level.
+- Focus slot 3 now unlocks after slot 2, starts at 10% XP efficiency and improves by 1 percentage point per level.
+- Split Recovery support into Training Load, Match Recovery and Recovery Baseline.
+- Career support now uses Agent Negotiation for wage/signing leverage and Sponsorship Appeal for sponsor payout scaling.
+- Removed active boots, analyst, lifestyle and specialist effects from the playable support model for now.
+- Added save version 10 with migration from old support keys into the new support tracks.
+- Updated the season balance lab to mirror Support V2 and removed Specialist XP from lab output.
+
+### Verification
+
+- `npm run build` passes.
+- `npm run balance:season -- --seasons=8 --career-seasons=2 --generations=1` runs successfully with the new Support V2 scenarios.
+
+### Balance Read
+
+- V2 is technically working, but the lab still flags end fitness as too low over 30-match seasons.
+- Balanced/development support improves OVR versus no upgrades, but recovery tuning remains the next likely balance pass.

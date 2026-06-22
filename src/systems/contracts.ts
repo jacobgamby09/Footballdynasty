@@ -8,7 +8,7 @@ import { calculateOvr, getContractLeagueTier, getLeagueTierIndex } from "./ovr";
 import { getPrestigeLeverageScore } from "./prestige";
 import { getCurrentFixture } from "./seasonState";
 import { getPlayerMatchRole, getRoleThreshold, getSelectionReport } from "./selection";
-import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
+import { getAgentSigningBonusLeverage, getAgentWageLeverage, getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import { getInterestedWorldClubs, worldClubToClubState } from "./transfers";
 import type { MatchRole } from "../positionRoles";
 import type { Contract, ContractOffer, GameState, LastMatchSummary, LeagueTier, MatchTotals, WorldClub } from "../types";
@@ -40,7 +40,11 @@ function getTierWageCap(tier: LeagueTier, role: MatchRole) {
 
 
 function getContractLeverage(agentLevel: number, careerBreakthroughs: number) {
-  return 1 + agentLevel * 0.022 + careerBreakthroughs * 0.018;
+  return 1 + getAgentWageLeverage(agentLevel) + careerBreakthroughs * 0.018;
+}
+
+function getSigningBonusLeverage(agentLevel: number, careerBreakthroughs: number) {
+  return 1 + getAgentSigningBonusLeverage(agentLevel) + careerBreakthroughs * 0.03;
 }
 
 
@@ -146,7 +150,7 @@ export function getClubContractOffer(game: GameState, lastMatch?: LastMatchSumma
   const averageRating = getAverageRating(game.seasonStats.ratings);
   const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
   const prestigeLeverage = getPrestigeLeverageScore(game.prestige);
-  const agentLevel = getSupportLevel(game, "agent");
+  const agentLevel = getSupportLevel(game, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const rolePromise = getPromisedRole(selection.score, current.rolePromise);
   const expiringSoon = current.weeksRemaining <= 1;
@@ -188,7 +192,7 @@ export function getClubContractOffer(game: GameState, lastMatch?: LastMatchSumma
     appearanceBonus: bonuses.appearanceBonus,
     goalBonus: bonuses.goalBonus,
     assistBonus: bonuses.assistBonus,
-    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 0.7 : 0.35) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03), 10),
+    signingBonus: roundToNearest(weeklyWage * (expiringSoon ? 0.7 : 0.35) * getSigningBonusLeverage(agentLevel, careerBreakthroughs), 10),
     pressureModifier,
     summary: getContractOfferSummary(rolePromise, weeklyWage, current.weeklyWage),
     source: "current-club",
@@ -218,7 +222,7 @@ export function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastM
   const averageRating = getAverageRating(game.seasonStats.ratings);
   const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
   const prestigeLeverage = getPrestigeLeverageScore(game.prestige);
-  const agentLevel = getSupportLevel(game, "agent");
+  const agentLevel = getSupportLevel(game, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const formSignal = Math.max(0, averageRating - 6.4) * 8 + game.seasonStats.goals * 1.6 + game.seasonStats.assists * 1.2 + (lastMatch?.rating ?? 6.5) - 6.5;
   const maxReachableTierIndex = clamp(
@@ -276,7 +280,7 @@ export function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastM
     appearanceBonus: bonuses.appearanceBonus,
     goalBonus: bonuses.goalBonus,
     assistBonus: bonuses.assistBonus,
-    signingBonus: roundToNearest(weeklyWage * 0.3 * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03), 10),
+    signingBonus: roundToNearest(weeklyWage * 0.3 * getSigningBonusLeverage(agentLevel, careerBreakthroughs), 10),
     pressureModifier,
     summary: getExternalContractOfferSummary(club.club, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
     source: "external-club",
@@ -292,7 +296,7 @@ function buildOfferFromWorldClub(game: GameState, club: WorldClub, currentTier: 
   const selection = getSelectionReport(game, getCurrentFixture(game.season));
   const averageRating = getAverageRating(game.seasonStats.ratings);
   const ovr = calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
-  const agentLevel = getSupportLevel(game, "agent");
+  const agentLevel = getSupportLevel(game, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const formSignal =
     Math.max(0, averageRating - 6.4) * 8 + game.seasonStats.goals * 1.6 + game.seasonStats.assists * 1.2 + (lastMatch?.rating ?? 6.5) - 6.5;
@@ -322,7 +326,7 @@ function buildOfferFromWorldClub(game: GameState, club: WorldClub, currentTier: 
     appearanceBonus: bonuses.appearanceBonus,
     goalBonus: bonuses.goalBonus,
     assistBonus: bonuses.assistBonus,
-    signingBonus: roundToNearest(weeklyWage * 0.3 * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03), 10),
+    signingBonus: roundToNearest(weeklyWage * 0.3 * getSigningBonusLeverage(agentLevel, careerBreakthroughs), 10),
     pressureModifier,
     summary: getExternalContractOfferSummary(club.name, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
     source: "external-club",

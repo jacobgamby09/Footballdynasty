@@ -530,11 +530,9 @@ The Support tab should avoid overwhelming the player with too many similar upgra
 
 Use a few broad track cards:
 
-- Training Setup
-- Recovery Setup
-- Performance Setup
-- Career Setup
-- Lifestyle Setup
+- Training
+- Recovery
+- Career
 
 Each card should show:
 
@@ -545,13 +543,13 @@ Each card should show:
 - one clear progress bar
 - one primary `Invest` action
 
-The player should understand the strategic choice at a glance: train faster, recover better, perform better, negotiate better or stabilize the career.
+The player should understand the strategic choice at a glance: train faster, recover better or improve career earnings.
 
-Avoid vague copy such as `improves performance` as the only payoff. Every support track should show a concrete number or transparent progress toward the next rounded number, for example `+8 XP floor`, `+2 selection score`, `+1 action attribute boost` or `Progress toward -1 weekly pressure`.
+Avoid vague copy such as `improves performance` as the only payoff. Every support track should show a concrete number or transparent progress toward the next rounded number, for example `+8 XP floor`, `+12 XP ceiling`, `+1 training relief`, `+1% wage`, `+2% sponsor payout` or `Progress toward focus slot 2`.
 
-`Current bonuses` should use compact chips so the player can see what the track is already doing without opening a tooltip. Keep the chips short: `+30 XP floor`, `+2 weekly recovery`, `+4 selection score`, `-1 weekly pressure`.
+`Current bonuses` should use compact chips so the player can see what the track is already doing without opening a tooltip. Keep the chips short: `2 focus slots`, `+30 XP floor`, `+2 weekly recovery`, `+4 training relief`, `+12% wage`.
 
-When Training Setup unlocks more focus slots, the support card should state it directly as a current bonus, for example `2 focus slots`.
+When Training unlocks more focus slots, the support card should state it directly as a current bonus, for example `2 focus slots`. Slot 2 and slot 3 efficiency should be readable as percentages, because those upgrades are intentionally granular.
 
 ## Prestige And Sponsor UI
 
@@ -657,7 +655,6 @@ Suggested screen sections:
 
 - weekly readiness
 - session quality
-- active specialist program
 - training focus slots, including current capacity
 - intensity selector
 - recovery impact
@@ -674,7 +671,6 @@ Controls:
 Development Summary should explain why the session felt good or bad:
 
 - show quality label near the top
-- show specialist bonus separately from base XP when active
 - keep total XP and level-up progress visually primary
 - do not hide progression causes behind vague flavor text
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, ContractOffer, CountryId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId, TrainingSpecialistId } from "./types";
-import { trainingSpecialistMap } from "./data/support";
+import type { Contract, ContractOffer, CountryId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
 import { createCareerForCountry } from "./state/initialState";
 import { COUNTRIES } from "./data/world";
@@ -163,14 +162,6 @@ function App() {
       ...state,
       intensity,
       lastEvent: `${intensity} intensity selected.`,
-    }));
-  }
-
-  function setTrainingSpecialist(specialist: TrainingSpecialistId) {
-    setGame((state) => ({
-      ...state,
-      trainingSpecialist: specialist,
-      lastEvent: `${trainingSpecialistMap[specialist].name} assigned to this week's training.`,
     }));
   }
 
@@ -506,7 +497,6 @@ function App() {
               game={game}
               onIntensityChange={setIntensity}
               onFocusChange={setTrainingFocus}
-              onSpecialistChange={setTrainingSpecialist}
             />
           )}
           {activeScreen === "club" && <ClubScreen game={game} />}

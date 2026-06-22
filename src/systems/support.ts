@@ -1,11 +1,10 @@
-import { bootsActionAttributes, supportTrackDefinitions, supportUpgradeDefinitions, supportUpgradeMap } from "../data/support";
+import { supportTrackDefinitions, supportUpgradeDefinitions, supportUpgradeMap } from "../data/support";
 import { clamp } from "../utils";
-import type { AttributeKey } from "../positionRoles";
 import type { GameState, SupportTrackDefinition, SupportTrackId, SupportUpgradeDefinition, SupportUpgradeId } from "../types";
 
 export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgradeId): GameState {
   const upgrade = supportUpgradeDefinitions.find((item) => item.id === upgradeId);
-  if (!upgrade) {
+  if (!upgrade || !isSupportUpgradeUnlocked(state, upgrade)) {
     return state;
   }
 
@@ -42,18 +41,33 @@ export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgra
     supportUpgrades: nextSupportUpgrades,
     lastEvent: breakthroughName
       ? `${track?.name} breakthrough unlocked: ${breakthroughName}.`
-      : `${track?.name ?? upgrade.name} investment added. ${upgrade.name} is now level ${nextLevel}.`,
+      : `${upgrade.name} is now level ${nextLevel}.`,
   };
 }
 
-
-export function getSupportUpgradeCost(upgrade: SupportUpgradeDefinition, currentLevel: number) {
-  const earlyRamp = 1 + currentLevel * 0.78 + Math.pow(currentLevel, 2) * 0.24;
-  const lateRamp = currentLevel >= 6 ? Math.pow(currentLevel - 5, 2) * 0.55 : 0;
-  const eliteRamp = currentLevel >= 10 ? Math.pow(currentLevel - 9, 2) * 1.1 : 0;
-  return Math.round(upgrade.baseCost * (earlyRamp + lateRamp + eliteRamp));
+export function isSupportUpgradeUnlocked(state: Pick<GameState, "supportUpgrades" | "prestige">, upgrade: SupportUpgradeDefinition) {
+  const requirements = upgrade.requires ?? {};
+  return Object.entries(requirements).every(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId as SupportUpgradeId) >= (requiredLevel ?? 0));
 }
 
+export function getSupportUpgradeLockReason(state: Pick<GameState, "supportUpgrades" | "prestige">, upgrade: SupportUpgradeDefinition) {
+  const requirements = upgrade.requires ?? {};
+  const missing = Object.entries(requirements).find(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId as SupportUpgradeId) < (requiredLevel ?? 0));
+  if (!missing) {
+    return undefined;
+  }
+
+  const [requiredId, requiredLevel] = missing;
+  const requiredUpgrade = supportUpgradeMap[requiredId as SupportUpgradeId];
+  return `${requiredUpgrade.name} Lv ${requiredLevel}`;
+}
+
+export function getSupportUpgradeCost(upgrade: SupportUpgradeDefinition, currentLevel: number) {
+  const earlyRamp = 1 + currentLevel * 0.34 + Math.pow(currentLevel, 2) * 0.055;
+  const lateRamp = currentLevel >= 30 ? Math.pow(currentLevel - 29, 2) * 0.025 : 0;
+  const eliteRamp = currentLevel >= 70 ? Math.pow(currentLevel - 69, 2) * 0.06 : 0;
+  return Math.round(upgrade.baseCost * (earlyRamp + lateRamp + eliteRamp));
+}
 
 export function getSupportTrackProgress(state: GameState, track: SupportTrackDefinition) {
   const levels = track.upgradeIds.map((upgradeId) => state.supportUpgrades[upgradeId] ?? 0);
@@ -76,21 +90,17 @@ export function getSupportTrackProgress(state: GameState, track: SupportTrackDef
   };
 }
 
-
 export function getSupportTrackForUpgrade(upgradeId: SupportUpgradeId) {
   return supportTrackDefinitions.find((track) => track.upgradeIds.includes(upgradeId));
 }
-
 
 export function getSupportTrackById(trackId: SupportTrackId) {
   return supportTrackDefinitions.find((track) => track.id === trackId);
 }
 
-
 export function getSupportTrackTotal(state: Pick<GameState, "supportUpgrades">, track: SupportTrackDefinition) {
   return track.upgradeIds.reduce((sum, upgradeId) => sum + (state.supportUpgrades[upgradeId] ?? 0), 0);
 }
-
 
 export function getSupportTrackBreakthroughCount(state: Pick<GameState, "supportUpgrades">, trackId: SupportTrackId) {
   const track = getSupportTrackById(trackId);
@@ -102,12 +112,6 @@ export function getSupportTrackBreakthroughCount(state: Pick<GameState, "support
   return track.breakpoints.filter((breakpoint) => total >= breakpoint).length;
 }
 
-
-export function getRecoveryBreakthroughRelief(breakthroughs: number) {
-  return Math.min(1, Math.floor(breakthroughs / 3));
-}
-
-
 export function getNextSupportTrackPurchase(state: GameState, track: SupportTrackDefinition) {
   const options = track.upgradeIds
     .map((upgradeId) => {
@@ -117,64 +121,77 @@ export function getNextSupportTrackPurchase(state: GameState, track: SupportTrac
         upgrade,
         level,
         cost: getSupportUpgradeCost(upgrade, level),
+        lockReason: getSupportUpgradeLockReason(state, upgrade),
       };
     })
     .filter((option) => option.level < option.upgrade.maxLevel)
+    .filter((option) => !option.lockReason)
     .sort((a, b) => a.cost - b.cost || a.level - b.level);
 
   return options[0];
 }
 
-
 export function getSupportUpgradeTotal(state: GameState) {
   return Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0);
 }
 
-
-export function getSupportLevel(state: GameState, upgradeId: SupportUpgradeId) {
+export function getSupportLevel(state: Pick<GameState, "supportUpgrades">, upgradeId: SupportUpgradeId) {
   return state.supportUpgrades[upgradeId] ?? 0;
 }
 
-
 export function getTrainingXpFloorBonus(level: number) {
-  return Math.round(level * 5.5);
+  return Math.floor(level);
 }
-
 
 export function getTrainingXpCeilingBonus(level: number) {
-  return Math.round(level * 5);
+  return Math.floor(level);
 }
 
+export function isFocusSlot2Unlocked(state: Pick<GameState, "supportUpgrades">) {
+  return getSupportLevel(state, "focusSlot2Unlock") >= supportUpgradeMap.focusSlot2Unlock.maxLevel;
+}
+
+export function isFocusSlot3Unlocked(state: Pick<GameState, "supportUpgrades">) {
+  return getSupportLevel(state, "focusSlot3Unlock") >= supportUpgradeMap.focusSlot3Unlock.maxLevel;
+}
+
+export function getFocusSlot2Efficiency(state: Pick<GameState, "supportUpgrades">) {
+  if (!isFocusSlot2Unlocked(state)) {
+    return 0;
+  }
+  return clamp(0.2 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.2, 0.8);
+}
+
+export function getFocusSlot3Efficiency(state: Pick<GameState, "supportUpgrades">) {
+  if (!isFocusSlot3Unlocked(state)) {
+    return 0;
+  }
+  return clamp(0.1 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.1, 0.6);
+}
 
 export function getTrainingFatigueRelief(level: number) {
-  return Math.min(7, Math.round(level * 0.52));
+  return Math.min(14, Math.floor(level / 4));
 }
 
-
-export function getRecoverySessionBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(12, Math.round(recoveryLevel * 0.8 + nutritionLevel * 0.45));
+export function getRecoverySessionBonus(baselineLevel: number) {
+  return Math.min(12, Math.round(baselineLevel * 0.32));
 }
 
-
-export function getWeeklySupportRecoveryBonus(recoveryLevel: number, nutritionLevel: number) {
-  return Math.min(3, Math.round(recoveryLevel * 0.18 + nutritionLevel * 0.28));
+export function getWeeklySupportRecoveryBonus(baselineLevel: number) {
+  return Math.min(5, Math.floor(baselineLevel / 8));
 }
-
 
 export function getMatchActionRecoveryRelief(level: number) {
-  return Math.min(2, Math.round(level * 0.16));
+  return Math.min(10, Math.floor(level / 5));
 }
 
-
-export function getRecoveryFitnessFloor(recoveryLevel: number, nutritionLevel: number, breakthroughs = 0) {
-  return Math.min(58, 12 + Math.round(recoveryLevel * 0.85 + nutritionLevel * 0.55 + breakthroughs * 3));
+export function getRecoveryFitnessFloor(baselineLevel: number, breakthroughs = 0) {
+  return Math.min(58, 12 + Math.round(baselineLevel * 0.45 + breakthroughs * 2));
 }
 
-
-export function getRecoveryFitnessCeiling(recoveryLevel: number, nutritionLevel: number, breakthroughs = 0) {
-  return Math.min(82, 68 + Math.round(recoveryLevel * 0.35 + nutritionLevel * 0.25 + breakthroughs * 2));
+export function getRecoveryFitnessCeiling(baselineLevel: number, breakthroughs = 0) {
+  return Math.min(82, 68 + Math.round(baselineLevel * 0.2 + breakthroughs * 1.5));
 }
-
 
 export function applyRecoveryFloor(currentFitness: number, projectedFitness: number, floor: number) {
   if (projectedFitness >= floor) {
@@ -185,7 +202,6 @@ export function applyRecoveryFloor(currentFitness: number, projectedFitness: num
   return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
 }
 
-
 export function applyRecoveryCeiling(projectedFitness: number, ceiling: number) {
   if (projectedFitness <= ceiling) {
     return projectedFitness;
@@ -195,28 +211,14 @@ export function applyRecoveryCeiling(projectedFitness: number, ceiling: number) 
   return clamp(ceiling + Math.round(overflow * 0.25), 0, 100);
 }
 
-
-export function getBootsActionBoost(bootsLevel: number) {
-  return Math.min(7, Math.floor(bootsLevel / 2));
+export function getAgentWageLeverage(level: number) {
+  return level / 100;
 }
 
-
-export function getLifestylePressureRelief(lifestyleLevel: number, breakthroughs = 0) {
-  return Math.min(6, Math.floor(lifestyleLevel / 3) + breakthroughs);
+export function getAgentSigningBonusLeverage(level: number) {
+  return level * 2 / 100;
 }
 
-
-export function applyBootsActionBoost(attributeValues: Record<AttributeKey, number>, bootsLevel: number) {
-  const boost = getBootsActionBoost(bootsLevel);
-  if (boost <= 0) {
-    return attributeValues;
-  }
-
-  return {
-    ...attributeValues,
-    ...Object.fromEntries(
-      bootsActionAttributes.map((attribute) => [attribute, clamp((attributeValues[attribute] ?? 50) + boost, 1, 100)]),
-    ),
-  };
+export function getSponsorAppealBonus(level: number) {
+  return level * 2 / 100;
 }
-

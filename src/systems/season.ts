@@ -6,7 +6,7 @@ import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
-import { getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
+import { getAgentSigningBonusLeverage, getAgentWageLeverage, getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, rolloverWorldSeason } from "./world";
 import type { ClubState, Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
@@ -106,7 +106,7 @@ export function createDynastySeasonSnapshot(state: GameState, review = getSeason
 export function getSeasonContractOffer(game: GameState, review = getSeasonReview(game)): ContractOffer {
   const current = game.contract;
   const tier = getContractLeagueTier(current);
-  const agentLevel = getSupportLevel(game, "agent");
+  const agentLevel = getSupportLevel(game, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(game, "career");
   const rolePromise = getPromisedRole(review.selection.score, current.rolePromise);
   const performanceWage =
@@ -121,7 +121,7 @@ export function getSeasonContractOffer(game: GameState, review = getSeasonReview
     Starter: 0.9,
   };
   const wageCap = tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * roleCapRatio[rolePromise];
-  const leverage = 1 + agentLevel * 0.022 + careerBreakthroughs * 0.018;
+  const leverage = 1 + getAgentWageLeverage(agentLevel) + careerBreakthroughs * 0.018;
   const weeklyWage = roundToNearest(clamp(Math.max(current.weeklyWage, performanceWage) * leverage, tier.wageRange[0], wageCap), 10);
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
   const title = weeklyWage > current.weeklyWage || rolePromise !== current.rolePromise ? "Improved terms" : "Contract extended";
@@ -137,7 +137,9 @@ export function getSeasonContractOffer(game: GameState, review = getSeasonReview
     goalBonus: roundToNearest(20 + weeklyWage * 0.14, 5),
     assistBonus: roundToNearest(16 + weeklyWage * 0.11, 5),
     signingBonus: roundToNearest(
-      weeklyWage * (review.verdict.grade === "A" ? 0.9 : review.verdict.grade === "B" ? 0.6 : 0.35) * (1 + agentLevel * 0.04 + careerBreakthroughs * 0.03),
+      weeklyWage *
+        (review.verdict.grade === "A" ? 0.9 : review.verdict.grade === "B" ? 0.6 : 0.35) *
+        (1 + getAgentSigningBonusLeverage(agentLevel) + careerBreakthroughs * 0.03),
       10,
     ),
     pressureModifier,

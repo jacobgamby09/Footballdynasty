@@ -14,8 +14,19 @@ export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
 export type ClubView = "overview" | "fixtures" | "table";
 export type HomeView = "base" | "support" | "deals" | "dynasty";
-export type SupportUpgradeId = "boots" | "recovery" | "coach" | "nutrition" | "analyst" | "agent" | "lifestyle";
-export type SupportTrackId = "training" | "recovery" | "performance" | "career" | "lifestyle";
+export type SupportUpgradeId =
+  | "xpFloor"
+  | "xpCeiling"
+  | "focusSlot2Unlock"
+  | "focusSlot2Efficiency"
+  | "focusSlot3Unlock"
+  | "focusSlot3Efficiency"
+  | "trainingLoad"
+  | "matchRecovery"
+  | "recoveryBaseline"
+  | "agentNegotiation"
+  | "sponsorshipAppeal";
+export type SupportTrackId = "training" | "recovery" | "career";
 export type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
 export type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
 
@@ -165,16 +176,7 @@ export type DevelopmentEnvironment = {
   supportEfficiency: number;
 };
 
-export type TrainingSpecialistId = "finishing" | "movement" | "technical" | "strength" | "mental";
 export type TrainingQuality = "Poor" | "Solid" | "Sharp" | "Breakthrough";
-
-export type TrainingSpecialist = {
-  id: TrainingSpecialistId;
-  name: string;
-  category: string;
-  attributes: AttributeKey[];
-  description: string;
-};
 
 export type TrainingQualityProfile = {
   quality: TrainingQuality;
@@ -266,6 +268,7 @@ export type SupportUpgradeDefinition = {
   maxLevel: number;
   baseCost: number;
   effect: string;
+  requires?: Partial<Record<SupportUpgradeId, number>>;
 };
 
 export type SupportTrackDefinition = {
@@ -291,7 +294,6 @@ export type GameState = {
   trust: number;
   selectedFocus: AttributeKey;
   trainingFocuses: AttributeKey[];
-  trainingSpecialist: TrainingSpecialistId;
   trainingCompletedWeek: number;
   intensity: Intensity;
   attributes: Attribute[];
@@ -313,7 +315,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 9;
+  version: 10;
   game: GameState;
 };
 
@@ -327,10 +329,8 @@ export type TrainingSummary = {
   week: number;
   focuses: AttributeKey[];
   intensity: Intensity;
-  specialist: TrainingSpecialistId;
   quality: TrainingQuality;
   qualityLabel: string;
-  specialistXp: Partial<Record<AttributeKey, number>>;
   ranges: Partial<Record<AttributeKey, { min: number; max: number }>>;
   xp: Partial<Record<AttributeKey, number>>;
   fitnessDelta: number;

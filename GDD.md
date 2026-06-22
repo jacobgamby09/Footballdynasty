@@ -457,19 +457,19 @@ Training skal altid have tradeoffs:
 
 ### Specialist Programs
 
-Specialist programs are active weekly training setups that make the player's development direction more intentional.
+Specialist programs are removed from the active weekly training loop for now.
 
-V1 specialist groups:
+Reason:
 
-- Finishing coach: Finishing and Composure.
-- Movement coach: Off Ball, Acceleration and Pace.
-- Technical coach: First Touch, Dribbling and Passing.
-- Strength coach: Strength, Heading and Stamina.
-- Mental coach: Work Rate, Positioning and Composure.
+- If specialists can be changed freely every week, the optimal choice is simply to match the specialist to the selected stat.
+- That creates extra UI without a meaningful decision.
+- The current training loop should stay focused on stat focus, intensity, readiness, facilities and support upgrades.
 
-Core rule:
+Future specialist direction:
 
-`Specialists should make the chosen focus feel sharper, not replace the need for good facilities, recovery and repeated training.`
+- Specialists can return later as paid, time-limited commitments.
+- Example: hire a finishing coach for 8-12 weeks, with a cash cost and limited flexibility.
+- This should be part of the economy/support layer, not a free weekly dropdown.
 
 ### Training Quality
 
@@ -717,15 +717,26 @@ Første cash-spending layer er `Player Support`.
 
 Player Support er current-run only. Levels hjælper den aktive spiller, men arves ikke direkte som dynasty power.
 
-First support effect carriers:
+Support Model V2 replaces broad vague items with concrete, granular upgrade tracks.
 
-- Match boots: improves relevant match-moment action attributes such as Finishing, First Touch, Dribbling, Acceleration and Pace.
-- Recovery kit: reduces match fatigue.
-- Personal coach: raises weekly training XP floor and ceiling.
-- Nutrition plan: softens training fatigue.
-- Video analyst: improves selection/match prep.
-- Better agent: improves contract wage and signing bonus negotiation.
-- Lifestyle support: reduces weekly pressure and can later connect to fame/sponsor systems.
+Active support effect carriers:
+
+- XP Floor: each level adds `+1` minimum XP to focused weekly training.
+- XP Ceiling: each level adds `+1` maximum XP to focused weekly training.
+- Second Focus Slot: a 5-step unlock track. When unlocked, the player can train a second stat each week.
+- Slot 2 Efficiency: after slot 2 is unlocked, each level adds `+1%` XP efficiency to the second focus slot.
+- Third Focus Slot: an 8-step unlock track that only opens after slot 2 is unlocked.
+- Slot 3 Efficiency: after slot 3 is unlocked, each level adds `+1%` XP efficiency to the third focus slot.
+- Training Load: reduces fitness loss from weekly training intensity.
+- Match Recovery: reduces fitness loss from match minutes and player actions.
+- Recovery Baseline: improves weekly recovery and the low-fitness protection band.
+- Agent Negotiation: each level adds `+1%` wage leverage and `+2%` signing-bonus leverage.
+- Sponsorship Appeal: each level adds `+2%` sponsor retainer and objective-bonus payout.
+
+Inactive for now:
+
+- Boots, analyst, lifestyle and freely switchable specialists are not part of the active V2 support loop.
+- These themes can return later only if they have concrete, non-overlapping effects and do not make the support screen harder to understand.
 
 Support upgrades skal være stærke nok til, at weekly wage føles brugbar, men små nok til ikke at erstatte attributes, training og match performance som hovedmotor.
 
@@ -733,37 +744,23 @@ Support upgrades skal være stærke nok til, at weekly wage føles brugbar, men 
 
 Player Support should be presented as a small number of broad investment tracks, not a long list of equally good micro-upgrades.
 
-V1 support tracks:
+V2 support tracks:
 
-- Training Setup: coach, drills and specialist development support.
-- Recovery Setup: nutrition, physio and conditioning support.
-- Performance Setup: boots, analyst and match-prep support.
-- Career Setup: agent, contracts and transfer leverage.
-- Lifestyle Setup: morale, pressure and stability.
+- Training: XP floor, XP ceiling, focus-slot unlocks and focus-slot efficiency.
+- Recovery: training load, match recovery and recovery baseline.
+- Career: agent negotiation and sponsorship appeal.
 
 Each track contains small cash investments. Every investment gives a small immediate level gain through the underlying support systems, but the main player-facing payoff is the track bar.
 
-When a track bar reaches a breakpoint, the player earns a named breakthrough. Breakthroughs are larger, memorable milestones such as `Specialist Coach`, `Sports Science`, `Tactical Edge` or `Power Broker`.
+When a track bar reaches a breakpoint, the player earns a named breakthrough. Breakthroughs are memorable milestones and UI feedback, but the core V2 power comes from the clearly stated per-level effects above.
 
-V1 breakthrough effects:
+V2 concrete investment rules:
 
-- Training breakthroughs add extra training XP floor/ceiling on top of coach levels.
-- Training breakthroughs can unlock more weekly focus slots: early careers train one stat, the first Training breakthrough supports two, and later elite setup can support three.
-- Recovery breakthroughs improve weekly recovery, training fatigue and match-action fatigue.
-- Performance breakthroughs improve match prep/selection support.
-- Career breakthroughs improve wage and signing bonus negotiation.
-- Lifestyle breakthroughs improve weekly pressure relief and can later feed fame/sponsor systems.
-
-V1 concrete investment effects:
-
-- Personal Coach: `+10 XP floor`, `+9 XP ceiling`, with training breakthroughs adding extra floor/ceiling on top.
-- Specialist Coach scaling: specialist bonus starts from club facilities, coach level and training breakthroughs, so specialist programs become more meaningful as the player invests.
-- Nutrition Plan: progress toward `+1 training fatigue relief`, using rounded diminishing returns.
-- Recovery Kit: progress toward `+1 match fatigue relief` and weekly recovery, using rounded diminishing returns.
-- Match Boots: progress toward `+1 action attribute boost`; every 2 levels adds `+1` to relevant match-moment attributes such as Finishing, First Touch, Dribbling, Acceleration and Pace.
-- Video Analyst: `+2 selection score support`.
-- Better Agent: `+4% wage negotiation`, `+8% signing bonus`.
-- Lifestyle Support: progress toward `-1 weekly pressure`; every 3 levels adds pressure relief, with breakthroughs adding more.
+- Small purchases must say exactly what they add.
+- XP floor and XP ceiling use many small levels, so the player frequently has something meaningful to buy.
+- Focus-slot unlocks are separate from focus-slot efficiency. Slot 2 and slot 3 should feel weak when first unlocked, then improve through 1% efficiency upgrades.
+- Recovery is split into three readable answers: `I get tired from training`, `I get tired from matches`, and `I need a better weekly recovery baseline`.
+- Career support is economic. It should improve wages, signing bonuses and sponsor payouts, not secretly improve selection score.
 
 Support cards should show both:
 
@@ -781,17 +778,18 @@ Support balance lab rules:
 - Every broad support track must create a visible difference in season-lab output.
 - Training should improve development speed, but poor recovery should still make overtraining costly.
 - Recovery should improve availability and consistency, but it must not make fitness irrelevant.
-- Performance should improve moment execution and selection prep without replacing attributes.
 - Career should show up primarily in cash/contract outcomes.
-- Lifestyle should show pressure relief now and remain the bridge into future fame/sponsor systems.
+- Sponsorship Appeal should matter only once prestige has unlocked sponsor offers.
 
 Multi-focus training rule:
 
-- Extra focus slots should be unlocked through Training Setup, not available by default.
+- Extra focus slots should be unlocked through Training, not available by default.
+- Slot 2 starts at 20% XP efficiency when unlocked and can be upgraded by 1 percentage point per level.
+- Slot 3 starts at 10% XP efficiency when unlocked and can be upgraded by 1 percentage point per level.
 - The first Training breakthrough should unlock the second focus slot so the system matters early enough in a career.
 - Primary focus receives full training value.
 - Secondary and third focus slots receive reduced XP value, so they represent better training capacity rather than multiplying the entire week.
-- Specialist programs can bonus multiple selected focuses only when the active specialist actually covers those attributes.
+- Coach/support XP can help weak key attributes, but the weekly player-facing choice should remain stat focus plus intensity.
 
 ### In-Run Economy Scaling Direction
 

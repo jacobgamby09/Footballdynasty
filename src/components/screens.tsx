@@ -1,5 +1,5 @@
 import { attributeInfo } from "../data/attributes";
-import { supportTrackDefinitions, trainingSpecialistMap, trainingSpecialists } from "../data/support";
+import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
@@ -19,7 +19,7 @@ import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTabl
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSpecialistId, TrainingSummary, Venue } from "../types";
+import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game }: { game: GameState }) {
@@ -154,20 +154,16 @@ export function TrainingScreen({
   game,
   onIntensityChange,
   onFocusChange,
-  onSpecialistChange,
 }: {
   game: GameState;
   onIntensityChange: (intensity: Intensity) => void;
   onFocusChange: (focus: AttributeKey) => void;
-  onSpecialistChange: (specialist: TrainingSpecialistId) => void;
 }) {
   const [detailAttribute, setDetailAttribute] = useState<AttributeKey | undefined>(undefined);
   const projected = getTrainingProjection(game);
   const focuses = getCurrentTrainingFocuses(game);
   const focus = focuses[0];
   const focusRange = projected.ranges[focus];
-  const activeSpecialist = trainingSpecialistMap[game.trainingSpecialist] ?? trainingSpecialistMap.finishing;
-  const specialistBonusTotal = sumXp(projected.specialistXp);
   const detailInfo = detailAttribute ? attributeInfo[detailAttribute] : undefined;
   const detailStat = detailAttribute ? game.attributes.find((attribute) => attribute.label === detailAttribute) : undefined;
   const detailGrowth = detailStat ? getAttributeGrowthDetail(game, detailStat) : undefined;
@@ -189,7 +185,6 @@ export function TrainingScreen({
         <InfoRow label="Facilities" value={`Lv ${environment.facilityLevel} - ${Math.round(environment.xpMultiplier * 100)}% XP`} />
         <InfoRow label="Focus slots" value={`${focuses.length}/${focusCapacity} active`} />
         <InfoRow label="Session quality" value={projected.qualityLabel} />
-        <InfoRow label="Specialist" value={specialistBonusTotal > 0 ? `+${specialistBonusTotal} XP` : activeSpecialist.name} />
         <ProgressRow label="Readiness" value={game.fitness} accent="lime" />
         <ProgressRow
           label={`${focus} XP range`}
@@ -198,27 +193,6 @@ export function TrainingScreen({
           accent="lime"
         />
         <ProgressRow label="Fitness impact" value={Math.abs(projected.fitnessDelta) * 10} display={`${projected.fitnessDelta}`} accent="neutral" />
-      </div>
-
-      <div className="card training-slot-card">
-        <span className="metric-label">Specialist program</span>
-        <div className="specialist-grid">
-          {trainingSpecialists.map((specialist) => {
-            const isActive = game.trainingSpecialist === specialist.id;
-            const isRelevant = specialist.attributes.includes(focus);
-            return (
-              <button
-                className={`specialist-button ${isActive ? "is-active" : ""}`}
-                key={specialist.id}
-                type="button"
-                onClick={() => onSpecialistChange(specialist.id)}
-              >
-                <span>{specialist.name}</span>
-                <strong>{isRelevant ? "Bonus active" : specialist.category}</strong>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <div className="card training-slot-card">
@@ -1088,7 +1062,6 @@ export function TrainingSummaryScreen({
         <div className="chip-row">
           <span className="soft-chip">{summary.intensity} intensity</span>
           <span className="soft-chip">{summary.qualityLabel}</span>
-          <span className="soft-chip">{trainingSpecialistMap[summary.specialist]?.name ?? "Specialist program"}</span>
           {summary.focuses.map((focus) => {
             const range = summary.ranges[focus];
             return (
@@ -1105,28 +1078,6 @@ export function TrainingSummaryScreen({
           ))}
         </div>
       </div>
-
-      {sumXp(summary.specialistXp) > 0 && (
-        <div className="card">
-          <div className="section-heading">
-            <div>
-              <span className="metric-label">Specialist bonus</span>
-              <h2>{trainingSpecialistMap[summary.specialist]?.name ?? "Program impact"}</h2>
-            </div>
-            <Sparkles size={19} />
-          </div>
-          <div className="xp-list">
-            {Object.entries(summary.specialistXp)
-              .filter(([, value]) => (value ?? 0) > 0)
-              .map(([attribute, value]) => (
-                <div className="xp-item" key={`${attribute}-specialist`}>
-                  <span>{attribute}</span>
-                  <strong>+{value}</strong>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
 
       <div className="card">
         <div className="section-heading">

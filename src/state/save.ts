@@ -1,14 +1,15 @@
 import { getPositionModule } from "../positionRoles";
-import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, TrainingSummary, World } from "../types";
+import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, SupportUpgradeId, TrainingSummary, World } from "../types";
 import { initialAttributes } from "../data/attributes";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
+import { initialSupportUpgrades, supportUpgradeMap } from "../data/support";
 import { COUNTRIES, seedWorld } from "../data/world";
 import { createSeasonFixturesFromWorld, getClubShortCode, getClubShortName, getClubStrengthForTier } from "../systems/club";
 import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
@@ -67,8 +68,6 @@ export function cloneTrainingSummary(summary: TrainingSummary): TrainingSummary 
     focuses: [...summary.focuses],
     ranges: { ...summary.ranges },
     xp: { ...summary.xp },
-    specialistXp: { ...(summary.specialistXp ?? {}) },
-    specialist: summary.specialist ?? "finishing",
     quality: summary.quality ?? "Solid",
     qualityLabel: summary.qualityLabel ?? "Solid session",
     levelUps: summary.levelUps.map((levelUp) => ({ ...levelUp })),
@@ -96,7 +95,7 @@ export function hasSavedGame(): boolean {
       return false;
     }
     const payload = JSON.parse(raw) as Partial<SavePayload>;
-    return payload.version === SAVE_VERSION && Boolean(payload.game);
+    return isSupportedSaveVersion(payload.version) && Boolean(payload.game);
   } catch {
     return false;
   }
@@ -114,7 +113,7 @@ export function loadSavedGame(): GameState {
     }
 
     const payload = JSON.parse(raw) as Partial<SavePayload>;
-    if (payload.version !== SAVE_VERSION || !payload.game) {
+    if (!isSupportedSaveVersion(payload.version) || !payload.game) {
       return createInitialState();
     }
 
@@ -152,9 +151,8 @@ export function normalizeSavedGame(saved: GameState): GameState {
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
     sponsor: saved.sponsor ? cloneSponsorDeal(saved.sponsor) : undefined,
     contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
-    supportUpgrades: { ...fallback.supportUpgrades, ...(saved.supportUpgrades ?? {}) },
+    supportUpgrades: normalizeSupportUpgrades(saved.supportUpgrades as Partial<Record<string, number>> | undefined),
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
-    trainingSpecialist: saved.trainingSpecialist ?? fallback.trainingSpecialist,
     activeMatch: undefined,
     lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
     lastTraining: saved.lastTraining ? cloneTrainingSummary(saved.lastTraining) : undefined,
@@ -192,6 +190,58 @@ export function mergeSavedAttributes(savedAttributes: Attribute[]) {
     const saved = savedAttributes.find((attribute) => attribute.label === initialAttribute.label);
     return saved ? { ...initialAttribute, ...saved } : { ...initialAttribute };
   });
+}
+
+function isSupportedSaveVersion(version: unknown) {
+  return typeof version === "number" && version >= 1 && version <= SAVE_VERSION;
+}
+
+function normalizeSupportUpgrades(savedSupport?: Partial<Record<string, number>>) {
+  const normalized = { ...initialSupportUpgrades };
+  if (!savedSupport) {
+    return normalized;
+  }
+
+  Object.keys(initialSupportUpgrades).forEach((upgradeId) => {
+    const savedLevel = savedSupport[upgradeId];
+    if (typeof savedLevel === "number") {
+      normalized[upgradeId as SupportUpgradeId] = clampSupportLevel(upgradeId as SupportUpgradeId, savedLevel);
+    }
+  });
+
+  const legacy = savedSupport;
+  const hasLegacySupport = ["coach", "nutrition", "recovery", "agent", "lifestyle", "analyst", "boots"].some((upgradeId) => typeof legacy[upgradeId] === "number");
+  if (!hasLegacySupport) {
+    return normalized;
+  }
+
+  const coach = legacy.coach ?? 0;
+  const nutrition = legacy.nutrition ?? 0;
+  const recovery = legacy.recovery ?? 0;
+  const agent = legacy.agent ?? 0;
+  const lifestyle = legacy.lifestyle ?? 0;
+  const analyst = legacy.analyst ?? 0;
+  const boots = legacy.boots ?? 0;
+
+  normalized.xpFloor = clampSupportLevel("xpFloor", normalized.xpFloor + coach * 3);
+  normalized.xpCeiling = clampSupportLevel("xpCeiling", normalized.xpCeiling + coach * 3);
+  normalized.focusSlot2Unlock = clampSupportLevel("focusSlot2Unlock", normalized.focusSlot2Unlock + Math.min(5, coach));
+  normalized.focusSlot2Efficiency = clampSupportLevel("focusSlot2Efficiency", normalized.focusSlot2Efficiency + Math.max(0, coach - 3) * 4);
+  normalized.focusSlot3Unlock = clampSupportLevel("focusSlot3Unlock", normalized.focusSlot3Unlock + Math.min(8, Math.max(0, coach - 7)));
+  normalized.focusSlot3Efficiency = clampSupportLevel("focusSlot3Efficiency", normalized.focusSlot3Efficiency + Math.max(0, coach - 10) * 3);
+
+  normalized.trainingLoad = clampSupportLevel("trainingLoad", normalized.trainingLoad + nutrition * 3);
+  normalized.matchRecovery = clampSupportLevel("matchRecovery", normalized.matchRecovery + recovery * 3 + Math.floor(boots / 2));
+  normalized.recoveryBaseline = clampSupportLevel("recoveryBaseline", normalized.recoveryBaseline + Math.floor((nutrition + recovery) * 2));
+
+  normalized.agentNegotiation = clampSupportLevel("agentNegotiation", normalized.agentNegotiation + agent * 4);
+  normalized.sponsorshipAppeal = clampSupportLevel("sponsorshipAppeal", normalized.sponsorshipAppeal + lifestyle * 3 + analyst * 2);
+
+  return normalized;
+}
+
+function clampSupportLevel(upgradeId: SupportUpgradeId, level: number) {
+  return Math.max(0, Math.min(supportUpgradeMap[upgradeId].maxLevel, Math.round(level)));
 }
 
 export function saveGameState(game: GameState) {

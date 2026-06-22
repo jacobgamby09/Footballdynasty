@@ -54,7 +54,6 @@ export function createCareerForCountry(countryId: CountryId): GameState {
     trust: 38,
     selectedFocus: "Finishing",
     trainingFocuses: ["Finishing"],
-    trainingSpecialist: "finishing",
     trainingCompletedWeek: 0,
     intensity: "Balanced",
     attributes: createGenerationAttributes(1),

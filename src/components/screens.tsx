@@ -3,12 +3,12 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveMatchReadiness, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculatePotentialOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getPrestigeStatus } from "../systems/prestige";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
-import { getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
+import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
 import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
@@ -406,6 +406,7 @@ export function MatchMomentScreen({
   const simTotals = summarizeSimEvents(match.events, processedEventIndex);
   const rawTotals = summarizeMatchResults(completedResults, simTotals);
   const totals = { ...rawTotals, fitnessDelta: getMatchFitnessDelta(match, completedResults) };
+  const liveReadiness = getLiveMatchReadiness(match, completedResults);
   const visibleScore = getTimelineScore(match, completedResults, processedEventIndex);
   const recentEvents = getRecentTimelineItems(match, completedResults);
   const nextEventMinute = event ? `${event.minute}'` : "FT";
@@ -444,8 +445,8 @@ export function MatchMomentScreen({
           <small>{pitchStatus.detail}</small>
         </div>
         <div className="match-role-meta">
-          <span>{match.playerRole}</span>
-          <b>{getAppearanceText(match)}</b>
+          <span>Readiness {liveReadiness}/100</span>
+          <b>{getFitnessAvailability(liveReadiness)}</b>
         </div>
       </div>
 
@@ -576,6 +577,7 @@ export function MatchMomentScreen({
           <InfoTile label="Assists" value={`${totals.assists}`} />
           <InfoTile label="Chances" value={`${totals.chancesCreated}`} tone={totals.chancesCreated > 0 ? "good" : undefined} />
           <InfoTile label="Trust" value={`${totals.trustDelta > 0 ? "+" : ""}${totals.trustDelta}`} />
+          <InfoTile label="Readiness" value={`${liveReadiness}`} tone={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : undefined} />
           <InfoTile label="Rating" value={totals.rating.toFixed(1)} tone="gold" />
         </div>
       </div>

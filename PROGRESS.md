@@ -1,5 +1,49 @@
 # Progress Log
 
+## 2026-06-22
+
+### Readiness Model V1
+
+- Reworked fitness labels into clearer 0-100 readiness bands: Sharp, Ready, Tired, Risky and Not match fit.
+- Selection now treats 60+ readiness as nearly neutral, 40-59 as managed-minutes territory and 20-39 as true risk.
+- Under 20 readiness now triggers a recovery session instead of normal training, preventing low-fitness spirals from locking the player out for too long.
+- Match state now stores start fitness and calculates live match readiness from minutes played plus completed action fatigue.
+- Match UI now shows live readiness during matches, and player moment resolution uses live readiness instead of only pre-match fitness.
+- Recovery floor and floor-pull were strengthened so recovery support improves stability without being the only way to stay involved.
+- Balance lab mirrors the new readiness labels, recovery session threshold and recovery-floor tuning.
+- Latest 60-run, 8-season lab read: no-upgrade builds still fall behind but remain involved in many matches; balanced/development/recovery builds reach roughly 49 OVR by season 8; pure recovery gives the best availability/readiness but output per 90 is now clearly too high and should be tuned in the match engine next.
+
+### Match Output Realism Patch V1
+
+- Tightened chance-quality thresholds so `Clear chance` and `Good chance` require stronger execution relative to the opponent.
+- Goal and assist outcomes are no longer automatic for Good/Great actions; decisive output now uses deterministic probability by outcome tier and chance quality.
+- Teammate finishing after assist-type actions now has lower, opponent-sensitive conversion, while successful creative actions still create chances, rating and XP.
+- Latest 60-run, 8-season lab read after the patch:
+  - Balanced spending goals/90 fell from roughly 1.4 to 0.48.
+  - Development spending goals/90 sits around 0.45.
+  - Recovery spending goals/90 sits around 0.59.
+  - Recovery-track focus goals/90 sits around 0.65.
+- Output now looks much closer to a football career curve, but reduced goals/assists also lowers prestige, cash and some match-driven XP. Future progression tuning should compensate through training, support, facilities, contracts and sponsor balance rather than inflated match conversion.
+
+### Gen 1 Progression Balance Patch V1
+
+- Rebalanced the main progression stack after match-output realism lowered match-driven rewards.
+- Attribute XP requirements now scale a little less aggressively at mid/high values, while still making elite stats more expensive than early stats.
+- Soft growth pressure slows growth beyond the natural curve without acting like a hidden cap.
+- Gen 1's starting OVR remains low, but its growth profile marker now sits around 60 OVR. Strong support, facilities and performances can still push beyond that, but the target is closer to 70 than high-70s.
+- Training range, club-facility XP scaling and facility support efficiency were strengthened so progression comes from training, facilities and support rather than inflated match conversion.
+- Secondary focus slots now start slightly more useful and scale higher through efficiency upgrades.
+- Match-action XP was reduced so good performances remain meaningful but no longer become the main growth engine during high-minute seasons.
+- Over-profile XP pressure was strengthened slightly so Gen 1 can break its natural curve, but gets noticeably more expensive above it.
+- Season balance lab now prints a `Gen1 dynasty read` line with peak OVR, final target gap, prestige and a provisional lab legacy-seed score.
+- Latest 20-run, 15-season Gen 1 lab read:
+  - Balanced spending: 71.6 OVR, final target gap +2.3, 0.71 goals/90, healthy dynasty foundation.
+  - Development spending: 71.6 OVR, final target gap +2.3, 0.68 goals/90, healthy dynasty foundation.
+  - Recovery spending: 68.1 OVR, final target gap -1.3, healthy dynasty foundation.
+  - Training-track focus: 68.1 OVR, final target gap -1.2, healthy foundation but poor late fitness.
+  - No-upgrade/career-only builds land around 59 OVR, which keeps support investment meaningful.
+- Balance watch: if a player becomes too strong for their current tier, goals/90 can still spike. That should be handled mostly through transfer/league progression and tier fit, not by nerfing player development again.
+
 ## 2026-06-18
 
 ### Prestige Tier V1

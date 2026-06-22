@@ -114,7 +114,14 @@ export function chooseAutoSimChoice(input) {
       const outputScore = choice.outcome === "goal" ? 9 : choice.outcome === "assist" ? 9 : 4;
       const decisiveCategory = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure", "counter", "link_up"].includes(input.moment.category);
       const ambitionAdjustment = decisiveCategory && choice.outcome !== "trust" ? Math.max(0, (input.trust - 35) / 8) : 0;
-      const fitnessAdjustment = input.fitness < 65 && choice.risk === "High" ? -10 : input.fitness >= 72 && choice.risk === "High" ? 3 : 0;
+      const fitnessAdjustment =
+        input.fitness < 40 && choice.risk === "High"
+          ? -8
+          : input.fitness < 60 && choice.risk === "High"
+            ? -3
+            : input.fitness >= 80 && choice.risk === "High"
+              ? 2
+              : 0;
       const trustAdjustment = input.trust < 45 && choice.manager === "Likes" ? 3 : 0;
       const choiceVariance = Math.round(seededNoise(`${input.matchSeed}-${input.moment.id}-${choice.id}-auto-choice`) * 6) - 3;
       return { choice, score: attributeScore + riskScore + managerScore + outputScore + ambitionAdjustment + fitnessAdjustment + trustAdjustment + choiceVariance };
@@ -124,7 +131,7 @@ export function chooseAutoSimChoice(input) {
 
 export function resolvePlayerChoice(input) {
   const score = averageAttributes(input.attributeValues, input.choice.uses);
-  const fitnessModifier = (input.fitness - 70) / 10;
+  const fitnessModifier = getReadinessResolutionModifier(input.fitness);
   const riskPenalty = input.choice.risk === "High" ? 6 : input.choice.risk === "Medium" ? 2 : -2;
   const managerModifier = input.choice.manager === "Likes" ? 3 : input.choice.manager === "Risky" ? -2 : 0;
   const variance = Math.round(seededNoise(`${input.resultSeed}-outcome`) * 18) - 9;
@@ -199,6 +206,22 @@ export function resolvePlayerChoice(input) {
     chancesCreated: 0,
     decisiveOutcome,
   };
+}
+
+function getReadinessResolutionModifier(fitness) {
+  if (fitness >= 80) {
+    return 1.5;
+  }
+  if (fitness >= 60) {
+    return (fitness - 60) / 25;
+  }
+  if (fitness >= 40) {
+    return -((60 - fitness) / 20) * 3;
+  }
+  if (fitness >= 20) {
+    return -3 - ((40 - fitness) / 20) * 3;
+  }
+  return -8;
 }
 
 export function seededNoise(seed) {
@@ -446,16 +469,16 @@ function getChanceQualityContext(moment, playerScore, opponentModifier) {
   const rawQuality = playerScore - opponentModifier;
   const qualityScore = rawQuality + (highlightConfig[moment.category]?.categoryBonus ?? 0);
 
-  if (qualityScore >= 62) {
-    return { quality: "Clear chance", modifier: 4 };
+  if (qualityScore >= 68) {
+    return { quality: "Clear chance", modifier: 3 };
   }
-  if (qualityScore >= 54) {
-    return { quality: "Good chance", modifier: 2 };
+  if (qualityScore >= 58) {
+    return { quality: "Good chance", modifier: 1 };
   }
-  if (qualityScore >= 45) {
-    return { quality: "Half chance", modifier: 0 };
+  if (qualityScore >= 46) {
+    return { quality: "Half chance", modifier: -1 };
   }
-  return { quality: "Difficult chance", modifier: -3 };
+  return { quality: "Difficult chance", modifier: -4 };
 }
 
 function buildResultExplanationTags(moment, choice, success, opponentModifier, chanceQuality, fitness) {
@@ -495,43 +518,75 @@ function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") 
     return false;
   }
 
-  if (outcome === "assist") {
-    if (tier === "Great") {
-      return chanceQuality !== "Difficult chance";
-    }
-    if (tier === "Good" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance")) {
-      return true;
-    }
-  }
-  if (tier === "Great") {
-    return true;
-  }
-  if (tier !== "Good") {
-    if (tier === "Okay" && chanceQuality === "Clear chance") {
-      return seededNoise(`${resultSeed}-decisive`) < 0.1;
-    }
-    return false;
-  }
-  if (outcome === "goal" && (chanceQuality === "Clear chance" || chanceQuality === "Good chance")) {
-    return true;
-  }
-
-  const halfChanceRate = outcome === "assist" ? 0.14 : 0.1;
-  return chanceQuality === "Half chance" && seededNoise(`${resultSeed}-decisive`) < halfChanceRate;
+  const goalRates = {
+    Great: {
+      "Clear chance": 0.68,
+      "Good chance": 0.48,
+      "Half chance": 0.22,
+      "Difficult chance": 0.08,
+    },
+    Good: {
+      "Clear chance": 0.38,
+      "Good chance": 0.24,
+      "Half chance": 0.08,
+      "Difficult chance": 0.02,
+    },
+    Okay: {
+      "Clear chance": 0.08,
+      "Good chance": 0.035,
+      "Half chance": 0.012,
+      "Difficult chance": 0,
+    },
+    Poor: {
+      "Clear chance": 0,
+      "Good chance": 0,
+      "Half chance": 0,
+      "Difficult chance": 0,
+    },
+  };
+  const assistChanceRates = {
+    Great: {
+      "Clear chance": 0.72,
+      "Good chance": 0.52,
+      "Half chance": 0.26,
+      "Difficult chance": 0.09,
+    },
+    Good: {
+      "Clear chance": 0.45,
+      "Good chance": 0.3,
+      "Half chance": 0.12,
+      "Difficult chance": 0.035,
+    },
+    Okay: {
+      "Clear chance": 0.14,
+      "Good chance": 0.07,
+      "Half chance": 0.025,
+      "Difficult chance": 0,
+    },
+    Poor: {
+      "Clear chance": 0,
+      "Good chance": 0,
+      "Half chance": 0,
+      "Difficult chance": 0,
+    },
+  };
+  const rates = outcome === "assist" ? assistChanceRates : goalRates;
+  const rate = rates[tier]?.[chanceQuality] ?? 0;
+  return seededNoise(`${resultSeed}-decisive`) < rate;
 }
 
 function isAssistConverted(tier, chanceQuality, opponentProfile = {}, resultSeed = "result") {
   const keeper = opponentProfile.keeper ?? 50;
   const defense = opponentProfile.defense ?? 50;
-  const resistance = (keeper * 0.65 + defense * 0.35 - 50) * 0.004;
-  const tierBonus = tier === "Great" ? 0.14 : tier === "Good" ? 0.03 : tier === "Okay" ? -0.1 : -0.24;
+  const resistance = (keeper * 0.65 + defense * 0.35 - 50) * 0.005;
+  const tierBonus = tier === "Great" ? 0.1 : tier === "Good" ? 0.02 : tier === "Okay" ? -0.08 : -0.22;
   const qualityBase = {
-    "Clear chance": 0.45,
-    "Good chance": 0.3,
-    "Half chance": 0.12,
-    "Difficult chance": 0.04,
+    "Clear chance": 0.36,
+    "Good chance": 0.24,
+    "Half chance": 0.09,
+    "Difficult chance": 0.025,
   }[chanceQuality] ?? 0.2;
-  const conversionRate = clamp(qualityBase + tierBonus - resistance, 0.03, 0.62);
+  const conversionRate = clamp(qualityBase + tierBonus - resistance, 0.02, 0.52);
   return seededNoise(`${resultSeed}-teammate-finish`) < conversionRate;
 }
 

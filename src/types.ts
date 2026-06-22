@@ -27,7 +27,7 @@ export type SupportUpgradeId =
   | "agentNegotiation"
   | "sponsorshipAppeal";
 export type SupportTrackId = "training" | "recovery" | "career";
-export type FitnessAvailability = "Ready" | "Playable" | "Tired" | "Heavy" | "Critical" | "Out";
+export type FitnessAvailability = "Sharp" | "Ready" | "Tired" | "Risky" | "Not match fit";
 export type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
 
 export type Attribute = {
@@ -403,6 +403,7 @@ export type MatchState = {
   expectedMinutes: string;
   fitnessAvailability: FitnessAvailability;
   isInSquad: boolean;
+  startFitness: number;
   entryMinute: number;
   exitMinute?: number;
   managerInstruction: string;

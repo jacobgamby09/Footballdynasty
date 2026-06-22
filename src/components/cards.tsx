@@ -8,7 +8,7 @@ import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getOv
 import { getPrestigeStatus } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
-import { getUpcomingMatch } from "../systems/selection";
+import { getFitnessAvailability, getUpcomingMatch } from "../systems/selection";
 import { getNextSupportTrackPurchase, getSupportTrackProgress, getSupportUpgradeCost, getSupportUpgradeLockReason } from "../systems/support";
 import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
@@ -232,7 +232,7 @@ export function ReadinessStrip({ game }: { game: GameState }) {
     {
       label: "Fitness",
       value: game.fitness,
-      state: game.fitness > 78 ? "Ready" : game.fitness > 58 ? "Tired" : "Heavy",
+      state: getFitnessAvailability(game.fitness),
       icon: HeartPulse,
     },
     {
@@ -360,7 +360,8 @@ export function getReadinessDetails(game: GameState, label: string) {
       { label: "Current level", value: `${game.fitness}/100` },
       { label: "Last training", value: game.lastTraining ? formatSigned(game.lastTraining.fitnessDelta) : "No session yet" },
       { label: "Last match", value: game.lastMatch ? formatSigned(game.lastMatch.fitnessDelta) : "No match yet" },
-      { label: "Selection impact", value: game.fitness >= 75 ? "Strong minutes case" : game.fitness >= 58 ? "Playable but tired" : "Minutes risk" },
+      { label: "Match band", value: getFitnessAvailability(game.fitness) },
+      { label: "Selection impact", value: game.fitness >= 60 ? "Nearly full trust" : game.fitness >= 40 ? "Managed minutes" : "Selection risk" },
     ];
   }
 
@@ -760,19 +761,6 @@ export function SupportTrackCard({
           <ChevronRight size={16} />
         </button>
       </div>
-      <p>{track.effect}</p>
-      <div className="support-impact-line">
-        <span>Next investment</span>
-        <strong>{impactLine}</strong>
-      </div>
-      <div className="support-current-bonuses">
-        <span>Current bonuses</span>
-        <div>
-          {currentBonuses.map((bonus) => (
-            <strong key={bonus}>{bonus}</strong>
-          ))}
-        </div>
-      </div>
       <div className="support-breakthrough-row">
         <span>{progress.nextName}</span>
         <strong>{progress.maxed ? "Complete" : `${progress.current}/${progress.required}`}</strong>
@@ -780,31 +768,46 @@ export function SupportTrackCard({
       <ProgressBar value={progress.percent} />
 
       {expanded && (
-        <div className="support-upgrade-list">
-          {upgradeItems.map((item) => (
-            <div className={`support-upgrade-item ${item.lockReason ? "is-locked" : ""}`} key={item.upgrade.id}>
-              <div className="support-upgrade-item-main">
-                <div>
-                  <strong>{item.upgrade.name}</strong>
-                  <small>{item.upgrade.effect}</small>
-                </div>
-                <span>Lv {item.level}/{item.upgrade.maxLevel}</span>
-              </div>
-              <div className="support-upgrade-item-effect">
-                <span>{item.nextEffect}</span>
-                <b>{item.maxed ? "Done" : `$${item.cost}`}</b>
-              </div>
-              <ProgressBar value={(item.level / item.upgrade.maxLevel) * 100} />
-              <button
-                type="button"
-                disabled={!item.canBuy}
-                onClick={() => onBuySupportUpgrade(item.upgrade.id)}
-              >
-                {item.maxed ? "Complete" : item.lockReason ? "Locked" : item.canBuy ? "Invest" : "Need cash"}
-              </button>
+        <>
+          <p>{track.effect}</p>
+          <div className="support-impact-line">
+            <span>Next investment</span>
+            <strong>{impactLine}</strong>
+          </div>
+          <div className="support-current-bonuses">
+            <span>Current bonuses</span>
+            <div>
+              {currentBonuses.map((bonus) => (
+                <strong key={bonus}>{bonus}</strong>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+          <div className="support-upgrade-list">
+            {upgradeItems.map((item) => (
+              <div className={`support-upgrade-item ${item.lockReason ? "is-locked" : ""}`} key={item.upgrade.id}>
+                <div className="support-upgrade-item-main">
+                  <div>
+                    <strong>{item.upgrade.name}</strong>
+                    <small>{item.upgrade.effect}</small>
+                  </div>
+                  <span>Lv {item.level}/{item.upgrade.maxLevel}</span>
+                </div>
+                <div className="support-upgrade-item-effect">
+                  <span>{item.nextEffect}</span>
+                  <b>{item.maxed ? "Done" : `$${item.cost}`}</b>
+                </div>
+                <ProgressBar value={(item.level / item.upgrade.maxLevel) * 100} />
+                <button
+                  type="button"
+                  disabled={!item.canBuy}
+                  onClick={() => onBuySupportUpgrade(item.upgrade.id)}
+                >
+                  {item.maxed ? "Complete" : item.lockReason ? "Locked" : item.canBuy ? "Invest" : "Need cash"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="support-upgrade-footer">

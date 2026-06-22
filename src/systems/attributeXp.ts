@@ -8,15 +8,15 @@ export function getAttributeXpRequirement(attribute: Attribute | number) {
 
 export function getBaseAttributeXpRequirement(attributeValue: number) {
   if (attributeValue < 30) {
-    return Math.round(24 + attributeValue * 1.25);
+    return Math.round(22 + attributeValue * 1.1);
   }
   if (attributeValue < 50) {
-    return Math.round(60 + (attributeValue - 30) * 3.5);
+    return Math.round(52 + (attributeValue - 30) * 2.8);
   }
   if (attributeValue < 70) {
-    return Math.round(130 + (attributeValue - 50) * 6);
+    return Math.round(108 + (attributeValue - 50) * 4.7);
   }
-  return Math.round(250 + (attributeValue - 70) * 10 + Math.pow(attributeValue - 70, 1.25) * 8);
+  return Math.round(205 + (attributeValue - 70) * 7.5 + Math.pow(attributeValue - 70, 1.2) * 5);
 }
 
 export function getAttributeGrowthPressure(attribute: Attribute): { label: string; copy: string; tone: GrowthPressureTone; multiplier: number } {
@@ -26,7 +26,7 @@ export function getAttributeGrowthPressure(attribute: Attribute): { label: strin
       label: "Fast growth",
       copy: "Below natural curve",
       tone: "fast",
-      multiplier: 0.85,
+      multiplier: 0.78,
     };
   }
   if (distance >= 0) {
@@ -34,12 +34,12 @@ export function getAttributeGrowthPressure(attribute: Attribute): { label: strin
       label: "Normal growth",
       copy: "Inside natural curve",
       tone: "normal",
-      multiplier: 1,
+      multiplier: 0.95,
     };
   }
 
   const overProfile = Math.abs(distance);
-  const multiplier = 1 + overProfile * 0.18 + Math.pow(overProfile, 1.22) * 0.035;
+  const multiplier = 1 + overProfile * 0.12 + Math.pow(overProfile, 1.18) * 0.025;
   if (overProfile < 8) {
     return {
       label: "Hard push",

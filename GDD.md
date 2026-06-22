@@ -190,10 +190,20 @@ First Gen 1 calibration curve:
 - Season 1: around 20 OVR
 - Season 3: around 30 OVR
 - Season 5: around 40 OVR
-- Season 8: around 55 OVR
-- Season 11: around 70 OVR
-- Season 14: around 80 OVR
+- Season 8: around 52 OVR
+- Season 11: around 62 OVR
+- Season 14: around 70 OVR
 - Late career: gradual plateau or decline depending on age, recovery and support.
+
+Current Gen 1 balance direction:
+
+- Gen 1 should still start as a true low-level prospect around the grassroots environment.
+- Gen 1 should not be hard-capped at grassroots/semi-pro ability. A strong first run can become a meaningful career and create the first real dynasty foundation.
+- The Gen 1 growth profile marker should sit below the best possible career outcome. It represents the natural curve, not the maximum. Current target is roughly 60 profile OVR, with strong support/facilities/performance able to push toward roughly 70-72.
+- Gen 1 ending in the mid/high 70s should be exceptional and usually signal that the player has outgrown their league. The preferred follow-up is better transfer/league progression and tier fit, not flattening the earned development into a hard cap.
+- Balanced and development-focused support spending should be able to land near the target curve over a 15-season career.
+- No-upgrade or economy-only play should fall clearly behind, proving that active in-run support investment matters.
+- If a player outgrows the current league, output can spike. The preferred fix is better transfer/league progression and tier fit, not reducing the player's earned development.
 
 ### League Tiers
 
@@ -494,6 +504,31 @@ Quality modifies XP range and should be visible in the Training screen and Devel
 ## Fitness, Fatigue and Injuries
 
 Stamina er en permanent attribute. Fitness/readiness er en dynamisk status fra 0-100.
+
+Readiness bands:
+
+- 80-100: Sharp
+- 60-79: Ready
+- 40-59: Tired
+- 20-39: Risky
+- 0-19: Not match fit
+
+Core rule:
+
+`Fitness should create load-management decisions, not frequently block the player from match gameplay.`
+
+60+ readiness should feel close to full effectiveness. Below 60, the player should start feeling managed minutes and slightly weaker actions. Below 40, selection risk and performance risk become meaningful. Below 20, the player is not match fit and should normally be protected by a recovery session rather than allowed to dig a deeper fatigue hole.
+
+Match readiness can fall during the match from minutes and intense player actions. The live match UI should show this as a visible number and band, so the player understands why late actions feel harder.
+
+Recovery upgrades should make the system less swingy:
+
+- reduce training fatigue
+- reduce match fatigue
+- improve weekly recovery floor
+- make hard workloads easier to sustain
+
+Recovery upgrades should be valuable, but not mandatory. A player without recovery investment can still get match involvement, but will more often need managed minutes, recovery weeks and conservative intensity choices.
 
 Lav fitness:
 

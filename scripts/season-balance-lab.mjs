@@ -42,23 +42,23 @@ const opponentNames = [
 ];
 
 const baseAttributes = {
-  Finishing: { value: 18, potential: 48, xp: 22 },
-  "Long Shots": { value: 12, potential: 38, xp: 8 },
-  Passing: { value: 14, potential: 42, xp: 14 },
-  Vision: { value: 13, potential: 40, xp: 12 },
-  Dribbling: { value: 16, potential: 45, xp: 17 },
-  "Off Ball": { value: 17, potential: 50, xp: 16 },
-  Composure: { value: 14, potential: 46, xp: 24 },
-  "First Touch": { value: 16, potential: 47, xp: 19 },
-  Acceleration: { value: 20, potential: 52, xp: 15 },
-  Pace: { value: 18, potential: 49, xp: 13 },
-  Stamina: { value: 17, potential: 48, xp: 18 },
-  Heading: { value: 13, potential: 39, xp: 9 },
-  Strength: { value: 12, potential: 41, xp: 11 },
-  "Work Rate": { value: 19, potential: 51, xp: 20 },
-  Tackling: { value: 8, potential: 31, xp: 6 },
-  Marking: { value: 9, potential: 32, xp: 7 },
-  Positioning: { value: 13, potential: 42, xp: 15 },
+  Finishing: { value: 18, potential: 61, xp: 22 },
+  "Long Shots": { value: 12, potential: 49, xp: 8 },
+  Passing: { value: 14, potential: 52, xp: 14 },
+  Vision: { value: 13, potential: 50, xp: 12 },
+  Dribbling: { value: 16, potential: 56, xp: 17 },
+  "Off Ball": { value: 17, potential: 62, xp: 16 },
+  Composure: { value: 14, potential: 59, xp: 24 },
+  "First Touch": { value: 16, potential: 60, xp: 19 },
+  Acceleration: { value: 20, potential: 63, xp: 15 },
+  Pace: { value: 18, potential: 59, xp: 13 },
+  Stamina: { value: 17, potential: 58, xp: 18 },
+  Heading: { value: 13, potential: 55, xp: 9 },
+  Strength: { value: 12, potential: 56, xp: 11 },
+  "Work Rate": { value: 19, potential: 62, xp: 20 },
+  Tackling: { value: 8, potential: 43, xp: 6 },
+  Marking: { value: 9, potential: 45, xp: 7 },
+  Positioning: { value: 13, potential: 52, xp: 15 },
 };
 
 const generationProfiles = [
@@ -501,8 +501,8 @@ function applyTraining(state, focuses, seed) {
   const effectiveTrainingLoadLevel = trainingLoadLevel * environment.supportEfficiency;
   const effectiveRecoveryBaselineLevel = recoveryBaselineLevel * environment.supportEfficiency;
 
-  if (state.fitness < 12) {
-    state.fitness = clamp(state.fitness + 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel), 0, 100);
+  if (state.fitness < 20) {
+    state.fitness = clamp(state.fitness + 12 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel), 0, 100);
     state.trust = clamp(state.trust - 1, 0, 100);
     return { xp: 0, levelUps: 0, quality: "Poor" };
   }
@@ -512,13 +512,13 @@ function applyTraining(state, focuses, seed) {
     const roll = seededNoise(`${seed}-training-${focus}`);
     const focusWeight = getTrainingFocusWeight(state, index);
     const min = Math.round(
-      (12 + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel)) *
+      (16 + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel)) *
         focusWeight *
         environment.xpMultiplier *
         qualityProfile.xpMultiplier,
     );
     const max = Math.round(
-      (55 + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel)) *
+      (78 + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel)) *
         focusWeight *
         environment.xpMultiplier *
         qualityProfile.xpMultiplier,
@@ -557,8 +557,8 @@ function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvi
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    trainingLoadLevel * 0.25 +
-    recoveryBaselineLevel * 0.2 +
+    trainingLoadLevel * 0.35 +
+    recoveryBaselineLevel * 0.3 +
     trainingBreakthroughs * 5 +
     recoveryBreakthroughs * 1.5;
   const qualityScore = readinessScore + Math.round(seededNoise(`${seed}-quality`) * 34) - 17;
@@ -783,15 +783,14 @@ function getFollowUpTemplate(moment, result) {
 }
 
 function buildChoiceXp(choice, tier, moment) {
-  const tierBase = { Poor: 7, Okay: 10, Good: 14, Great: 18 };
-  const adjustedTierBase = { Poor: 5, Okay: 8, Good: 11, Great: 15 };
+  const adjustedTierBase = { Poor: 4, Okay: 6, Good: 8, Great: 11 };
   const chainMultiplier = moment.chainDepth && moment.chainDepth > 0 ? 0.65 : 1;
   const xp = {};
   choice.uses.forEach((key, index) => {
-    xp[key] = (xp[key] ?? 0) + Math.max(1, Math.round(adjustedTierBase[tier] * chainMultiplier)) + (index === 0 ? 3 : 0);
+    xp[key] = (xp[key] ?? 0) + Math.max(1, Math.round(adjustedTierBase[tier] * chainMultiplier)) + (index === 0 ? 2 : 0);
   });
   if (forwardPreferredCategories.includes(moment.category)) {
-    xp[choice.uses[0]] = (xp[choice.uses[0]] ?? 0) + Math.max(1, Math.round(2 * chainMultiplier));
+    xp[choice.uses[0]] = (xp[choice.uses[0]] ?? 0) + Math.max(1, Math.round(1 * chainMultiplier));
   }
   return xp;
 }
@@ -828,27 +827,27 @@ function getAttributeXpRequirement(attributeOrValue) {
 
 function getBaseAttributeXpRequirement(attributeValue) {
   if (attributeValue < 30) {
-    return Math.round(24 + attributeValue * 1.25);
+    return Math.round(22 + attributeValue * 1.1);
   }
   if (attributeValue < 50) {
-    return Math.round(60 + (attributeValue - 30) * 3.5);
+    return Math.round(52 + (attributeValue - 30) * 2.8);
   }
   if (attributeValue < 70) {
-    return Math.round(130 + (attributeValue - 50) * 6);
+    return Math.round(108 + (attributeValue - 50) * 4.7);
   }
-  return Math.round(250 + (attributeValue - 70) * 10 + Math.pow(attributeValue - 70, 1.25) * 8);
+  return Math.round(205 + (attributeValue - 70) * 7.5 + Math.pow(attributeValue - 70, 1.2) * 5);
 }
 
 function getAttributeGrowthMultiplier(attribute) {
   const distance = attribute.potential - attribute.value;
   if (distance >= 10) {
-    return 0.85;
+    return 0.78;
   }
   if (distance >= 0) {
-    return 1;
+    return 0.95;
   }
   const overProfile = Math.abs(distance);
-  return 1 + overProfile * 0.18 + Math.pow(overProfile, 1.22) * 0.035;
+  return 1 + overProfile * 0.12 + Math.pow(overProfile, 1.18) * 0.025;
 }
 
 function getGenerationProfile(generation) {
@@ -880,14 +879,14 @@ function createGenerationAttributes(generation) {
 }
 
 function getAppearanceWindow(role, state, context, simEvents, matchSeed) {
-  if (!context.isInSquad || state.fitness < 12) {
+  if (!context.isInSquad || state.fitness < 10) {
     return { entryMinute: 91 };
   }
   const variation = Math.round(seededNoise(`${matchSeed}-${role}-${state.fitness}-appearance`) * 12) - 6;
   const scoreAround60 = getSimScoreAtMinute(simEvents, 60);
   const teamGoalDiff = scoreAround60.teamGoals - scoreAround60.opponentGoals;
   const earlyEvent = seededNoise(`${matchSeed}-early-sub`) > 0.88 ? -12 : 0;
-  const fitnessDelay = state.fitness < 25 ? 12 : state.fitness < 45 ? 6 : 0;
+  const fitnessDelay = state.fitness < 40 ? 10 : state.fitness < 60 ? 4 : 0;
 
   if (role === "Bench") {
     return { entryMinute: clamp(78 + variation + earlyEvent + (teamGoalDiff < 0 ? -6 : 0) + fitnessDelay, 60, 91) };
@@ -897,11 +896,11 @@ function getAppearanceWindow(role, state, context, simEvents, matchSeed) {
     return { entryMinute: clamp(66 + variation + earlyEvent + matchStateAdjustment + fitnessDelay, 48, 88) };
   }
   if (role === "Rotation Starter") {
-    const fatigueExit = state.fitness < 45 ? -14 : state.fitness < 62 ? -8 : 0;
+    const fatigueExit = state.fitness < 40 ? -10 : state.fitness < 60 ? -5 : 0;
     return { entryMinute: 0, exitMinute: clamp(72 + variation + fatigueExit, 55, 86) };
   }
-  if (state.fitness < 62) {
-    return { entryMinute: 0, exitMinute: clamp((state.fitness < 45 ? 66 : 76) + variation, 50, 88) };
+  if (state.fitness < 60) {
+    return { entryMinute: 0, exitMinute: clamp((state.fitness < 40 ? 70 : 80) + variation, 50, 88) };
   }
   return { entryMinute: 0 };
 }
@@ -947,30 +946,28 @@ function getSelectionReport(state, fixture, importance = "Normal") {
     0,
     100,
   );
-  return { score, role: state.fitness < 12 ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), getFitnessAvailability(state.fitness)) };
+  return { score, role: state.fitness < 20 ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), getFitnessAvailability(state.fitness)) };
 }
 
 function getFitnessAvailability(fitness) {
-  if (fitness < 12) return "Out";
-  if (fitness < 25) return "Critical";
-  if (fitness < 45) return "Heavy";
-  if (fitness < 62) return "Tired";
-  if (fitness < 78) return "Playable";
-  return "Ready";
+  if (fitness < 20) return "Not match fit";
+  if (fitness < 40) return "Risky";
+  if (fitness < 60) return "Tired";
+  if (fitness < 80) return "Ready";
+  return "Sharp";
 }
 
 function getFitnessSelectionImpact(fitness) {
-  if (fitness < 12) return -45;
-  if (fitness < 25) return -30;
-  if (fitness < 45) return -18;
-  if (fitness < 62) return -8;
-  if (fitness < 78) return 0;
-  return Math.min(1, Math.round((fitness - 78) * 0.08));
+  if (fitness < 20) return -38;
+  if (fitness < 40) return -16;
+  if (fitness < 60) return -6;
+  if (fitness < 80) return 0;
+  return Math.min(2, Math.round((fitness - 80) * 0.1));
 }
 
 function capRoleByFitness(role, availability) {
-  if (availability === "Critical") return "Bench";
-  if (availability === "Heavy" && (role === "Starter" || role === "Rotation Starter")) return "Impact Sub";
+  if (availability === "Not match fit") return "Bench";
+  if (availability === "Risky" && (role === "Starter" || role === "Rotation Starter")) return "Impact Sub";
   if (availability === "Tired" && role === "Starter") return "Rotation Starter";
   return role;
 }
@@ -1075,9 +1072,9 @@ function getSeasonPrestigeReward(state, stats) {
 }
 
 function isAvailableForSquad(fitness, seed) {
-  if (fitness < 8) return false;
-  if (fitness < 18) return seededNoise(`${seed}-fitness-selection`) > 0.7;
-  if (fitness < 28) return seededNoise(`${seed}-fitness-selection`) > 0.28;
+  if (fitness < 12) return false;
+  if (fitness < 20) return seededNoise(`${seed}-fitness-selection`) > 0.78;
+  if (fitness < 40) return seededNoise(`${seed}-fitness-selection`) > 0.25;
   return true;
 }
 
@@ -1345,9 +1342,29 @@ function printSeasonReport(report, scenario, generation) {
   console.log(`Roles: ${formatEntries([...report.roleCounts.entries()].sort((a, b) => b[1] - a[1]))}`);
   if (report.careerSeasons > 1) {
     printCareerCurve(report);
+    console.log(`Gen1 dynasty read: ${getDynastyFlowRead(report)}`);
   }
   const warnings = getBalanceWarnings(report);
   console.log(`Warnings: ${warnings.length ? warnings.join("; ") : "none"}`);
+}
+
+function getDynastyFlowRead(report) {
+  const finalSeason = report.seasonCurve[report.seasonCurve.length - 1];
+  if (!finalSeason) {
+    return "not enough data";
+  }
+
+  const peakSeason = report.seasonCurve.reduce((best, season) => (season.endOvr.avg > best.endOvr.avg ? season : best), report.seasonCurve[0]);
+  const finalGap = finalSeason.endOvr.avg - getTargetOvrForCareerSeason(finalSeason.season);
+  const legacySeedScore = Math.round(finalSeason.endPrestige.avg / 100 + peakSeason.endOvr.avg * 1.5 + report.levelUps.avg / 12);
+  const foundation =
+    peakSeason.endOvr.avg >= 76 && finalSeason.endPrestige.avg >= 7500
+      ? "strong first-generation legacy"
+      : peakSeason.endOvr.avg >= 65 && finalSeason.endPrestige.avg >= 3500
+        ? "healthy dynasty foundation"
+        : "modest foundation";
+
+  return `${foundation}; peak S${peakSeason.season} ${format(peakSeason.endOvr.avg)} OVR; final gap ${format(finalGap)}; prestige ${format(finalSeason.endPrestige.avg)}; lab legacy seed ${legacySeedScore}`;
 }
 
 function printCareerCurve(report) {
@@ -1418,11 +1435,11 @@ function getTargetOvrForCareerSeason(season) {
     { season: 1, ovr: 20 },
     { season: 3, ovr: 30 },
     { season: 5, ovr: 40 },
-    { season: 8, ovr: 55 },
-    { season: 11, ovr: 70 },
-    { season: 14, ovr: 80 },
-    { season: 17, ovr: 76 },
-    { season: 20, ovr: 70 },
+    { season: 8, ovr: 52 },
+    { season: 11, ovr: 62 },
+    { season: 14, ovr: 70 },
+    { season: 17, ovr: 68 },
+    { season: 20, ovr: 64 },
   ];
   const first = targetCurve[0];
   if (season <= first.season) {
@@ -1444,7 +1461,7 @@ function getTargetOvrForCareerSeason(season) {
 function getBalanceWarnings(report) {
   const warnings = [];
   const ovrGainPerSeason = report.ovrGain.avg / report.careerSeasons;
-  const aboveGrowthProfile = report.endOvr.avg > report.potentialOvr.avg + 4;
+  const aboveGrowthProfile = report.endOvr.avg > report.potentialOvr.avg + 12;
   if (ovrGainPerSeason < 3) {
     warnings.push(`OVR gain low (${format(ovrGainPerSeason)}/season)`);
   }
@@ -1458,7 +1475,7 @@ function getBalanceWarnings(report) {
     warnings.push("end fitness too low");
   }
   if (aboveGrowthProfile) {
-    warnings.push("growth profile exceeded; soft-cap pressure should be visible");
+    warnings.push("growth profile heavily exceeded; soft-cap pressure should be visible");
   }
   if (report.careerSeasons > 1 && report.supportLevels.avg < report.careerSeasons * 1.2) {
     warnings.push("support spending may be too slow for long careers");
@@ -1797,10 +1814,10 @@ function getDevelopmentEnvironment(tier) {
   const level = tier.facilityLevel;
   return {
     facilityLevel: level,
-    xpMultiplier: 1 + (level - 1) * 0.12,
-    xpFloorBonus: (level - 1) * 3,
-    recoveryBonus: level >= 4 ? 1 : 0,
-    supportEfficiency: 1 + (level - 1) * 0.06,
+    xpMultiplier: 1 + (level - 1) * 0.2,
+    xpFloorBonus: (level - 1) * 6,
+    recoveryBonus: level >= 4 ? 2 : level >= 2 ? 1 : 0,
+    supportEfficiency: 1 + (level - 1) * 0.1,
   };
 }
 
@@ -1816,38 +1833,38 @@ function getFocusSlot2Efficiency(state) {
   if (getSupportLevel(state, "focusSlot2Unlock") < supportUpgradeMap.focusSlot2Unlock.maxLevel) {
     return 0;
   }
-  return clamp(0.2 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.2, 0.8);
+  return clamp(0.25 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.25, 0.9);
 }
 
 function getFocusSlot3Efficiency(state) {
   if (getSupportLevel(state, "focusSlot3Unlock") < supportUpgradeMap.focusSlot3Unlock.maxLevel) {
     return 0;
   }
-  return clamp(0.1 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.1, 0.6);
+  return clamp(0.15 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.15, 0.75);
 }
 
 function getTrainingFatigueRelief(level) {
-  return Math.min(14, Math.floor(level / 4));
+  return Math.min(16, Math.floor(level / 3));
 }
 
 function getRecoverySessionBonus(baselineLevel) {
-  return Math.min(12, Math.round(baselineLevel * 0.32));
+  return Math.min(14, Math.round(baselineLevel * 0.45));
 }
 
 function getWeeklySupportRecoveryBonus(baselineLevel) {
-  return Math.min(5, Math.floor(baselineLevel / 8));
+  return Math.min(8, Math.floor(baselineLevel / 5));
 }
 
 function getMatchActionRecoveryRelief(level) {
-  return Math.min(10, Math.floor(level / 5));
+  return Math.min(12, Math.floor(level / 4));
 }
 
 function getRecoveryFitnessFloor(baselineLevel, breakthroughs = 0) {
-  return Math.min(58, 12 + Math.round(baselineLevel * 0.45 + breakthroughs * 2));
+  return Math.min(68, 28 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
 }
 
 function getRecoveryFitnessCeiling(baselineLevel, breakthroughs = 0) {
-  return Math.min(82, 68 + Math.round(baselineLevel * 0.2 + breakthroughs * 1.5));
+  return Math.min(88, 70 + Math.round(baselineLevel * 0.28 + breakthroughs * 2));
 }
 
 function applyRecoveryFloor(currentFitness, projectedFitness, floor) {
@@ -1855,7 +1872,7 @@ function applyRecoveryFloor(currentFitness, projectedFitness, floor) {
     return projectedFitness;
   }
 
-  const pull = Math.min(5, Math.ceil((floor - projectedFitness) * 0.28));
+  const pull = Math.min(7, Math.ceil((floor - projectedFitness) * 0.35));
   return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
 }
 

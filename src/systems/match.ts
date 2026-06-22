@@ -16,26 +16,26 @@ import type { AttributeKey, PositionModule } from "../positionRoles";
 import type { Attribute, ChanceQuality, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
 export function getPreMatchEntryPlan(match: MatchState) {
-  if (match.isInSquad === false || match.fitnessAvailability === "Out") {
+  if (match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
     return "Likely rested";
   }
 
-  if (match.fitnessAvailability === "Critical") {
+  if (match.fitnessAvailability === "Risky") {
     return "Emergency only";
   }
 
   if (match.playerRole === "Starter") {
-    return match.fitnessAvailability === "Heavy" || match.fitnessAvailability === "Tired"
+    return match.fitnessAvailability === "Tired"
       ? "Start, managed load"
       : "Start XI";
   }
 
   if (match.playerRole === "Rotation Starter") {
-    return match.fitnessAvailability === "Heavy" ? "Limited start" : "Start or early rotation";
+    return match.fitnessAvailability === "Tired" ? "Limited start" : "Start or early rotation";
   }
 
   if (match.playerRole === "Impact Sub") {
-    return match.fitnessAvailability === "Heavy" ? "If chasing late" : "Second-half option";
+    return match.fitnessAvailability === "Tired" ? "If chasing late" : "Second-half option";
   }
 
   return "Late bench cover";
@@ -185,7 +185,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
 
 
 export function didPlayerAppear(match?: MatchState) {
-  if (!match || match.isInSquad === false || match.fitnessAvailability === "Out") {
+  if (!match || match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
     return false;
   }
 
@@ -230,6 +230,21 @@ export function getMatchFitnessDelta(match: MatchState, results: MatchResult[]) 
   const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
 
   return clamp(minuteLoad + scaledActionLoad, -12, 0);
+}
+
+
+export function getLiveMatchReadiness(match: MatchState, results: MatchResult[] = match.results, liveMinute = match.liveMinute) {
+  if (!didPlayerAppear(match) || liveMinute < match.entryMinute) {
+    return match.startFitness;
+  }
+
+  const startMinute = clamp(match.entryMinute, 0, 90);
+  const endMinute = clamp(Math.min(liveMinute, match.exitMinute ?? 90), startMinute, 90);
+  const minutesPlayedSoFar = Math.max(0, endMinute - startMinute);
+  const minuteLoad = minutesPlayedSoFar <= 0 ? 0 : -Math.max(0, Math.round(minutesPlayedSoFar / 22));
+  const actionLoad = results.reduce((sum, result) => sum + Math.min(0, result.fitnessDelta), 0);
+
+  return clamp(match.startFitness + minuteLoad + actionLoad, 0, 100);
 }
 
 
@@ -666,7 +681,7 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
 
 
 export function getAppearanceText(match: MatchState) {
-  if (match.isInSquad === false || match.fitnessAvailability === "Out" || match.entryMinute > 90) {
+  if (match.isInSquad === false || match.fitnessAvailability === "Not match fit" || match.entryMinute > 90) {
     return "Not selected";
   }
   if (match.entryMinute === 0 && !match.exitMinute) {
@@ -737,7 +752,7 @@ export function getAppearanceWindow(
   simEvents: SimMatchEvent[],
   matchSeed: string,
 ) {
-  if (!context.isInSquad || context.fitnessAvailability === "Out") {
+  if (!context.isInSquad || context.fitnessAvailability === "Not match fit") {
     return { entryMinute: 91 };
   }
 
@@ -757,7 +772,7 @@ export function getAppearanceWindow(
           : 0;
 
   if (role === "Bench") {
-    if (context.fitnessAvailability === "Critical") {
+    if (context.fitnessAvailability === "Risky") {
       return { entryMinute: clamp(window.start + variation + earlyEvent + (teamGoalDiff < 0 ? -4 : 0), 80, 89) };
     }
 
@@ -766,19 +781,19 @@ export function getAppearanceWindow(
 
   if (role === "Impact Sub") {
     const fitnessDelay =
-      context.fitnessAvailability === "Critical" ? 12 : context.fitnessAvailability === "Heavy" ? 6 : 0;
+      context.fitnessAvailability === "Risky" ? 10 : context.fitnessAvailability === "Tired" ? 4 : 0;
     return { entryMinute: clamp(66 + variation + earlyEvent + matchStateAdjustment + fitnessDelay, 48, 86) };
   }
 
   if (role === "Rotation Starter") {
     const fatigueExit =
-      context.fitnessAvailability === "Heavy" ? -14 : context.fitnessAvailability === "Tired" ? -8 : 0;
+      context.fitnessAvailability === "Risky" ? -10 : context.fitnessAvailability === "Tired" ? -5 : 0;
     const exitAdjustment = fatigueExit + (teamGoalDiff >= 2 ? -5 : teamGoalDiff < 0 ? 6 : 0);
     return { entryMinute: 0, exitMinute: clamp(window.end + variation + exitAdjustment, 55, 86) };
   }
 
-  if (role === "Starter" && ["Critical", "Heavy", "Tired"].includes(context.fitnessAvailability)) {
-    const exitBase = context.fitnessAvailability === "Critical" ? 58 : context.fitnessAvailability === "Heavy" ? 66 : 76;
+  if (role === "Starter" && ["Risky", "Tired"].includes(context.fitnessAvailability)) {
+    const exitBase = context.fitnessAvailability === "Risky" ? 70 : 80;
     return { entryMinute: 0, exitMinute: clamp(exitBase + variation, 50, 88) };
   }
 
@@ -821,7 +836,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
   const playerWindowStart = Math.max(minuteWindow.start, appearanceWindow.entryMinute);
   const playerWindowEnd = Math.max(playerWindowStart, appearanceWindow.exitMinute ?? minuteWindow.end);
   const appearanceMinutes =
-    context.isInSquad && context.fitnessAvailability !== "Out" && appearanceWindow.entryMinute <= 90
+    context.isInSquad && context.fitnessAvailability !== "Not match fit" && appearanceWindow.entryMinute <= 90
       ? Math.max(0, clamp(appearanceWindow.exitMinute ?? 90, appearanceWindow.entryMinute, 90) - clamp(appearanceWindow.entryMinute, 0, 90))
       : 0;
   const involvementScore =
@@ -880,6 +895,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     expectedMinutes: context.expectedMinutes,
     fitnessAvailability: context.fitnessAvailability,
     isInSquad: context.isInSquad,
+    startFitness: state.fitness,
     entryMinute: appearanceWindow.entryMinute,
     exitMinute: appearanceWindow.exitMinute,
     managerInstruction: context.managerInstruction,
@@ -906,7 +922,7 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
     moment,
     choice,
     attributeValues: matchAttributeValues,
-    fitness: state.fitness,
+    fitness: state.activeMatch ? getLiveMatchReadiness(state.activeMatch) : state.fitness,
     trust: state.trust,
     playerRole: state.activeMatch?.playerRole,
     opponentProfile: matchOpponentProfile,
@@ -1103,7 +1119,7 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
       const choice = chooseAutoSimChoice({
         moment,
         attributeValues: matchAttributeValues,
-        fitness: state.fitness,
+        fitness: getLiveMatchReadiness(match, match.results, moment.minute),
         trust: state.trust,
         matchSeed: match.matchSeed,
       });
@@ -1116,7 +1132,7 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
       const followUpChoice = chooseAutoSimChoice({
         moment: followUp,
         attributeValues: matchAttributeValues,
-        fitness: state.fitness,
+        fitness: getLiveMatchReadiness(match, [...match.results, result], followUp.minute),
         trust: state.trust,
         matchSeed: `${match.matchSeed}-follow-up`,
       });
@@ -1129,26 +1145,26 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
 export function buildChoiceXp(choice: MatchChoice, tier: OutcomeTier, positionModule: PositionModule, moment: MatchMoment): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
   const tierBase: Record<OutcomeTier, number> = {
-    Poor: 5,
-    Okay: 8,
-    Good: 11,
-    Great: 15,
+    Poor: 4,
+    Okay: 6,
+    Good: 8,
+    Great: 11,
   };
   const chainMultiplier = moment.chainDepth && moment.chainDepth > 0 ? 0.65 : 1;
   const base = Math.max(1, Math.round(tierBase[tier] * chainMultiplier));
   choice.uses.forEach((key, index) => {
     const keyAttributeBonus = positionModule.keyAttributes.includes(key) ? 1 : 0;
-    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 3 : 0) + keyAttributeBonus;
+    xp[key] = (xp[key] ?? 0) + base + (index === 0 ? 2 : 0) + keyAttributeBonus;
   });
 
   if (choice.manager === "Likes") {
     const managerBonusAttribute = getManagerBonusAttribute(choice, positionModule);
-    xp[managerBonusAttribute] = (xp[managerBonusAttribute] ?? 0) + Math.max(1, Math.round(3 * chainMultiplier));
+    xp[managerBonusAttribute] = (xp[managerBonusAttribute] ?? 0) + Math.max(1, Math.round(2 * chainMultiplier));
   }
 
   if (positionModule.matchTendencies.preferredForwardCategories.includes(moment.category)) {
     const focusAttribute = choice.uses.find((key) => positionModule.keyAttributes.includes(key)) ?? choice.uses[0];
-    xp[focusAttribute] = (xp[focusAttribute] ?? 0) + Math.max(1, Math.round(2 * chainMultiplier));
+    xp[focusAttribute] = (xp[focusAttribute] ?? 0) + Math.max(1, Math.round(1 * chainMultiplier));
   }
 
   return xp;

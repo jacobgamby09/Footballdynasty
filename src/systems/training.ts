@@ -216,13 +216,13 @@ export function getTrainingProjection(state: GameState) {
   const effectiveRecoveryBaselineLevel = recoveryBaselineLevel * environment.supportEfficiency;
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
 
-  if (state.fitness < 12) {
+  if (state.fitness < 20) {
     return {
       ranges,
       quality: "Poor" as TrainingQuality,
       qualityLabel: "Recovery session",
       qualityProfile: getTrainingQualityProfileByQuality("Poor"),
-      fitnessDelta: 10 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel),
+      fitnessDelta: 12 + environment.recoveryBonus + getRecoverySessionBonus(effectiveRecoveryBaselineLevel),
       moraleDelta: 1,
       trustDelta: -1,
     };
@@ -275,10 +275,10 @@ export function getDevelopmentEnvironment(tier: LeagueTier): DevelopmentEnvironm
   return {
     label: tier.name,
     facilityLevel: level,
-    xpMultiplier: 1 + (level - 1) * 0.12,
-    xpFloorBonus: (level - 1) * 3,
-    recoveryBonus: level >= 4 ? 1 : 0,
-    supportEfficiency: 1 + (level - 1) * 0.06,
+    xpMultiplier: 1 + (level - 1) * 0.2,
+    xpFloorBonus: (level - 1) * 6,
+    recoveryBonus: level >= 4 ? 2 : level >= 2 ? 1 : 0,
+    supportEfficiency: 1 + (level - 1) * 0.1,
   };
 }
 
@@ -305,8 +305,8 @@ export function getTrainingQualityProfile(state: GameState, seed: string, enviro
     state.morale * 0.18 +
     (100 - state.pressure) * 0.12 +
     environment.facilityLevel * 5 +
-    trainingLoadLevel * 0.25 +
-    recoveryBaselineLevel * 0.2 +
+    trainingLoadLevel * 0.35 +
+    recoveryBaselineLevel * 0.3 +
     trainingBreakthroughs * 5 +
     recoveryBreakthroughs * 1.5 +
     (state.intensity === "Hard" ? -6 : state.intensity === "Light" ? 4 : 0);
@@ -400,7 +400,7 @@ export function getTrainingFocusUnlockLabel(state: Pick<GameState, "supportUpgra
 
 
 export function getBaseTrainingRange(_state: GameState, _focus: AttributeKey) {
-  return { min: 12, max: 55 };
+  return { min: 16, max: 78 };
 }
 
 

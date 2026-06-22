@@ -159,38 +159,38 @@ export function getFocusSlot2Efficiency(state: Pick<GameState, "supportUpgrades"
   if (!isFocusSlot2Unlocked(state)) {
     return 0;
   }
-  return clamp(0.2 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.2, 0.8);
+  return clamp(0.25 + getSupportLevel(state, "focusSlot2Efficiency") / 100, 0.25, 0.9);
 }
 
 export function getFocusSlot3Efficiency(state: Pick<GameState, "supportUpgrades">) {
   if (!isFocusSlot3Unlocked(state)) {
     return 0;
   }
-  return clamp(0.1 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.1, 0.6);
+  return clamp(0.15 + getSupportLevel(state, "focusSlot3Efficiency") / 100, 0.15, 0.75);
 }
 
 export function getTrainingFatigueRelief(level: number) {
-  return Math.min(14, Math.floor(level / 4));
+  return Math.min(16, Math.floor(level / 3));
 }
 
 export function getRecoverySessionBonus(baselineLevel: number) {
-  return Math.min(12, Math.round(baselineLevel * 0.32));
+  return Math.min(14, Math.round(baselineLevel * 0.45));
 }
 
 export function getWeeklySupportRecoveryBonus(baselineLevel: number) {
-  return Math.min(5, Math.floor(baselineLevel / 8));
+  return Math.min(8, Math.floor(baselineLevel / 5));
 }
 
 export function getMatchActionRecoveryRelief(level: number) {
-  return Math.min(10, Math.floor(level / 5));
+  return Math.min(12, Math.floor(level / 4));
 }
 
 export function getRecoveryFitnessFloor(baselineLevel: number, breakthroughs = 0) {
-  return Math.min(58, 12 + Math.round(baselineLevel * 0.45 + breakthroughs * 2));
+  return Math.min(68, 28 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
 }
 
 export function getRecoveryFitnessCeiling(baselineLevel: number, breakthroughs = 0) {
-  return Math.min(82, 68 + Math.round(baselineLevel * 0.2 + breakthroughs * 1.5));
+  return Math.min(88, 70 + Math.round(baselineLevel * 0.28 + breakthroughs * 2));
 }
 
 export function applyRecoveryFloor(currentFitness: number, projectedFitness: number, floor: number) {
@@ -198,7 +198,7 @@ export function applyRecoveryFloor(currentFitness: number, projectedFitness: num
     return projectedFitness;
   }
 
-  const pull = Math.min(5, Math.ceil((floor - projectedFitness) * 0.28));
+  const pull = Math.min(7, Math.ceil((floor - projectedFitness) * 0.35));
   return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
 }
 

@@ -73,7 +73,7 @@ export function getSelectionReport(
     0,
     100,
   );
-  const role = availability === "Out" ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), availability);
+  const role = availability === "Not match fit" ? "Bench" : capRoleByFitness(getPlayerMatchRole(score), availability);
   const nextRole = getNextRole(role);
   const nextThreshold = nextRole ? getRoleThreshold(nextRole) : 100;
 
@@ -93,7 +93,7 @@ export function getSelectionReport(
         label: "Fitness",
         value: availability,
         impact: fitnessImpact,
-        tone: state.fitness >= 75 ? "good" : state.fitness < 58 ? "warn" : "neutral",
+        tone: state.fitness >= 60 ? "good" : state.fitness < 40 ? "warn" : "neutral",
       },
       {
         label: "Form",
@@ -151,54 +151,48 @@ export function getSelectionSummary(
 
 
 export function getFitnessAvailability(fitness: number): FitnessAvailability {
-  if (fitness < 12) {
-    return "Out";
+  if (fitness < 20) {
+    return "Not match fit";
   }
-  if (fitness < 25) {
-    return "Critical";
+  if (fitness < 40) {
+    return "Risky";
   }
-  if (fitness < 45) {
-    return "Heavy";
-  }
-  if (fitness < 62) {
+  if (fitness < 60) {
     return "Tired";
   }
-  if (fitness < 78) {
-    return "Playable";
+  if (fitness < 80) {
+    return "Ready";
   }
-  return "Ready";
+  return "Sharp";
 }
 
 
 export function getFitnessSelectionImpact(fitness: number) {
-  if (fitness < 12) {
-    return -45;
+  if (fitness < 20) {
+    return -38;
   }
-  if (fitness < 25) {
-    return -30;
+  if (fitness < 40) {
+    return -16;
   }
-  if (fitness < 45) {
-    return -18;
+  if (fitness < 60) {
+    return -6;
   }
-  if (fitness < 62) {
-    return -8;
-  }
-  if (fitness < 78) {
+  if (fitness < 80) {
     return 0;
   }
-  return Math.min(1, Math.round((fitness - 78) * 0.08));
+  return Math.min(2, Math.round((fitness - 80) * 0.1));
 }
 
 
 export function isAvailableForSquad(fitness: number, matchSeed: string) {
-  if (fitness < 8) {
+  if (fitness < 12) {
     return false;
   }
-  if (fitness < 18) {
-    return seededNoise(`${matchSeed}-fitness-selection`) > 0.7;
+  if (fitness < 20) {
+    return seededNoise(`${matchSeed}-fitness-selection`) > 0.78;
   }
-  if (fitness < 28) {
-    return seededNoise(`${matchSeed}-fitness-selection`) > 0.28;
+  if (fitness < 40) {
+    return seededNoise(`${matchSeed}-fitness-selection`) > 0.25;
   }
   return true;
 }
@@ -245,11 +239,11 @@ export function getPlayerMatchRole(selectionScore: number): UpcomingMatch["playe
 
 
 function capRoleByFitness(role: UpcomingMatch["playerRole"], availability: FitnessAvailability): UpcomingMatch["playerRole"] {
-  if (availability === "Critical") {
+  if (availability === "Not match fit") {
     return "Bench";
   }
 
-  if (availability === "Heavy" && (role === "Starter" || role === "Rotation Starter")) {
+  if (availability === "Risky" && (role === "Starter" || role === "Rotation Starter")) {
     return "Impact Sub";
   }
 
@@ -262,17 +256,17 @@ function capRoleByFitness(role: UpcomingMatch["playerRole"], availability: Fitne
 
 
 export function getExpectedMinutes(role: UpcomingMatch["playerRole"], availability: FitnessAvailability = "Ready", isInSquad = true) {
-  if (!isInSquad || availability === "Out") {
+  if (!isInSquad || availability === "Not match fit") {
     return "Not selected";
   }
-  if (availability === "Critical") {
+  if (availability === "Risky") {
     return "Emergency only";
   }
   const minutes: Record<UpcomingMatch["playerRole"], string> = {
     Bench: "Bench cover",
     "Impact Sub": "Second half",
-    "Rotation Starter": availability === "Heavy" ? "Limited start" : "Around an hour",
-    Starter: availability === "Heavy" || availability === "Tired" ? "Managed start" : "Full match",
+    "Rotation Starter": availability === "Tired" ? "Limited start" : "Around an hour",
+    Starter: availability === "Tired" ? "Managed start" : "Full match",
   };
 
   return minutes[role];

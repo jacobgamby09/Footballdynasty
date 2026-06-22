@@ -1,4 +1,5 @@
 import { attributeInfo } from "../data/attributes";
+import { supportUpgradeMap } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeGrowthPressure, getAttributeXpRequirement } from "../systems/attributeXp";
 import { getContractStatusLabel } from "../systems/contracts";
@@ -8,7 +9,7 @@ import { getPrestigeStatus } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
 import { getUpcomingMatch } from "../systems/selection";
-import { getNextSupportTrackPurchase, getSupportTrackProgress } from "../systems/support";
+import { getNextSupportTrackPurchase, getSupportTrackProgress, getSupportUpgradeCost, getSupportUpgradeLockReason } from "../systems/support";
 import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
@@ -720,11 +721,27 @@ export function SupportTrackCard({
   track: SupportTrackDefinition;
   onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const progress = getSupportTrackProgress(game, track);
   const nextPurchase = getNextSupportTrackPurchase(game, track);
-  const canBuy = Boolean(nextPurchase && cash >= nextPurchase.cost);
   const impactLine = nextPurchase ? getSupportInvestmentImpactLine(game, track, nextPurchase.upgrade.id) : "All effects unlocked";
   const currentBonuses = getSupportTrackCurrentBonusLines(game, track);
+  const upgradeItems = track.upgradeIds.map((upgradeId) => {
+    const upgrade = supportUpgradeMap[upgradeId];
+    const level = game.supportUpgrades[upgradeId] ?? 0;
+    const cost = getSupportUpgradeCost(upgrade, level);
+    const lockReason = getSupportUpgradeLockReason(game, upgrade);
+    const maxed = level >= upgrade.maxLevel;
+    return {
+      upgrade,
+      level,
+      cost,
+      lockReason,
+      maxed,
+      canBuy: !lockReason && !maxed && cash >= cost,
+      nextEffect: maxed ? "Complete" : lockReason ? `Locked: ${lockReason}` : getSupportInvestmentImpactLine(game, track, upgradeId),
+    };
+  });
 
   return (
     <div className={`card support-upgrade-card support-track-card ${progress.maxed ? "is-maxed" : ""}`}>
@@ -733,9 +750,15 @@ export function SupportTrackCard({
           <span className="metric-label">{track.category}</span>
           <h2>{track.name}</h2>
         </div>
-        <div className="support-level-pill">
-          {progress.total}/{progress.maxTotal}
-        </div>
+        <button
+          type="button"
+          className="support-track-toggle"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <span>{progress.total}/{progress.maxTotal}</span>
+          <ChevronRight size={16} />
+        </button>
       </div>
       <p>{track.effect}</p>
       <div className="support-impact-line">
@@ -755,14 +778,42 @@ export function SupportTrackCard({
         <strong>{progress.maxed ? "Complete" : `${progress.current}/${progress.required}`}</strong>
       </div>
       <ProgressBar value={progress.percent} />
+
+      {expanded && (
+        <div className="support-upgrade-list">
+          {upgradeItems.map((item) => (
+            <div className={`support-upgrade-item ${item.lockReason ? "is-locked" : ""}`} key={item.upgrade.id}>
+              <div className="support-upgrade-item-main">
+                <div>
+                  <strong>{item.upgrade.name}</strong>
+                  <small>{item.upgrade.effect}</small>
+                </div>
+                <span>Lv {item.level}/{item.upgrade.maxLevel}</span>
+              </div>
+              <div className="support-upgrade-item-effect">
+                <span>{item.nextEffect}</span>
+                <b>{item.maxed ? "Done" : `$${item.cost}`}</b>
+              </div>
+              <ProgressBar value={(item.level / item.upgrade.maxLevel) * 100} />
+              <button
+                type="button"
+                disabled={!item.canBuy}
+                onClick={() => onBuySupportUpgrade(item.upgrade.id)}
+              >
+                {item.maxed ? "Complete" : item.lockReason ? "Locked" : item.canBuy ? "Invest" : "Need cash"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="support-upgrade-footer">
-        <span>{progress.maxed ? "Track complete" : nextPurchase ? `$${nextPurchase.cost}` : "Locked"}</span>
+        <span>{progress.maxed ? "Track complete" : nextPurchase ? `$${nextPurchase.cost} next` : "Locked"}</span>
         <button
           type="button"
-          disabled={!canBuy || !nextPurchase}
-          onClick={() => nextPurchase && onBuySupportUpgrade(nextPurchase.upgrade.id)}
+          onClick={() => setExpanded((value) => !value)}
         >
-          {progress.maxed ? "Complete" : canBuy ? "Invest" : "Need cash"}
+          {expanded ? "Hide" : "Upgrades"}
         </button>
       </div>
     </div>

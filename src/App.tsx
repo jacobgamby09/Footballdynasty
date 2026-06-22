@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, ContractOffer, CountryId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId } from "./types";
+import type { Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
 import { createCareerForCountry } from "./state/initialState";
 import { COUNTRIES } from "./data/world";
+import { getGenerationProfile } from "./systems/generation";
+import { getLegacyEstimate, getLegacySeasons } from "./systems/legacy";
+import { buyDynastyUpgradeState } from "./systems/dynastyUpgrades";
 import { buySupportUpgradeState } from "./systems/support";
 import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 import { getUpcomingMatch } from "./systems/selection";
@@ -12,8 +15,9 @@ import { acceptContractOfferState } from "./systems/contracts";
 import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
+import { getCountryForClub } from "./systems/world";
 import { BottomNav } from "./components/shared";
-import { ClubScreen, ContractOfferScreen, CountrySelectScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubScreen, ContractOfferScreen, CountrySelectScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
 
 function App() {
   const [careerStarted, setCareerStarted] = useState<boolean>(() => hasSavedGame());
@@ -30,12 +34,17 @@ function App() {
     activeScreen === "training-summary" ||
     activeScreen === "week-summary" ||
     activeScreen === "contract-offer" ||
-    activeScreen === "season-review"
+    activeScreen === "transfer-window" ||
+    activeScreen === "season-review" ||
+    activeScreen === "retirement"
       ? undefined
       : activeScreen;
   const seasonComplete = isSeasonComplete(game.season);
   const isMatchDay = hasPlayableFixture(game.season);
   const needsTraining = game.trainingCompletedWeek !== game.week && !seasonComplete;
+  const requiresTransferDecision =
+    activeScreen === "transfer-window" &&
+    Boolean(game.transferWindow?.currentClubOffer || game.transferWindow?.offers.length);
   const advanceLabel =
     activeScreen === "pre-match"
       ? "Start Match"
@@ -55,8 +64,16 @@ function App() {
             : "Next Week"
       : activeScreen === "contract-offer"
         ? "Accept Offer"
+      : activeScreen === "transfer-window"
+        ? requiresTransferDecision
+          ? "Decision Required"
+          : game.transferWindow?.kind === "end-season"
+          ? "Season Review"
+          : "Continue"
       : activeScreen === "season-review"
         ? "Next Season"
+        : activeScreen === "retirement"
+          ? "End Run"
         : activeScreen === "training" && needsTraining
           ? "Start Training"
         : seasonComplete
@@ -201,8 +218,18 @@ function App() {
       return;
     }
 
+    if (activeScreen === "retirement") {
+      retireCareer();
+      return;
+    }
+
     if (activeScreen === "contract-offer") {
       acceptContractOffer();
+      return;
+    }
+
+    if (activeScreen === "transfer-window") {
+      closeTransferWindow();
       return;
     }
 
@@ -428,7 +455,15 @@ function App() {
   }
 
   function closeWeekSummary() {
-    setActiveScreen(game.contractOffer || game.contractOffers?.length ? "contract-offer" : isSeasonComplete(game.season) ? "season-review" : "player");
+    setActiveScreen(
+      game.transferWindow
+        ? "transfer-window"
+        : game.contractOffer || game.contractOffers?.length
+          ? "contract-offer"
+          : isSeasonComplete(game.season)
+            ? "season-review"
+            : "player",
+    );
   }
 
   function closeTrainingSummary() {
@@ -445,6 +480,14 @@ function App() {
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
+  function acceptTransferOffer(offer: ContractOffer) {
+    setGame((state) => ({
+      ...acceptContractOfferState(state, offer),
+      transferWindow: undefined,
+    }));
+    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
+  }
+
   function declineContractOffer() {
     setGame((state) => ({
       ...state,
@@ -455,8 +498,60 @@ function App() {
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
+  function closeTransferWindow() {
+    setGame((state) => ({
+      ...state,
+      transferWindow: undefined,
+      lastEvent: state.transferWindow?.kind === "end-season" ? "Season decisions closed. Review the season before moving on." : "Transfer window closed. Focus returns to the pitch.",
+    }));
+    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
+  }
+
+  function openRetirement() {
+    setActiveScreen("retirement");
+  }
+
+  function retireCareer() {
+    const estimate = getLegacyEstimate(game);
+    if (!estimate.eligible) {
+      setActiveScreen("home");
+      return;
+    }
+
+    const confirmed = window.confirm(`Retire Jonas Vale and bank ${estimate.totalPoints} Legacy Points? This will start Gen ${game.dynasty.generation + 1}.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setGame((state) => {
+      const latestEstimate = getLegacyEstimate(state);
+      const country = getCountryForClub(state.world, state.club.clubId, state.club.shortCode);
+      const nextGeneration = state.dynasty.generation + 1;
+      const nextDynasty = {
+        ...state.dynasty,
+        generation: nextGeneration,
+        legacyPoints: state.dynasty.legacyPoints + latestEstimate.totalPoints,
+        potentialTier: getGenerationProfile(nextGeneration).label,
+      };
+      const nextState = createCareerForCountry(country?.id ?? "denmark", {
+        dynasty: nextDynasty,
+        dynastyHistory: getLegacySeasons(state),
+      });
+
+      return {
+        ...nextState,
+        lastEvent: `Jonas Vale retired with ${latestEstimate.totalPoints} Legacy Points banked. Gen ${nextGeneration} begins.`,
+      };
+    });
+    setActiveScreen("player");
+  }
+
   function buySupportUpgrade(upgradeId: SupportUpgradeId) {
     setGame((state) => buySupportUpgradeState(state, upgradeId));
+  }
+
+  function buyDynastyUpgrade(upgradeId: DynastyUpgradeId) {
+    setGame((state) => buyDynastyUpgradeState(state, upgradeId));
   }
 
   function acceptSponsorDeal(dealId: string) {
@@ -505,7 +600,9 @@ function App() {
               game={game}
               saveStatus={saveStatus}
               onBuySupportUpgrade={buySupportUpgrade}
+              onBuyDynastyUpgrade={buyDynastyUpgrade}
               onAcceptSponsorDeal={acceptSponsorDeal}
+              onOpenRetirement={openRetirement}
               onResetCareer={resetCareer}
             />
           )}
@@ -542,14 +639,27 @@ function App() {
               onDecline={declineContractOffer}
             />
           )}
+          {activeScreen === "transfer-window" && game.transferWindow && (
+            <TransferWindowScreen
+              game={game}
+              window={game.transferWindow}
+              onAccept={acceptTransferOffer}
+              onClose={closeTransferWindow}
+            />
+          )}
           {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}
+          {activeScreen === "retirement" && <RetirementScreen game={game} />}
         </div>
 
         {activeScreen !== "country-select" && (
           <BottomNav
             activeNav={activeNav}
             advanceLabel={advanceLabel}
-            disabled={activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))}
+            disabled={
+              (activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))) ||
+              requiresTransferDecision ||
+              (activeScreen === "retirement" && !getLegacyEstimate(game).eligible)
+            }
             onAdvance={handleAdvance}
             onNavigate={navigate}
           />

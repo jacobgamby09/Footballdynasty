@@ -61,7 +61,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 9`**.
+   accepted behaviour during development. Currently **`SAVE_VERSION = 12`**.
 
 ---
 
@@ -195,8 +195,11 @@ a retirement trigger, Legacy Points, and the Gen-2 onboarding screen/flow.
   world (the data is all there; it's a read-only screen).
 - **Balance pass for the longer season** — the economy (XP/season, cash,
   contract weeks, fitness) was tuned around 12 matches; seasons are now 30–38.
-  Re-check `balance:season` assumptions and the warnings it prints (OVR gain,
-  end fitness). This is the most likely thing to need tuning after Stage G.
+  `balance:season` is now transfer-aware: it opens deterministic mid-season and
+  end-season windows, generates external offers, accepts sensible moves, resets
+  trust on club changes, and reports transfer windows/offers/accepted moves/net
+  tier movement. Re-check OVR gain, end fitness, and whether accepted moves are
+  too frequent or too generous.
 - **Cups** — cup framing was dropped when fixtures went world-based. If desired,
   a real cup vs. clubs from OTHER leagues is a separate feature.
 

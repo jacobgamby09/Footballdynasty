@@ -8,7 +8,7 @@ import type {
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "season-review";
+export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "transfer-window" | "season-review" | "retirement";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
@@ -27,6 +27,13 @@ export type SupportUpgradeId =
   | "agentNegotiation"
   | "sponsorshipAppeal";
 export type SupportTrackId = "training" | "recovery" | "career";
+export type DynastyUpgradeId =
+  | "academyKeyStart"
+  | "academyGeneralStart"
+  | "bloodlineXpFloor"
+  | "bloodlineXpCeiling"
+  | "familyNetwork";
+export type DynastyTrackId = "homeAcademy" | "bloodlineTraining" | "familyNetwork";
 export type FitnessAvailability = "Sharp" | "Ready" | "Tired" | "Risky" | "Not match fit";
 export type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
 
@@ -49,7 +56,9 @@ export type SeasonStats = {
 
 export type DynastySeason = {
   season: number;
+  generation?: number;
   club: string;
+  tierId?: LeagueTierId;
   leaguePosition: number;
   record: string;
   apps: number;
@@ -57,6 +66,8 @@ export type DynastySeason = {
   goals: number;
   assists: number;
   averageRating: number;
+  endOvr?: number;
+  prestige?: number;
 };
 
 export type Fixture = {
@@ -209,6 +220,7 @@ export type DynastyState = {
   legacyLevel: number;
   legacyPoints: number;
   potentialTier: string;
+  upgrades: Record<DynastyUpgradeId, number>;
 };
 
 export type Contract = {
@@ -232,6 +244,22 @@ export type ContractOffer = Omit<Contract, "weeksRemaining"> & {
   source?: "current-club" | "external-club";
   tierId?: LeagueTierId;
   clubId?: ClubId;
+};
+
+export type TransferWindowKind = "mid-season" | "end-season";
+
+export type ClubFitStatus = "Under level" | "Developing" | "Good fit" | "Outgrown";
+
+export type TransferWindowState = {
+  id: string;
+  kind: TransferWindowKind;
+  title: string;
+  week: number;
+  clubFit: ClubFitStatus;
+  clubFitSummary: string;
+  interestLevel: "Quiet" | "Watched" | "Interested" | "Offers";
+  currentClubOffer?: ContractOffer;
+  offers: ContractOffer[];
 };
 
 export type SponsorObjective = {
@@ -281,6 +309,26 @@ export type SupportTrackDefinition = {
   effect: string;
 };
 
+export type DynastyUpgradeDefinition = {
+  id: DynastyUpgradeId;
+  name: string;
+  category: string;
+  maxLevel: number;
+  baseCost: number;
+  effect: string;
+  requires?: Partial<Record<DynastyUpgradeId, number>>;
+};
+
+export type DynastyTrackDefinition = {
+  id: DynastyTrackId;
+  name: string;
+  category: string;
+  upgradeIds: DynastyUpgradeId[];
+  breakpoints: number[];
+  breakthroughs: string[];
+  effect: string;
+};
+
 export type GameState = {
   week: number;
   positionGroup: PositionGroup;
@@ -312,10 +360,11 @@ export type GameState = {
   lastTraining?: TrainingSummary;
   contractOffer?: ContractOffer;
   contractOffers?: ContractOffer[];
+  transferWindow?: TransferWindowState;
 };
 
 export type SavePayload = {
-  version: 10;
+  version: 12;
   game: GameState;
 };
 

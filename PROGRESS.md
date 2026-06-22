@@ -2,6 +2,17 @@
 
 ## 2026-06-22
 
+### Transfer Window V1
+
+- Added a persistent transfer-window checkpoint with two windows: mid-season and end-season.
+- Transfer windows now generate a dedicated career decision screen with current club context, club fit, interest level, current-club extension and external offers.
+- Added club-fit reads: Under level, Developing, Good fit and Outgrown.
+- Home -> Deals now shows club fit, next transfer window and current market interest.
+- The main progress button is disabled while concrete transfer/extension offers are active, forcing an explicit accept/decline decision.
+- Accepting an offer from the transfer-window screen reuses the existing contract acceptance path and clears the window.
+- Season rollover now preserves an already accepted contract/transfer instead of always overwriting it with an automatic current-club renewal.
+- Save version bumped to 11 because `transferWindow` is now part of career state.
+
 ### Readiness Model V1
 
 - Reworked fitness labels into clearer 0-100 readiness bands: Sharp, Ready, Tired, Risky and Not match fit.
@@ -1380,3 +1391,115 @@ This keeps pure recovery clearly better at availability, but no longer lets it s
 
 - V2 is technically working, but the lab still flags end fitness as too low over 30-match seasons.
 - Balanced/development support improves OVR versus no upgrades, but recovery tuning remains the next likely balance pass.
+
+## 2026-06-22 - Transfer-Aware Season Lab
+
+### Implemented
+
+- Updated `scripts/season-balance-lab.mjs` so long-career simulations now model mid-season and end-season transfer windows.
+- The lab now generates external transfer offers from player OVR, form, output, prestige, current tier fit and deterministic seeded variation.
+- Accepted external offers now change the simulated tier, club name, contract terms and trust baseline.
+- Removed the old hardcoded “climb one tier every few seasons” lab shortcut; tier movement now comes from accepted offers.
+- Added lab metrics for transfer windows, transfer offers, accepted transfers and net tier moves.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=20 --career-seasons=15 --generations=1`
+
+- Balanced spending: 73.7 end OVR, 0.31 goals/90, 90.9 end fitness, 5.6 accepted transfers, +4.6 net tier moves.
+- Development spending: 75.1 end OVR, 0.32 goals/90, 88.2 end fitness, 6.1 accepted transfers, +4.9 net tier moves.
+- Recovery spending: 69.0 end OVR, 0.26 goals/90, 91.0 end fitness, 5.0 accepted transfers, +4.0 net tier moves.
+- No upgrades/career-track still lag badly because they do not build enough development/recovery support.
+
+### Design Impact
+
+- The lab now tests the world-career fantasy more honestly: good players move up instead of staying in one club forever.
+- Transfer frequency is plausible for a 15-season first-generation run, but development builds may now run slightly hot versus the desired Gen1 ceiling.
+
+## 2026-06-22 - Gen1 Soft-Cap Balance
+
+### Implemented
+
+- Increased the attribute XP multiplier when a stat is pushed above its natural potential profile.
+- Mirrored the same over-profile formula in the season balance lab.
+- The intent is to keep Gen1 growth meaningful while reserving higher ceilings for dynasty upgrades and later generations.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=20 --career-seasons=15 --generations=1`
+
+- Balanced spending: 68.9 end OVR, p90 70, 0.26 goals/90, 5.3 accepted transfers.
+- Development spending: 69.3 end OVR, p90 70, 0.27 goals/90, 5.1 accepted transfers.
+- Recovery spending: 65.2 end OVR, p90 66, strong availability profile.
+- No-upgrade/career-only builds still land around 56-57 OVR, which keeps support and future dynasty upgrades meaningful.
+
+## 2026-06-22 - Founder Start Rebalance
+
+### Implemented
+
+- Lowered Gen1 starting attributes to a raw founder profile that calculates to 10 OVR.
+- Kept Grassroots around 15 average OVR, so Gen1 starts as a real underdog but can still earn minutes.
+- Softened upper league tier averages/ranges so the jump from Grassroots to Local Semi-Pro is not too brutal:
+  - Grassroots 15 avg, 10-22 range.
+  - Local Semi-Pro 24 avg, 18-31 range.
+  - Regional Pro 38 avg, 31-47 range.
+  - National Pro 55 avg, 47-65 range.
+  - Top Flight 74 avg, 65-84 range.
+  - Elite 88 avg, 82-98 range.
+- Mirrored the new base attributes and tier curve in the season balance lab.
+- Updated the lab target curve for a founder generation that should usually peak below the stronger dynasty generations.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=20 --career-seasons=15 --generations=1`
+
+- Balanced spending: 68.5 end OVR, p90 69, 0.29 goals/90, 4.9 accepted transfers.
+- Development spending: 68.9 end OVR, p90 69, 0.33 goals/90, 5.3 accepted transfers.
+- Recovery spending: 64.9 end OVR, p90 65, very strong availability.
+- No-upgrade/career-only builds land around 55-56 OVR.
+- S1 remains playable: even no-upgrade builds get regular substitute appearances, while support builds earn more minutes over time.
+
+## 2026-06-22 - Retirement And Legacy Points V1
+
+### Implemented
+
+- Added a deterministic Legacy Points estimate system for retirement planning.
+- Retirement is available from age 30, with age currently derived from season number.
+- Home / Dynasty now shows a legacy planning card with current LP, estimated payout and retirement hint.
+- Added a Retirement Decision screen with point sources, tier multiplier, momentum and after-retirement LP.
+- Retiring banks the estimated Legacy Points, increments generation and starts the next generation in the same country.
+- Current-run economy resets on retirement, while dynasty generation, Legacy Points and season history persist.
+- New dynasty season snapshots now store generation, tier, end OVR and prestige for future legacy calculations.
+
+### Formula Direction
+
+- Peak OVR is the main driver.
+- Apps, goals and assists use diminishing returns.
+- Average rating rewards quality above 6.4.
+- Prestige contributes through a soft square-root curve.
+- Highest league tier reached applies a multiplier from Grassroots 1.00 up to Elite 2.50.
+
+### Next Design Gap
+
+- Gen 2+ should eventually start from offer-driven onboarding instead of automatically restarting in the same country's bottom club.
+- Legacy Points are banked but still need V1 dynasty spending upgrades.
+
+## 2026-06-22 - Dynasty Upgrades V1
+
+### Implemented
+
+- Added spendable Legacy Point upgrades under Home / Dynasty.
+- Added three permanent dynasty tracks:
+  - Home Academy: improves next-generation key and general starting attributes.
+  - Bloodline Training: adds permanent XP floor and XP ceiling to weekly training.
+  - Family Network: improves next-generation starting cash, wage and early trust.
+- Dynasty upgrade tracks use foldable cards, progress bars and breakthrough names so the closed view stays clean.
+- Legacy Points are now spent only on permanent dynasty economy, while cash remains the current-run support currency.
+- New careers and retirements preserve dynasty upgrades and apply them when creating the next generation.
+- Save version bumped to 12 because dynasty upgrade levels are now part of save state.
+
+### Design Intent
+
+- V1 should make Gen 2+ clearly feel better prepared without skipping the early climb.
+- A modest Gen 1 retirement should buy a small number of meaningful breakthroughs.
+- A strong Gen 1 retirement should create visible advantages, but still need in-run cash support, transfers and facilities.

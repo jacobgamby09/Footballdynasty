@@ -1,6 +1,7 @@
 import { getPositionModule } from "../positionRoles";
-import type { Attribute, ClubState, Contract, GameState, LastMatchSummary, SavePayload, SupportUpgradeId, TrainingSummary, World } from "../types";
+import type { Attribute, ClubState, Contract, DynastyState, DynastyUpgradeId, GameState, LastMatchSummary, SavePayload, SupportUpgradeId, TrainingSummary, World } from "../types";
 import { initialAttributes } from "../data/attributes";
+import { initialDynastyUpgrades, dynastyUpgradeMap } from "../data/dynastyUpgrades";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
 import { initialSupportUpgrades, supportUpgradeMap } from "../data/support";
 import { COUNTRIES, seedWorld } from "../data/world";
@@ -9,7 +10,7 @@ import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 12;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
@@ -50,11 +51,19 @@ export function cloneGameState(state: GameState): GameState {
     },
     club: { ...state.club },
     world: cloneWorld(state.world),
-    dynasty: { ...state.dynasty },
+    dynasty: { ...state.dynasty, upgrades: { ...(state.dynasty.upgrades ?? initialDynastyUpgrades) } },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
     contract: { ...state.contract },
     sponsor: state.sponsor ? cloneSponsorDeal(state.sponsor) : undefined,
     contractOffer: state.contractOffer ? { ...state.contractOffer } : undefined,
+    contractOffers: state.contractOffers?.map((offer) => ({ ...offer })),
+    transferWindow: state.transferWindow
+      ? {
+          ...state.transferWindow,
+          currentClubOffer: state.transferWindow.currentClubOffer ? { ...state.transferWindow.currentClubOffer } : undefined,
+          offers: state.transferWindow.offers.map((offer) => ({ ...offer })),
+        }
+      : undefined,
     supportUpgrades: { ...state.supportUpgrades },
     activeMatch: undefined,
     lastMatch: state.lastMatch ? cloneLastMatchSummary(state.lastMatch) : undefined,
@@ -146,11 +155,19 @@ export function normalizeSavedGame(saved: GameState): GameState {
       results: saved.season?.results?.map((result) => ({ ...result })) ?? [],
     },
     club: savedClub,
-    dynasty: { ...fallback.dynasty, ...(saved.dynasty ?? {}) },
+    dynasty: normalizeDynasty(saved.dynasty, fallback.dynasty),
     dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
     sponsor: saved.sponsor ? cloneSponsorDeal(saved.sponsor) : undefined,
     contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
+    contractOffers: saved.contractOffers?.map((offer) => ({ ...offer })),
+    transferWindow: saved.transferWindow
+      ? {
+          ...saved.transferWindow,
+          currentClubOffer: saved.transferWindow.currentClubOffer ? { ...saved.transferWindow.currentClubOffer } : undefined,
+          offers: saved.transferWindow.offers?.map((offer) => ({ ...offer })) ?? [],
+        }
+      : undefined,
     supportUpgrades: normalizeSupportUpgrades(saved.supportUpgrades as Partial<Record<string, number>> | undefined),
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
     activeMatch: undefined,
@@ -238,6 +255,34 @@ function normalizeSupportUpgrades(savedSupport?: Partial<Record<string, number>>
   normalized.sponsorshipAppeal = clampSupportLevel("sponsorshipAppeal", normalized.sponsorshipAppeal + lifestyle * 3 + analyst * 2);
 
   return normalized;
+}
+
+function normalizeDynasty(savedDynasty: DynastyState | undefined, fallbackDynasty: DynastyState): DynastyState {
+  return {
+    ...fallbackDynasty,
+    ...(savedDynasty ?? {}),
+    upgrades: normalizeDynastyUpgrades(savedDynasty?.upgrades as Partial<Record<string, number>> | undefined),
+  };
+}
+
+function normalizeDynastyUpgrades(savedUpgrades?: Partial<Record<string, number>>) {
+  const normalized = { ...initialDynastyUpgrades };
+  if (!savedUpgrades) {
+    return normalized;
+  }
+
+  Object.keys(initialDynastyUpgrades).forEach((upgradeId) => {
+    const savedLevel = savedUpgrades[upgradeId];
+    if (typeof savedLevel === "number") {
+      normalized[upgradeId as DynastyUpgradeId] = clampDynastyLevel(upgradeId as DynastyUpgradeId, savedLevel);
+    }
+  });
+
+  return normalized;
+}
+
+function clampDynastyLevel(upgradeId: DynastyUpgradeId, level: number) {
+  return Math.max(0, Math.min(dynastyUpgradeMap[upgradeId].maxLevel, Math.round(level)));
 }
 
 function clampSupportLevel(upgradeId: SupportUpgradeId, level: number) {

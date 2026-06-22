@@ -12,6 +12,7 @@ import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
 import { applyRecoveryCeiling, applyRecoveryFloor, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
+import { createTransferWindowState } from "./transferWindow";
 import type { AttributeKey, PositionModule } from "../positionRoles";
 import type { Attribute, ChanceQuality, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
@@ -159,9 +160,10 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     season: updatedSeason,
     world: updatedWorld,
   };
-  let contractOffer = state.contractOffer;
-  let contractOffers = state.contractOffers;
-  if (!isSeasonComplete(updatedSeason) && !contractOffer && !contractOffers?.length) {
+  const transferWindow = state.transferWindow ?? createTransferWindowState(stateForOffer, lastMatch);
+  let contractOffer = transferWindow ? undefined : state.contractOffer;
+  let contractOffers = transferWindow ? undefined : state.contractOffers;
+  if (!transferWindow && !isSeasonComplete(updatedSeason) && !contractOffer && !contractOffers?.length) {
     if (stateForOffer.contract.weeksRemaining <= 0) {
       // Expired -> transfer market: a single offer, or a choice when in demand.
       const offers = getTransferMarketOffers(stateForOffer, lastMatch);
@@ -177,6 +179,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     ...stateForOffer,
     contractOffer,
     contractOffers,
+    transferWindow,
     lastEvent: getMatchSummaryText(results, totals),
     lastMatch,
     activeMatch: undefined,

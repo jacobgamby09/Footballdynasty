@@ -1,4 +1,5 @@
 import { initialClub } from "../data/leagues";
+import { getPlayerAge } from "../systems/legacy";
 import { formatPrestigeCompact } from "../systems/prestige";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
@@ -31,7 +32,7 @@ export function Header({ game }: { game: GameState }) {
         <div className="eyebrow">Week {game.week} - Season {game.season.season}</div>
         <h1>Jonas Vale</h1>
         <div className="identity-row">
-          <span>17 yrs</span>
+          <span>{getPlayerAge(game)} yrs</span>
           <span>{game.positionCode}</span>
           <span>{game.archetype}</span>
         </div>

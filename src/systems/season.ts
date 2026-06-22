@@ -1,8 +1,9 @@
 import { clamp } from "../utils";
+import { getPositionModule } from "../positionRoles";
 import { createLeagueTeams, createSeasonFixturesFromWorld } from "./club";
 import { contractFromOffer, getContractOfferSummary, getPromisedRole } from "./contracts";
 import { getAverageRating, roundToNearest } from "./formatting";
-import { getClubLeagueTier, getContractLeagueTier } from "./ovr";
+import { calculateOvr, getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
@@ -33,7 +34,8 @@ export function getDynastyTotals(seasons: DynastySeason[]) {
 export function startNextSeasonState(state: GameState): GameState {
   // Review/offer use the OLD state (this season's results) — compute before rollover.
   const review = getSeasonReview(state);
-  const contractOffer = getSeasonContractOffer(state, review);
+  const needsAutoContract = state.contract.weeksRemaining <= 0;
+  const contractOffer = needsAutoContract ? getSeasonContractOffer(state, review) : undefined;
   const dynastySeason = createDynastySeasonSnapshot(state, review);
   const nextWeek = state.week + 1;
   const nextSeason = state.season.season + 1;
@@ -60,9 +62,9 @@ export function startNextSeasonState(state: GameState): GameState {
   return {
     ...state,
     week: nextWeek,
-    cash: state.cash + review.cashReward + contractOffer.signingBonus,
+    cash: state.cash + review.cashReward + (contractOffer?.signingBonus ?? 0),
     prestige: state.prestige + review.prestigeReward,
-    contract: { ...contractFromOffer(contractOffer), tierId: syncedClub.tierId },
+    contract: contractOffer ? { ...contractFromOffer(contractOffer), tierId: syncedClub.tierId } : { ...state.contract, tierId: syncedClub.tierId },
     trainingCompletedWeek: nextWeek - 1,
     seasonStats: {
       apps: 0,
@@ -82,8 +84,12 @@ export function startNextSeasonState(state: GameState): GameState {
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,
+    contractOffers: undefined,
+    transferWindow: undefined,
     activeMatch: undefined,
-    lastEvent: `${moveNote}Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`,
+    lastEvent: contractOffer
+      ? `${moveNote}Season ${nextSeason} begins. ${contractOffer.title}: $${contractOffer.weeklyWage}/wk.`
+      : `${moveNote}Season ${nextSeason} begins. ${state.contract.club}: $${state.contract.weeklyWage}/wk.`,
   };
 }
 
@@ -91,7 +97,9 @@ export function startNextSeasonState(state: GameState): GameState {
 export function createDynastySeasonSnapshot(state: GameState, review = getSeasonReview(state)): DynastySeason {
   return {
     season: state.season.season,
+    generation: state.dynasty.generation,
     club: state.contract.club,
+    tierId: state.club.tierId,
     leaguePosition: review.tablePosition,
     record: `${review.record.wins}-${review.record.draws}-${review.record.losses}`,
     apps: state.seasonStats.apps,
@@ -99,6 +107,8 @@ export function createDynastySeasonSnapshot(state: GameState, review = getSeason
     goals: state.seasonStats.goals,
     assists: state.seasonStats.assists,
     averageRating: Number(review.averageRating.toFixed(1)),
+    endOvr: calculateOvr(state.attributes, getPositionModule(state.positionGroup).ovrWeights),
+    prestige: state.prestige,
   };
 }
 

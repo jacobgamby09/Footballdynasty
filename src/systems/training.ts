@@ -2,6 +2,7 @@ import { currentLeagueTier } from "../data/leagues";
 import { seededNoise } from "../engine/matchEngineCore";
 import { clamp } from "../utils";
 import { getAttributeGrowthPressure, getAttributeXpRequirement, getBaseAttributeXpRequirement } from "./attributeXp";
+import { getDynastyTrainingCeilingBonus, getDynastyTrainingFloorBonus } from "./dynastyUpgrades";
 import { formatPercentDelta, formatSigned } from "./formatting";
 import { getClubLeagueTier, getXpPercent } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
@@ -214,6 +215,8 @@ export function getTrainingProjection(state: GameState) {
   const effectiveXpCeilingLevel = xpCeilingLevel * environment.supportEfficiency;
   const effectiveTrainingLoadLevel = trainingLoadLevel * environment.supportEfficiency;
   const effectiveRecoveryBaselineLevel = recoveryBaselineLevel * environment.supportEfficiency;
+  const dynastyXpFloorBonus = getDynastyTrainingFloorBonus(state.dynasty);
+  const dynastyXpCeilingBonus = getDynastyTrainingCeilingBonus(state.dynasty);
   const ranges: Partial<Record<AttributeKey, { min: number; max: number }>> = {};
 
   if (state.fitness < 20) {
@@ -235,7 +238,7 @@ export function getTrainingProjection(state: GameState) {
       min: Math.max(
         1,
         Math.round(
-          (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel)) *
+          (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel) + dynastyXpFloorBonus) *
             focusWeight *
             environment.xpMultiplier *
             qualityProfile.xpMultiplier,
@@ -244,7 +247,7 @@ export function getTrainingProjection(state: GameState) {
       max: Math.max(
         1,
         Math.round(
-          (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel)) *
+          (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel) + dynastyXpCeilingBonus) *
             focusWeight *
             environment.xpMultiplier *
             qualityProfile.xpMultiplier,
@@ -465,6 +468,8 @@ export function getAttributeGrowthDetail(state: GameState, attribute: Attribute)
     `Facility floor +${environment.xpFloorBonus}`,
     `XP floor +${getTrainingXpFloorBonus(getSupportLevel(state, "xpFloor") * environment.supportEfficiency)}`,
     `XP ceiling +${getTrainingXpCeilingBonus(getSupportLevel(state, "xpCeiling") * environment.supportEfficiency)}`,
+    `Dynasty floor +${getDynastyTrainingFloorBonus(state.dynasty)}`,
+    `Dynasty ceiling +${getDynastyTrainingCeilingBonus(state.dynasty)}`,
   ];
 
   if (focusIndex === 1) {

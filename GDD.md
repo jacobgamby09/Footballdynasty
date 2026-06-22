@@ -187,20 +187,22 @@ Progression budget rule:
 
 First Gen 1 calibration curve:
 
-- Season 1: around 20 OVR
-- Season 3: around 30 OVR
-- Season 5: around 40 OVR
-- Season 8: around 52 OVR
-- Season 11: around 62 OVR
-- Season 14: around 70 OVR
+- Career start: around 10 OVR
+- Season 1: around 14 OVR
+- Season 3: around 22 OVR
+- Season 5: around 32 OVR
+- Season 8: around 45 OVR
+- Season 11: around 56 OVR
+- Season 14: around 64 OVR
+- Strong 15-season run: around 65-70 OVR depending on support, recovery, transfers and facilities.
 - Late career: gradual plateau or decline depending on age, recovery and support.
 
 Current Gen 1 balance direction:
 
-- Gen 1 should still start as a true low-level prospect around the grassroots environment.
+- Gen 1 should start as a true 10 OVR founder prospect in a roughly 15 OVR grassroots environment.
 - Gen 1 should not be hard-capped at grassroots/semi-pro ability. A strong first run can become a meaningful career and create the first real dynasty foundation.
-- The Gen 1 growth profile marker should sit below the best possible career outcome. It represents the natural curve, not the maximum. Current target is roughly 60 profile OVR, with strong support/facilities/performance able to push toward roughly 70-72.
-- Gen 1 ending in the mid/high 70s should be exceptional and usually signal that the player has outgrown their league. The preferred follow-up is better transfer/league progression and tier fit, not flattening the earned development into a hard cap.
+- The Gen 1 growth profile marker should sit below the best possible career outcome. It represents the natural curve, not the maximum. Current target is roughly 60-65 profile OVR, with strong support/facilities/performance able to push toward roughly 70.
+- Gen 1 ending above 70 should be exceptional and should usually require very strong support, club movement and late-career conditions. Later dynasty generations should be the main path to consistent 70+ careers.
 - Balanced and development-focused support spending should be able to land near the target curve over a 15-season career.
 - No-upgrade or economy-only play should fall clearly behind, proving that active in-run support investment matters.
 - If a player outgrows the current league, output can spike. The preferred fix is better transfer/league progression and tier fit, not reducing the player's earned development.
@@ -223,7 +225,16 @@ V1 starter i `Grassroots Development League`:
 - team range: 10-22
 - wage range: low cash terms
 - facility level: 1
-- purpose: give en 10-20 OVR foerstegenerationsspiller et trovaerdigt startmiljoe
+- purpose: give en 10 OVR foerstegenerationsspiller et trovaerdigt underdog-startmiljoe
+
+V1 tier curve:
+
+- Grassroots Development: average 15, team range 10-22
+- Local Semi-Pro: average 24, team range 18-31
+- Regional Pro: average 38, team range 31-47
+- National Pro: average 55, team range 47-65
+- Top Flight: average 74, team range 65-84
+- Elite Continental: average 88, team range 82-98
 
 Senere tiers skal bruges til transfers, kontrakter, facilities, wage scaling og prestige/legacy rewards.
 
@@ -732,6 +743,37 @@ Legacy Points bruges på dynasty economy:
 - better potential floor
 - heir support systems
 
+### Dynasty Upgrade V1
+
+Dynasty upgrades are bought with Legacy Points and are permanent across future generations. They should improve the conditions for the next player without deleting the early-game climb.
+
+V1 tracks:
+
+- Home Academy: improves next-generation starting attribute floor.
+  - Key Attribute Floor progresses toward higher starting key attributes.
+  - General Foundation progresses toward small boosts to non-key/support attributes.
+- Bloodline Training: improves permanent weekly training output.
+  - Training Floor gives small permanent XP floor bonuses.
+  - Training Ceiling gives small permanent XP ceiling bonuses.
+- Family Network: improves career access.
+  - Better starting cash, starting wage and early trust.
+  - Later versions can also improve Gen 2+ offer quality and scout visibility.
+
+V1 upgrade rules:
+
+- No direct `+OVR` purchases.
+- Upgrades use track progress bars and breakthroughs.
+- Small investments move progress forward; breakthroughs create visible permanent effects.
+- LP is spent between runs/generations, not as active-career cash.
+- Cash support remains stronger in the current run; dynasty upgrades are slower, permanent infrastructure.
+
+Balance target:
+
+- A modest Gen 1 retirement around 350-400 LP should buy roughly 1-2 meaningful breakthroughs.
+- A strong Gen 1 retirement around 650-750 LP should buy roughly 2-4 meaningful breakthroughs.
+- Early dynasty upgrades should raise Gen 2's start slightly, not skip the climb.
+- Later generations should need LP upgrades plus strong in-run performance to reach elite outcomes consistently.
+
 Core rule:
 
 `A stronger active career creates a stronger retirement payout. Legacy Points improve future generations.`
@@ -998,6 +1040,19 @@ Skærmen skal være kompakt og scanbar. Den må gerne føles tilfredsstillende, 
 
 Transfers sker primært i vinduer/offseason.
 
+Transfer Window V1:
+
+- There are two major decision checkpoints per season:
+  - Mid-season window: opens after roughly half the fixture list is played. It should be more opportunistic and usually show fewer offers.
+  - End-season window: opens after the final match/week before the next season starts. It is the main career-decision moment.
+- The normal week loop can build interest in the background, but concrete transfer offers should primarily surface in these windows.
+- Transfer windows should be full career-moment screens, not tiny cards. They should show current club context, club fit, contract status, interest level and available offers.
+- Deals/Home should show ongoing market visibility: club fit, next transfer window and current interest read.
+- Current-club extensions and external offers can appear in the same window, but must be visually separated so the player understands the tradeoff.
+- Accepting an external offer immediately changes the active club, contract, wage, role promise, facilities context and future fixtures.
+- When a transfer window contains concrete offers, the player must explicitly accept one or decline them before the career can advance. The main progress button should not skip active offers.
+- Declining a transfer window should close that window and return to the career loop; the same offer should not instantly reappear until another trigger/window.
+
 Klubinteresse bør afhænge af:
 
 - position need
@@ -1110,6 +1165,40 @@ Legacy kan give:
 - unlocked training methods
 
 Famous surname bør også kunne give højere pressure.
+
+### Retirement V1 Rules
+
+Retirement is available from age 30. Age is currently derived from the career season: season 1 = age 16, season 15 = age 30.
+
+V1 retirement flow:
+
+- The player can review a Legacy Points estimate in Home / Dynasty.
+- If age 30+, the player can retire voluntarily and bank the estimated Legacy Points.
+- Retirement ends the current in-run economy: cash, contracts, support upgrades and active club context reset.
+- Dynasty data persists: generation, Legacy Points and season history continue into the next generation.
+- V1 starts the next generation in the same country. Later versions should replace this with a Gen 2+ offer-driven start.
+
+Legacy Points V1 formula direction:
+
+- Peak OVR is the main ability driver.
+- Apps, goals and assists use diminishing returns, so long careers matter without forcing endless farming.
+- Average rating rewards quality, not just volume.
+- Prestige contributes to the payout but remains a status/access metric during the active career.
+- Highest league tier reached applies a multiplier because the same output is worth more in a harder environment.
+
+Current V1 components:
+
+- Peak OVR: powered scaling above 20 OVR.
+- Appearances: square-root scaling.
+- Goals: square-root scaling with striker-weighted value.
+- Assists: square-root scaling below goals.
+- Average rating: bonus above 6.4.
+- Prestige: square-root scaling.
+- Tier multiplier: Grassroots 1.00, Local Semi-Pro 1.15, Regional Pro 1.35, National 1.60, Top Flight 2.00, Elite 2.50.
+
+Design target:
+
+`One more season should feel tempting when the player is still rising, but retirement should become attractive when additional seasons add only small Legacy Points compared to starting a better generation.`
 
 ## Open Design Questions
 

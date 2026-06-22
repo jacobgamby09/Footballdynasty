@@ -42,23 +42,23 @@ const opponentNames = [
 ];
 
 const baseAttributes = {
-  Finishing: { value: 18, potential: 61, xp: 22 },
-  "Long Shots": { value: 12, potential: 49, xp: 8 },
-  Passing: { value: 14, potential: 52, xp: 14 },
-  Vision: { value: 13, potential: 50, xp: 12 },
-  Dribbling: { value: 16, potential: 56, xp: 17 },
-  "Off Ball": { value: 17, potential: 62, xp: 16 },
-  Composure: { value: 14, potential: 59, xp: 24 },
-  "First Touch": { value: 16, potential: 60, xp: 19 },
-  Acceleration: { value: 20, potential: 63, xp: 15 },
-  Pace: { value: 18, potential: 59, xp: 13 },
-  Stamina: { value: 17, potential: 58, xp: 18 },
-  Heading: { value: 13, potential: 55, xp: 9 },
-  Strength: { value: 12, potential: 56, xp: 11 },
-  "Work Rate": { value: 19, potential: 62, xp: 20 },
-  Tackling: { value: 8, potential: 43, xp: 6 },
-  Marking: { value: 9, potential: 45, xp: 7 },
-  Positioning: { value: 13, potential: 52, xp: 15 },
+  Finishing: { value: 11, potential: 61, xp: 8 },
+  "Long Shots": { value: 8, potential: 49, xp: 5 },
+  Passing: { value: 9, potential: 52, xp: 6 },
+  Vision: { value: 9, potential: 50, xp: 6 },
+  Dribbling: { value: 10, potential: 56, xp: 7 },
+  "Off Ball": { value: 10, potential: 62, xp: 7 },
+  Composure: { value: 9, potential: 59, xp: 6 },
+  "First Touch": { value: 10, potential: 60, xp: 7 },
+  Acceleration: { value: 12, potential: 63, xp: 8 },
+  Pace: { value: 11, potential: 59, xp: 7 },
+  Stamina: { value: 10, potential: 58, xp: 7 },
+  Heading: { value: 8, potential: 55, xp: 5 },
+  Strength: { value: 8, potential: 56, xp: 5 },
+  "Work Rate": { value: 12, potential: 62, xp: 8 },
+  Tackling: { value: 6, potential: 43, xp: 4 },
+  Marking: { value: 6, potential: 45, xp: 4 },
+  Positioning: { value: 8, potential: 52, xp: 5 },
 };
 
 const generationProfiles = [
@@ -86,11 +86,11 @@ const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "
 const forwardPerformanceWeights = { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 };
 const leagueTiers = [
   { id: "grassroots-dev", label: "Grassroots", averageOvr: 15, teamRange: [10, 22], wageRange: [25, 90], facilityLevel: 1, prestigeMultiplier: 0.45 },
-  { id: "local-semi-pro", label: "Semi-Pro", averageOvr: 28, teamRange: [22, 36], wageRange: [90, 240], facilityLevel: 2, prestigeMultiplier: 0.75 },
-  { id: "regional-pro", label: "Regional Pro", averageOvr: 45, teamRange: [37, 54], wageRange: [240, 650], facilityLevel: 3, prestigeMultiplier: 1 },
-  { id: "national-pro", label: "National Pro", averageOvr: 62, teamRange: [55, 70], wageRange: [650, 1800], facilityLevel: 4, prestigeMultiplier: 1.35 },
-  { id: "top-flight", label: "Top Flight", averageOvr: 78, teamRange: [70, 86], wageRange: [1800, 6500], facilityLevel: 5, prestigeMultiplier: 1.8 },
-  { id: "elite", label: "Elite", averageOvr: 90, teamRange: [86, 98], wageRange: [6500, 30000], facilityLevel: 6, prestigeMultiplier: 2.5 },
+  { id: "local-semi-pro", label: "Semi-Pro", averageOvr: 24, teamRange: [18, 31], wageRange: [90, 240], facilityLevel: 2, prestigeMultiplier: 0.75 },
+  { id: "regional-pro", label: "Regional Pro", averageOvr: 38, teamRange: [31, 47], wageRange: [240, 650], facilityLevel: 3, prestigeMultiplier: 1 },
+  { id: "national-pro", label: "National Pro", averageOvr: 55, teamRange: [47, 65], wageRange: [650, 1800], facilityLevel: 4, prestigeMultiplier: 1.35 },
+  { id: "top-flight", label: "Top Flight", averageOvr: 74, teamRange: [65, 84], wageRange: [1800, 6500], facilityLevel: 5, prestigeMultiplier: 1.8 },
+  { id: "elite", label: "Elite", averageOvr: 88, teamRange: [82, 98], wageRange: [6500, 30000], facilityLevel: 6, prestigeMultiplier: 2.5 },
 ];
 const prestigeTiers = [
   { id: "local-prospect", label: "Local Prospect", threshold: 0 },
@@ -168,6 +168,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     sponsor: undefined,
     seasonGoals: 0,
     seasonAssists: 0,
+    clubName: getInitialLabClubName(labCountry),
   };
   const startOvr = calculateOvr(flattenAttributes(state.attributes));
   const stats = {
@@ -198,18 +199,21 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     firstSponsorDealWeek: undefined,
     supportPurchases: 0,
     contractOffers: 0,
+    transferWindows: 0,
+    transferOffers: 0,
+    transfers: 0,
+    tierMoves: 0,
   };
   const seasonReports = [];
+  let absoluteWeekIndex = 0;
 
   for (let careerSeason = 0; careerSeason < careerSeasons; careerSeason += 1) {
-    state.tier = getCareerTier(careerSeason);
     const seasonFixtures = createWorldSeasonFixtures(state.tier, careerSeason, runIndex);
     const seasonStartOvr = calculateOvr(flattenAttributes(state.attributes));
     const seasonStats = createRunStats();
     stats.scheduledMatches += seasonFixtures.length;
     seasonStats.scheduledMatches += seasonFixtures.length;
     seasonFixtures.forEach((fixture, weekIndex) => {
-      const absoluteWeekIndex = getSeasonStartWeek(careerSeason, labCountry) + weekIndex;
       const weekSeed = `run-${runIndex}-season-${careerSeason}-week-${weekIndex}-${fixture.id}-${scenario.id}`;
       const preTrainingSpend = buySupportUpgrades(state, scenario);
       stats.cashSpent += preTrainingSpend.spent;
@@ -300,14 +304,38 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       seasonStats.sponsorEarned += sponsorPayout.total;
       state.contract.weeksRemaining = Math.max(0, state.contract.weeksRemaining - 1);
       state.sponsor = advanceSponsorWeek(state.sponsor);
-      const contractOffer = getClubContractOffer(state, match, fixture);
-      if (contractOffer && shouldAcceptContractOffer(state.contract, contractOffer)) {
-        state.contract = contractFromOffer(contractOffer);
-        state.cash += contractOffer.signingBonus;
-        stats.cashEarned += contractOffer.signingBonus;
-        seasonStats.cashEarned += contractOffer.signingBonus;
-        stats.contractOffers += 1;
-        seasonStats.contractOffers += 1;
+
+      const transferWindow = createLabTransferWindow(state, match, fixture, weekIndex + 1, seasonFixtures.length, weekSeed);
+      if (transferWindow) {
+        stats.transferWindows += 1;
+        seasonStats.transferWindows += 1;
+        stats.transferOffers += transferWindow.offerCount;
+        seasonStats.transferOffers += transferWindow.offerCount;
+        const acceptedOffer = chooseTransferWindowOffer(state, transferWindow);
+        if (acceptedOffer) {
+          const accepted = acceptLabContractOffer(state, acceptedOffer);
+          state.cash += acceptedOffer.signingBonus;
+          stats.cashEarned += acceptedOffer.signingBonus;
+          seasonStats.cashEarned += acceptedOffer.signingBonus;
+          stats.contractOffers += 1;
+          seasonStats.contractOffers += 1;
+          if (accepted.transferred) {
+            stats.transfers += 1;
+            seasonStats.transfers += 1;
+            stats.tierMoves += accepted.tierMove;
+            seasonStats.tierMoves += accepted.tierMove;
+          }
+        }
+      } else {
+        const contractOffer = getClubContractOffer(state, match, fixture);
+        if (contractOffer && shouldAcceptContractOffer(state.contract, contractOffer)) {
+          state.contract = contractFromOffer(contractOffer);
+          state.cash += contractOffer.signingBonus;
+          stats.cashEarned += contractOffer.signingBonus;
+          seasonStats.cashEarned += contractOffer.signingBonus;
+          stats.contractOffers += 1;
+          seasonStats.contractOffers += 1;
+        }
       }
       const postMatchSpend = buySupportUpgrades(state, scenario);
       stats.cashSpent += postMatchSpend.spent;
@@ -318,13 +346,14 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       stats.trust.push(state.trust);
       seasonStats.fitness.push(state.fitness);
       seasonStats.trust.push(state.trust);
+      absoluteWeekIndex += 1;
     });
     const seasonPrestigeReward = getSeasonPrestigeReward(state, seasonStats);
     state.prestige += seasonPrestigeReward;
     stats.prestigeGained += seasonPrestigeReward;
     seasonStats.prestigeGained += seasonPrestigeReward;
     if (state.prestige >= prestigeTiers[1].threshold && stats.firstSponsorUnlockWeek === undefined) {
-      stats.firstSponsorUnlockWeek = getSeasonStartWeek(careerSeason, labCountry) + seasonFixtures.length;
+      stats.firstSponsorUnlockWeek = absoluteWeekIndex;
       seasonStats.firstSponsorUnlockWeek = seasonFixtures.length;
     }
     seasonReports.push(createSeasonReport(careerSeason + 1, state, seasonStats, seasonStartOvr));
@@ -334,6 +363,15 @@ function simulateCareer(runIndex, scenario, generation = 1) {
 
   const endOvr = calculateOvr(flattenAttributes(state.attributes));
   const potentialOvr = calculateOvr(flattenPotentialAttributes(state.attributes));
+  const legacyPoints = calculateLegacyPoints({
+    peakOvr: Math.max(endOvr, ...seasonReports.map((season) => season.endOvr)),
+    apps: stats.apps,
+    goals: stats.goals,
+    assists: stats.assists,
+    averageRating: average(stats.ratings, 6.4),
+    prestige: state.prestige,
+    highestTierId: getHighestTierId([state.tier.id, ...seasonReports.map((season) => season.tierId)]),
+  });
   return {
     startOvr,
     endOvr,
@@ -370,8 +408,13 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     firstSponsorUnlockWeek: stats.firstSponsorUnlockWeek,
     firstSponsorDealWeek: stats.firstSponsorDealWeek,
     endPrestige: state.prestige,
+    legacyPoints,
     prestigeTier: getPrestigeStatus(state.prestige).current.label,
     contractOffers: stats.contractOffers,
+    transferWindows: stats.transferWindows,
+    transferOffers: stats.transferOffers,
+    transfers: stats.transfers,
+    tierMoves: stats.tierMoves,
     endCash: state.cash,
     supportPurchases: stats.supportPurchases,
     supportLevels: Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0),
@@ -412,6 +455,10 @@ function createRunStats() {
     firstSponsorDealWeek: undefined,
     supportPurchases: 0,
     contractOffers: 0,
+    transferWindows: 0,
+    transferOffers: 0,
+    transfers: 0,
+    tierMoves: 0,
   };
 }
 
@@ -432,6 +479,7 @@ function createSeasonReport(season, state, stats, startOvr) {
   return {
     season,
     tier: state.tier.label,
+    tierId: state.tier.id,
     scheduledMatches: stats.scheduledMatches,
     startOvr,
     endOvr,
@@ -468,6 +516,10 @@ function createSeasonReport(season, state, stats, startOvr) {
     endPrestige: state.prestige,
     prestigeTier: getPrestigeStatus(state.prestige).current.label,
     contractOffers: stats.contractOffers,
+    transferWindows: stats.transferWindows,
+    transferOffers: stats.transferOffers,
+    transfers: stats.transfers,
+    tierMoves: stats.tierMoves,
     supportPurchases: stats.supportPurchases,
     supportLevels: Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0),
     supportTrackLevels: Object.fromEntries(supportTrackDefinitions.map((track) => [track.id, getSupportTrackTotal(state, track)])),
@@ -569,16 +621,15 @@ function getTrainingQualityProfile(state, seed, environment = getDevelopmentEnvi
 }
 
 function buildContext(state, fixture, matchSeed) {
-  const tierOffset = state.tier.averageOvr - leagueAverageOvr;
   const opponentProfile = buildOpponentProfile({
-    opponentStrength: fixture.opponentStrength + tierOffset,
+    opponentStrength: fixture.opponentStrength,
     opponentForm: fixture.opponentForm,
     serviceLevel: fixture.serviceLevel,
     seed: fixture.id,
   });
-  const tierTeamStrength = teamStrength + tierOffset;
+  const tierTeamStrength = state.tier.averageOvr;
   const formAdjustedTeamStrength = tierTeamStrength + Math.round((getFormScore(state.ratings) - 50) / 18);
-  const opponentStrength = fixture.opponentStrength + tierOffset;
+  const opponentStrength = fixture.opponentStrength;
   const importance = Math.abs(formAdjustedTeamStrength - opponentStrength) <= 3 ? "Normal" : "Low";
   const selection = getSelectionReport(state, fixture, importance);
   const isInSquad = isAvailableForSquad(state.fitness, `squad-${matchSeed}-${state.fitness}`);
@@ -847,7 +898,7 @@ function getAttributeGrowthMultiplier(attribute) {
     return 0.95;
   }
   const overProfile = Math.abs(distance);
-  return 1 + overProfile * 0.12 + Math.pow(overProfile, 1.18) * 0.025;
+  return 1 + overProfile * 0.22 + Math.pow(overProfile, 1.2) * 0.08;
 }
 
 function getGenerationProfile(generation) {
@@ -1220,8 +1271,13 @@ function summarizeSeasons(items) {
     firstSponsorUnlockWeek: statOptional(items.map((item) => item.firstSponsorUnlockWeek)),
     firstSponsorDealWeek: statOptional(items.map((item) => item.firstSponsorDealWeek)),
     endPrestige: stat(items.map((item) => item.endPrestige)),
+    legacyPoints: stat(items.map((item) => item.legacyPoints)),
     prestigeTier: getMostCommon(items.map((item) => item.prestigeTier)),
     contractOffers: stat(items.map((item) => item.contractOffers)),
+    transferWindows: stat(items.map((item) => item.transferWindows)),
+    transferOffers: stat(items.map((item) => item.transferOffers)),
+    transfers: stat(items.map((item) => item.transfers)),
+    tierMoves: stat(items.map((item) => item.tierMoves)),
     endCash: stat(items.map((item) => item.endCash)),
     supportPurchases: stat(items.map((item) => item.supportPurchases)),
     supportLevels: stat(items.map((item) => item.supportLevels)),
@@ -1281,6 +1337,10 @@ function summarizeSeasonCurve(items) {
       endPrestige: stat(seasonItems.map((item) => item.endPrestige)),
       prestigeTier: getMostCommon(seasonItems.map((item) => item.prestigeTier)),
       contractOffers: stat(seasonItems.map((item) => item.contractOffers)),
+      transferWindows: stat(seasonItems.map((item) => item.transferWindows)),
+      transferOffers: stat(seasonItems.map((item) => item.transferOffers)),
+      transfers: stat(seasonItems.map((item) => item.transfers)),
+      tierMoves: stat(seasonItems.map((item) => item.tierMoves)),
       supportPurchases: stat(seasonItems.map((item) => item.supportPurchases)),
       supportLevels: stat(seasonItems.map((item) => item.supportLevels)),
       supportTrackLevels: Object.fromEntries(
@@ -1331,8 +1391,13 @@ function printSeasonReport(report, scenario, generation) {
   printOptionalStat("First sponsor unlock week", report.firstSponsorUnlockWeek);
   printOptionalStat("First sponsor deal week", report.firstSponsorDealWeek);
   printStat("End prestige", report.endPrestige);
+  printStat("Legacy Points @ retire", report.legacyPoints);
   console.log(`Prestige tier: ${report.prestigeTier}`);
   printStat("Contract offers", report.contractOffers);
+  printStat("Transfer windows", report.transferWindows);
+  printStat("Transfer offers", report.transferOffers);
+  printStat("Accepted transfers", report.transfers);
+  printStat("Net tier moves", report.tierMoves);
   printStat("End cash", report.endCash);
   printStat("Support purchases", report.supportPurchases);
   printStat("Support levels", report.supportLevels);
@@ -1364,7 +1429,35 @@ function getDynastyFlowRead(report) {
         ? "healthy dynasty foundation"
         : "modest foundation";
 
-  return `${foundation}; peak S${peakSeason.season} ${format(peakSeason.endOvr.avg)} OVR; final gap ${format(finalGap)}; prestige ${format(finalSeason.endPrestige.avg)}; lab legacy seed ${legacySeedScore}`;
+  return `${foundation}; peak S${peakSeason.season} ${format(peakSeason.endOvr.avg)} OVR; final gap ${format(finalGap)}; prestige ${format(finalSeason.endPrestige.avg)}; lab legacy seed ${legacySeedScore}; LP ${format(report.legacyPoints.avg)}`;
+}
+
+function calculateLegacyPoints({ peakOvr, apps, goals, assists, averageRating, prestige, highestTierId }) {
+  const basePoints =
+    Math.max(0, Math.pow(Math.max(0, peakOvr - 20), 1.25)) +
+    Math.sqrt(apps) * 2 +
+    Math.sqrt(goals) * 3 +
+    Math.sqrt(assists) * 2.5 +
+    Math.max(0, averageRating - 6.4) * 40 +
+    Math.sqrt(prestige) * 1.2;
+
+  return Math.max(0, Math.round(basePoints * getLegacyTierMultiplier(highestTierId)));
+}
+
+function getHighestTierId(tierIds) {
+  return tierIds.reduce((best, tierId) => (tierOrder.indexOf(tierId) > tierOrder.indexOf(best) ? tierId : best), tierIds[0] ?? "grassroots-dev");
+}
+
+function getLegacyTierMultiplier(tierId) {
+  const multipliers = {
+    "grassroots-dev": 1,
+    "local-semi-pro": 1.15,
+    "regional-pro": 1.35,
+    "national-pro": 1.6,
+    "top-flight": 2,
+    elite: 2.5,
+  };
+  return multipliers[tierId] ?? 1;
 }
 
 function printCareerCurve(report) {
@@ -1432,14 +1525,15 @@ function getCareerCurveTargets(report) {
 
 function getTargetOvrForCareerSeason(season) {
   const targetCurve = [
-    { season: 1, ovr: 20 },
-    { season: 3, ovr: 30 },
-    { season: 5, ovr: 40 },
-    { season: 8, ovr: 52 },
-    { season: 11, ovr: 62 },
-    { season: 14, ovr: 70 },
-    { season: 17, ovr: 68 },
-    { season: 20, ovr: 64 },
+    { season: 1, ovr: 14 },
+    { season: 3, ovr: 22 },
+    { season: 5, ovr: 32 },
+    { season: 8, ovr: 45 },
+    { season: 11, ovr: 56 },
+    { season: 14, ovr: 64 },
+    { season: 15, ovr: 65 },
+    { season: 17, ovr: 63 },
+    { season: 20, ovr: 60 },
   ];
   const first = targetCurve[0];
   if (season <= first.season) {
@@ -1468,8 +1562,8 @@ function getBalanceWarnings(report) {
   if (ovrGainPerSeason > 7) {
     warnings.push(`OVR gain high (${format(ovrGainPerSeason)}/season)`);
   }
-  if (report.endTrust.avg > 92) {
-    warnings.push("trust caps in same-club sim (transfer reset not modeled)");
+  if (report.endTrust.avg > 95 && report.transfers.avg < 0.5) {
+    warnings.push("trust caps without many transfers");
   }
   if (report.endFitness.avg < 30) {
     warnings.push("end fitness too low");
@@ -1659,6 +1753,132 @@ function getSupportTrackBreakthroughCount(state, trackId) {
   return track.breakpoints.filter((breakpoint) => total >= breakpoint).length;
 }
 
+function createLabTransferWindow(state, match, fixture, played, total, seed) {
+  const kind = getPendingLabTransferWindowKind(played, total);
+  if (!kind) return undefined;
+
+  const currentClubOffer =
+    getClubContractOffer(state, match, fixture) ??
+    (kind === "end-season" ? getClubContractOffer({ ...state, contract: { ...state.contract, weeksRemaining: 1 } }, match, fixture) : undefined);
+  const externalOffers = getLabTransferMarketOffers(state, match, fixture, seed, kind);
+
+  return {
+    kind,
+    currentClubOffer,
+    externalOffers,
+    offerCount: externalOffers.length + (currentClubOffer ? 1 : 0),
+  };
+}
+
+function getPendingLabTransferWindowKind(played, total) {
+  if (total <= 0) return undefined;
+  if (played >= total) return "end-season";
+  return played === Math.floor(total / 2) ? "mid-season" : undefined;
+}
+
+function getLabTransferMarketOffers(state, match, fixture, seed, kind) {
+  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const currentTierIndex = getTierIndex(state.tier);
+  const selection = getSelectionReport(state, fixture);
+  const averageRating = average(state.ratings, 6.4);
+  const formSignal =
+    Math.max(0, averageRating - 6.4) * 10 +
+    state.seasonGoals * 1.55 +
+    state.seasonAssists * 1.05 +
+    (match?.rating ?? 6.5) -
+    6.5;
+  const fitGap = ovr - state.tier.averageOvr;
+  const maxReach =
+    currentTierIndex +
+    (fitGap >= 9 || formSignal >= 20 ? 1 : 0) +
+    (fitGap >= 16 && formSignal >= 32 && kind === "end-season" ? 1 : 0);
+  const minReach = Math.max(0, currentTierIndex - (fitGap < -8 ? 1 : 0));
+
+  return leagueTiers
+    .map((tier) => ({ tier, tierIndex: getTierIndex(tier) }))
+    .filter((entry) => entry.tierIndex >= minReach && entry.tierIndex <= Math.min(maxReach, leagueTiers.length - 1))
+    .filter((entry) => entry.tier.id !== state.tier.id || kind === "end-season")
+    .flatMap((entry) => [0, 1].map((slot) => buildLabTransferCandidate(state, entry.tier, slot, seed, formSignal, selection.score)))
+    .filter((offer) => offer.interest >= (kind === "mid-season" ? 58 : 46))
+    .sort((a, b) => b.interest - a.interest)
+    .slice(0, kind === "end-season" ? 3 : 2);
+}
+
+function buildLabTransferCandidate(state, tier, slot, seed, formSignal, selectionScore) {
+  const currentTierIndex = getTierIndex(state.tier);
+  const tierIndex = getTierIndex(tier);
+  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const tierGap = tierIndex - currentTierIndex;
+  const roleBias = tierGap < 0 ? 12 : tierGap === 0 ? 4 : -9 - tierGap * 3;
+  const noise = seededNoise(`${seed}-${tier.id}-${slot}-transfer`) * 24 - 8;
+  const interest = selectionScore * 0.38 + ovr * 0.42 + state.prestige * 0.006 + formSignal + roleBias + noise;
+  const rolePromise = getPromisedRole(selectionScore + roleBias, "Bench");
+  const wageRatio = { Bench: 0.2, "Impact Sub": 0.34, "Rotation Starter": 0.58, Starter: 0.82 }[rolePromise] ?? 0.3;
+  const agentLevel = getSupportLevel(state, "agentNegotiation");
+  const careerBreakthroughs = getSupportTrackBreakthroughCount(state, "career");
+  const rawWage = tier.wageRange[0] + (tier.wageRange[1] - tier.wageRange[0]) * wageRatio + Math.max(0, ovr - tier.averageOvr) * 4 + formSignal * 2.2;
+  const weeklyWage = roundToNearest(
+    clamp(rawWage * getContractLeverage(agentLevel, careerBreakthroughs), tier.wageRange[0], getTierWageCap(tier, rolePromise)),
+    5,
+  );
+
+  return {
+    label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Fresh start deal",
+    source: "external-club",
+    clubName: getLabClubName(tier, slot, seed),
+    tier,
+    interest,
+    weeklyWage,
+    weeks: rolePromise === "Starter" ? 12 : 8,
+    rolePromise,
+    appearanceBonus: roundToNearest(8 + weeklyWage * 0.08, 5),
+    goalBonus: roundToNearest(14 + weeklyWage * 0.14, 5),
+    assistBonus: roundToNearest(10 + weeklyWage * 0.11, 5),
+    signingBonus: roundToNearest(weeklyWage * 0.3 * (1 + getAgentSigningBonusLeverage(agentLevel) + careerBreakthroughs * 0.03), 10),
+    pressureModifier: rolePromise === "Starter" ? 7 : rolePromise === "Rotation Starter" ? 4 : rolePromise === "Impact Sub" ? 1 : -1,
+  };
+}
+
+function chooseTransferWindowOffer(state, transferWindow) {
+  const offers = [transferWindow.currentClubOffer, ...transferWindow.externalOffers].filter(Boolean);
+  if (offers.length === 0) return undefined;
+
+  const best = offers
+    .map((offer) => ({ offer, score: getOfferDecisionScore(state, offer, transferWindow.kind) }))
+    .sort((a, b) => b.score - a.score)[0];
+  const mustChoose = state.contract.weeksRemaining <= 0 || transferWindow.kind === "end-season";
+  return mustChoose || best.score >= 18 ? best.offer : undefined;
+}
+
+function getOfferDecisionScore(state, offer, kind) {
+  const currentTierIndex = getTierIndex(state.tier);
+  const offerTier = offer.tier ?? state.tier;
+  const tierMove = getTierIndex(offerTier) - currentTierIndex;
+  const wageDelta = offer.weeklyWage - state.contract.weeklyWage;
+  const roleDelta = getRoleThreshold(offer.rolePromise) - getRoleThreshold(state.contract.rolePromise);
+  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const underLevelPenalty = Math.max(0, offerTier.averageOvr - ovr - 8) * 2.4;
+  const sameClubBias = offer.source === "current-club" ? 5 : 0;
+  const windowBias = kind === "end-season" ? 8 : 0;
+  return wageDelta * 0.12 + roleDelta * 0.34 + tierMove * 24 - underLevelPenalty + sameClubBias + windowBias;
+}
+
+function acceptLabContractOffer(state, offer) {
+  const previousTierIndex = getTierIndex(state.tier);
+  const nextTier = offer.tier ?? state.tier;
+  const nextTierIndex = getTierIndex(nextTier);
+  const transferred = offer.source === "external-club";
+  state.contract = contractFromOffer(offer);
+  if (transferred) {
+    state.tier = nextTier;
+    state.clubName = offer.clubName;
+    state.trust = clamp(Math.round(state.trust * 0.58 + getRoleThreshold(offer.rolePromise) * 0.2), 18, 76);
+    state.morale = clamp(state.morale + 4, 0, 100);
+    state.ratings = state.ratings.slice(-2);
+  }
+  return { transferred, tierMove: nextTierIndex - previousTierIndex };
+}
+
 function getClubContractOffer(state, match, fixture) {
   const current = state.contract;
   const selection = getSelectionReport(state, fixture);
@@ -1690,6 +1910,9 @@ function getClubContractOffer(state, match, fixture) {
 
   return {
     label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Development deal",
+    source: "current-club",
+    clubName: state.clubName,
+    tier: state.tier,
     weeklyWage,
     weeks,
     rolePromise,
@@ -1718,6 +1941,39 @@ function contractFromOffer(offer) {
   };
 }
 
+function getTierIndex(tier) {
+  return tierOrder.indexOf(tier.id);
+}
+
+function getInitialLabClubName(countryId) {
+  const names = {
+    denmark: "Northbridge FC",
+    england: "Eastford Athletic",
+    spain: "Costa Verde",
+    italy: "Porta Nuova",
+    germany: "Grunwald SC",
+    france: "Valmont FC",
+    holland: "Noordhaven",
+  };
+  return names[countryId] ?? names.denmark;
+}
+
+function getLabClubName(tier, slot, seed) {
+  const prefixes = {
+    "grassroots-dev": ["North", "East", "West", "River"],
+    "local-semi-pro": ["Union", "Sporting", "County", "Town"],
+    "regional-pro": ["Racing", "Athletic", "Marsano", "Harbor"],
+    "national-pro": ["Capital", "Royal", "Metro", "Olympic"],
+    "top-flight": ["Dynamo", "Inter", "United", "City"],
+    elite: ["Real", "AC", "Bayern", "Paris"],
+  };
+  const suffixes = ["FC", "SC", "United", "Athletic"];
+  const pool = prefixes[tier.id] ?? prefixes["grassroots-dev"];
+  const prefix = pool[Math.floor(seededNoise(`${seed}-${tier.id}-${slot}-club`) * pool.length) % pool.length];
+  const suffix = suffixes[Math.floor(seededNoise(`${seed}-${tier.id}-${slot}-suffix`) * suffixes.length) % suffixes.length];
+  return `${prefix} ${suffix}`;
+}
+
 function getPromisedRole(selectionScore, currentRole) {
   const earnedRole = getPlayerMatchRole(selectionScore);
   return getRoleThreshold(earnedRole) >= getRoleThreshold(currentRole) ? earnedRole : currentRole;
@@ -1743,7 +1999,7 @@ function getContractLeverage(agentLevel, careerBreakthroughs) {
 function createWorldSeasonFixtures(tier, careerSeason, runIndex) {
   const clubCount = tier.id === "elite" ? 20 : 16;
   const opponentCount = clubCount - 1;
-  const [low, high] = (leagueTiers.find((item) => item.id === "grassroots-dev") ?? leagueTiers[0]).teamRange;
+  const [low, high] = tier.teamRange;
   const opponents = Array.from({ length: opponentCount }, (_, index) => {
     const strength = Math.round(low + ((high - low) * index) / Math.max(1, opponentCount - 1));
     const seed = `${labCountry}-${tier.id}-${careerSeason}-${runIndex}-${index}`;

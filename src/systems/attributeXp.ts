@@ -39,7 +39,7 @@ export function getAttributeGrowthPressure(attribute: Attribute): { label: strin
   }
 
   const overProfile = Math.abs(distance);
-  const multiplier = 1 + overProfile * 0.12 + Math.pow(overProfile, 1.18) * 0.025;
+  const multiplier = 1 + overProfile * 0.22 + Math.pow(overProfile, 1.2) * 0.08;
   if (overProfile < 8) {
     return {
       label: "Hard push",

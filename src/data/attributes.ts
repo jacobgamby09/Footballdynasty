@@ -1,24 +1,25 @@
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, DynastyState, GenerationProfile } from "../types";
+import { initialDynastyUpgrades } from "./dynastyUpgrades";
 
 export const initialAttributes: Attribute[] = [
-  { label: "Finishing", value: 18, potential: 61, xp: 22 },
-  { label: "Long Shots", value: 12, potential: 49, xp: 8 },
-  { label: "Passing", value: 14, potential: 52, xp: 14 },
-  { label: "Vision", value: 13, potential: 50, xp: 12 },
-  { label: "Dribbling", value: 16, potential: 56, xp: 17 },
-  { label: "Off Ball", value: 17, potential: 62, xp: 16 },
-  { label: "Composure", value: 14, potential: 59, xp: 24 },
-  { label: "First Touch", value: 16, potential: 60, xp: 19 },
-  { label: "Acceleration", value: 20, potential: 63, xp: 15 },
-  { label: "Pace", value: 18, potential: 59, xp: 13 },
-  { label: "Stamina", value: 17, potential: 58, xp: 18 },
-  { label: "Heading", value: 13, potential: 55, xp: 9 },
-  { label: "Strength", value: 12, potential: 56, xp: 11 },
-  { label: "Work Rate", value: 19, potential: 62, xp: 20 },
-  { label: "Tackling", value: 8, potential: 43, xp: 6 },
-  { label: "Marking", value: 9, potential: 45, xp: 7 },
-  { label: "Positioning", value: 13, potential: 52, xp: 15 },
+  { label: "Finishing", value: 11, potential: 61, xp: 8 },
+  { label: "Long Shots", value: 8, potential: 49, xp: 5 },
+  { label: "Passing", value: 9, potential: 52, xp: 6 },
+  { label: "Vision", value: 9, potential: 50, xp: 6 },
+  { label: "Dribbling", value: 10, potential: 56, xp: 7 },
+  { label: "Off Ball", value: 10, potential: 62, xp: 7 },
+  { label: "Composure", value: 9, potential: 59, xp: 6 },
+  { label: "First Touch", value: 10, potential: 60, xp: 7 },
+  { label: "Acceleration", value: 12, potential: 63, xp: 8 },
+  { label: "Pace", value: 11, potential: 59, xp: 7 },
+  { label: "Stamina", value: 10, potential: 58, xp: 7 },
+  { label: "Heading", value: 8, potential: 55, xp: 5 },
+  { label: "Strength", value: 8, potential: 56, xp: 5 },
+  { label: "Work Rate", value: 12, potential: 62, xp: 8 },
+  { label: "Tackling", value: 6, potential: 43, xp: 4 },
+  { label: "Marking", value: 6, potential: 45, xp: 4 },
+  { label: "Positioning", value: 8, potential: 52, xp: 5 },
 ];
 
 
@@ -36,6 +37,7 @@ export const initialDynasty: DynastyState = {
   legacyLevel: 0,
   legacyPoints: 0,
   potentialTier: generationProfiles[0].label,
+  upgrades: { ...initialDynastyUpgrades },
 };
 
 export const attributeInfo: Record<

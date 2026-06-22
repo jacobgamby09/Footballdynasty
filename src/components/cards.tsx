@@ -1,4 +1,5 @@
 import { attributeInfo } from "../data/attributes";
+import { dynastyUpgradeMap } from "../data/dynastyUpgrades";
 import { supportUpgradeMap } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeGrowthPressure, getAttributeXpRequirement } from "../systems/attributeXp";
@@ -10,14 +11,16 @@ import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getUpcomingMatch } from "../systems/selection";
 import { getNextSupportTrackPurchase, getSupportTrackProgress, getSupportUpgradeCost, getSupportUpgradeLockReason } from "../systems/support";
+import { getDynastyInvestmentImpactLine, getDynastyTrackCurrentBonusLines, getDynastyTrackProgress, getDynastyUpgradeCost, getDynastyUpgradeLockReason, getNextDynastyTrackPurchase } from "../systems/dynastyUpgrades";
 import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
+import { getClubFitStatus, getNextTransferWindowLabel } from "../systems/transferWindow";
 import { clamp } from "../utils";
 import { FixtureStatusBadge, InfoRow, InfoTile, LeagueTableRowView, ProgressBar, ProgressRow } from "./shared";
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, ChevronRight, Flame, Gauge, HeartPulse, ShieldCheck, Sparkles, Trophy, UsersRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey, PositionModule } from "../positionRoles";
-import type { Attribute, Contract, DynastySeason, GameState, LastMatchSummary, LeagueTableRow, SeasonState, SeasonStats, SupportTrackDefinition, SupportUpgradeId } from "../types";
+import type { Attribute, Contract, DynastySeason, DynastyTrackDefinition, DynastyUpgradeId, GameState, LastMatchSummary, LeagueTableRow, SeasonState, SeasonStats, SupportTrackDefinition, SupportUpgradeId } from "../types";
 
 export function SelectionBriefingCard({ game }: { game: GameState }) {
   if (isSeasonComplete(game.season)) {
@@ -602,6 +605,8 @@ export function ContractMarketCard({ game }: { game: GameState }) {
   const status = getContractStatusLabel(game);
   const prestige = getPrestigeStatus(game.prestige);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+  const clubFit = getClubFitStatus(game);
+  const nextWindow = getNextTransferWindowLabel(game);
 
   return (
     <section className="card contract-card">
@@ -631,6 +636,11 @@ export function ContractMarketCard({ game }: { game: GameState }) {
         <InfoTile label="Appearance" value={`+$${contract.appearanceBonus}`} />
         <InfoTile label="Assist" value={`+$${contract.assistBonus}`} />
         <InfoTile label="Market" value={`$${marketValue}k`} />
+      </div>
+      <div className="next-grid">
+        <InfoTile label="Club fit" value={clubFit} tone={clubFit === "Outgrown" ? "gold" : clubFit === "Under level" ? "warn" : undefined} />
+        <InfoTile label="Next window" value={nextWindow} />
+        <InfoTile label="Interest" value={game.transferWindow?.interestLevel ?? (clubFit === "Outgrown" ? "Watched" : "Quiet")} tone={game.transferWindow || clubFit === "Outgrown" ? "good" : undefined} />
       </div>
       <div className="match-hint">
         <Activity size={16} />
@@ -812,6 +822,117 @@ export function SupportTrackCard({
 
       <div className="support-upgrade-footer">
         <span>{progress.maxed ? "Track complete" : nextPurchase ? `$${nextPurchase.cost} next` : "Locked"}</span>
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Hide" : "Upgrades"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+export function DynastyTrackCard({
+  game,
+  track,
+  onBuyDynastyUpgrade,
+}: {
+  game: GameState;
+  track: DynastyTrackDefinition;
+  onBuyDynastyUpgrade: (upgradeId: DynastyUpgradeId) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const progress = getDynastyTrackProgress(game.dynasty, track);
+  const nextPurchase = getNextDynastyTrackPurchase(game.dynasty, track);
+  const impactLine = nextPurchase ? getDynastyInvestmentImpactLine(game.dynasty, track, nextPurchase.upgrade.id) : "All effects unlocked";
+  const currentBonuses = getDynastyTrackCurrentBonusLines(game.dynasty, track);
+  const upgradeItems = track.upgradeIds.map((upgradeId) => {
+    const upgrade = dynastyUpgradeMap[upgradeId];
+    const level = game.dynasty.upgrades[upgradeId] ?? 0;
+    const cost = getDynastyUpgradeCost(upgrade, level);
+    const lockReason = getDynastyUpgradeLockReason(game.dynasty, upgrade);
+    const maxed = level >= upgrade.maxLevel;
+    return {
+      upgrade,
+      level,
+      cost,
+      lockReason,
+      maxed,
+      canBuy: !lockReason && !maxed && game.dynasty.legacyPoints >= cost,
+      nextEffect: maxed ? "Complete" : lockReason ? `Locked: ${lockReason}` : getDynastyInvestmentImpactLine(game.dynasty, track, upgradeId),
+    };
+  });
+
+  return (
+    <div className={`card support-upgrade-card support-track-card dynasty-upgrade-card ${progress.maxed ? "is-maxed" : ""}`}>
+      <div className="support-upgrade-top">
+        <div>
+          <span className="metric-label">{track.category}</span>
+          <h2>{track.name}</h2>
+        </div>
+        <button
+          type="button"
+          className="support-track-toggle"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <span>{progress.total}/{progress.maxTotal}</span>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+      <div className="support-breakthrough-row">
+        <span>{progress.nextName}</span>
+        <strong>{progress.maxed ? "Complete" : `${progress.current}/${progress.required}`}</strong>
+      </div>
+      <ProgressBar value={progress.percent} />
+
+      {expanded && (
+        <>
+          <p>{track.effect}</p>
+          <div className="support-impact-line">
+            <span>Next investment</span>
+            <strong>{impactLine}</strong>
+          </div>
+          <div className="support-current-bonuses">
+            <span>Current bonuses</span>
+            <div>
+              {currentBonuses.map((bonus) => (
+                <strong key={bonus}>{bonus}</strong>
+              ))}
+            </div>
+          </div>
+          <div className="support-upgrade-list">
+            {upgradeItems.map((item) => (
+              <div className={`support-upgrade-item ${item.lockReason ? "is-locked" : ""}`} key={item.upgrade.id}>
+                <div className="support-upgrade-item-main">
+                  <div>
+                    <strong>{item.upgrade.name}</strong>
+                    <small>{item.upgrade.effect}</small>
+                  </div>
+                  <span>Lv {item.level}/{item.upgrade.maxLevel}</span>
+                </div>
+                <div className="support-upgrade-item-effect">
+                  <span>{item.nextEffect}</span>
+                  <b>{item.maxed ? "Done" : `${item.cost} LP`}</b>
+                </div>
+                <ProgressBar value={(item.level / item.upgrade.maxLevel) * 100} />
+                <button
+                  type="button"
+                  disabled={!item.canBuy}
+                  onClick={() => onBuyDynastyUpgrade(item.upgrade.id)}
+                >
+                  {item.maxed ? "Complete" : item.lockReason ? "Locked" : item.canBuy ? "Invest" : "Need LP"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="support-upgrade-footer">
+        <span>{progress.maxed ? "Track complete" : nextPurchase ? `${nextPurchase.cost} LP next` : "Locked"}</span>
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}

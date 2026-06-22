@@ -1,11 +1,12 @@
 import { positionModules } from "../positionRoles";
-import type { ClubState, Contract, CountryId, GameState } from "../types";
+import type { ClubState, Contract, CountryId, DynastySeason, DynastyState, GameState } from "../types";
 import { initialDynasty } from "../data/attributes";
 import { initialClub } from "../data/leagues";
 import { initialSupportUpgrades } from "../data/support";
 import { seedWorld } from "../data/world";
 import { createGenerationAttributes } from "../systems/generation";
 import { createSeasonFixturesFromWorld } from "../systems/club";
+import { getDynastyNetworkBonus } from "../systems/dynastyUpgrades";
 
 export const initialContract: Contract = {
   club: initialClub.name,
@@ -25,7 +26,11 @@ export const initialContract: Contract = {
 // chosen country's bottom division — "start from the bottom" (Stage E). Each call
 // returns an independent state (no shared mutable refs). Gen 2+ will instead be
 // offer-driven (the son inherits a name) as part of the dynasty loop.
-export function createCareerForCountry(countryId: CountryId): GameState {
+export function createCareerForCountry(
+  countryId: CountryId,
+  options: { dynasty?: DynastyState; dynastyHistory?: DynastySeason[] } = {},
+): GameState {
+  const dynasty = options.dynasty ?? initialDynasty;
   const world = seedWorld();
   const bottomLeague = Object.values(world.leagues)
     .filter((league) => league.countryId === countryId)
@@ -40,30 +45,34 @@ export function createCareerForCountry(countryId: CountryId): GameState {
     tierId: startClub.tierId,
     strength: startClub.strength,
   };
+  const networkBonus = getDynastyNetworkBonus(dynasty);
+  const startingWage = initialContract.weeklyWage + networkBonus * 8;
+  const startingCash = 420 + networkBonus * 60;
+  const startingTrust = 38 + networkBonus * 2;
 
   return {
     week: 1,
     positionGroup: "Forward",
     positionCode: positionModules.Forward.shortCode,
     archetype: positionModules.Forward.defaultArchetype,
-    cash: 420,
+    cash: startingCash,
     prestige: 12,
     fitness: 86,
     morale: 74,
     pressure: 26,
-    trust: 38,
+    trust: startingTrust,
     selectedFocus: "Finishing",
     trainingFocuses: ["Finishing"],
     trainingCompletedWeek: 0,
     intensity: "Balanced",
-    attributes: createGenerationAttributes(1),
+    attributes: createGenerationAttributes(dynasty.generation, positionModules.Forward, dynasty),
     seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },
     season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixturesFromWorld(club, world), results: [] },
     club,
     world,
-    dynasty: { ...initialDynasty },
-    dynastyHistory: [],
-    contract: { ...initialContract, club: club.name, tierId: club.tierId },
+    dynasty: { ...dynasty, upgrades: { ...dynasty.upgrades } },
+    dynastyHistory: options.dynastyHistory ? options.dynastyHistory.map((season) => ({ ...season })) : [],
+    contract: { ...initialContract, weeklyWage: startingWage, club: club.name, tierId: club.tierId },
     supportUpgrades: { ...initialSupportUpgrades },
     lastEvent: `Trial terms at ${club.name}. Your first senior fixture is waiting.`,
   };

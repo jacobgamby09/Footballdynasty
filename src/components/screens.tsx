@@ -1,10 +1,12 @@
 import { attributeInfo } from "../data/attributes";
+import { dynastyTrackDefinitions } from "../data/dynastyUpgrades";
 import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
 import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveMatchReadiness, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculatePotentialOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
+import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getPrestigeStatus } from "../systems/prestige";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
@@ -14,12 +16,12 @@ import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
-import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
+import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
-import { Activity, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, Venue } from "../types";
+import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game }: { game: GameState }) {
@@ -91,6 +93,133 @@ export function ContractOfferScreen({
 
       <button className="secondary-action" type="button" onClick={onDecline}>
         Decline {multiple ? "all" : "for now"}
+      </button>
+    </section>
+  );
+}
+
+export function TransferWindowScreen({
+  game,
+  window,
+  onAccept,
+  onClose,
+}: {
+  game: GameState;
+  window: TransferWindowState;
+  onAccept: (offer: ContractOffer) => void;
+  onClose: () => void;
+}) {
+  const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+  const tier = getClubLeagueTier(game.club);
+  const currentOffer = window.currentClubOffer;
+  const hasExternalOffers = window.offers.length > 0;
+  const hasDecision = Boolean(currentOffer || hasExternalOffers);
+
+  return (
+    <section className="simple-screen transfer-window-screen">
+      <ScreenTitle
+        label={window.kind === "mid-season" ? `Season ${game.season.season} midpoint` : `Season ${game.season.season} complete`}
+        title={window.title}
+      />
+
+      <div className="card transfer-window-hero">
+        <div>
+          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}Career market</span>
+          <h2>{window.clubFit}</h2>
+          <p>{window.clubFitSummary}</p>
+        </div>
+        <div className="season-review-badge">
+          <ArrowRightLeft size={20} />
+          <strong>{window.interestLevel}</strong>
+          <span>{window.kind === "mid-season" ? "Winter" : "Summer"}</span>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Current club</span>
+            <h2>{game.club.name}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <div className="stat-grid">
+          <InfoTile label="League" value={tier.name} />
+          <InfoTile label="Role" value={game.contract.rolePromise} />
+          <InfoTile label="Wage" value={`$${game.contract.weeklyWage}/wk`} tone="good" />
+          <InfoTile label="Left" value={`${game.contract.weeksRemaining} wks`} tone={game.contract.weeksRemaining <= 1 ? "warn" : undefined} />
+        </div>
+      </div>
+
+      {currentOffer && (
+        <div className="card contract-offer-card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Extension available</span>
+              <h2>{currentOffer.title}</h2>
+            </div>
+            <BadgeDollarSign size={19} />
+          </div>
+          <div className="contract-hero">
+            <div>
+              <span>Weekly wage</span>
+              <strong>${game.contract.weeklyWage} &rarr; ${currentOffer.weeklyWage}</strong>
+            </div>
+            <div>
+              <span>Role promise</span>
+              <strong>{currentOffer.rolePromise}</strong>
+            </div>
+          </div>
+          <div className="stat-grid">
+            <InfoTile label="Length" value={`${currentOffer.weeks} wks`} />
+            <InfoTile label="Signing" value={`+$${currentOffer.signingBonus}`} tone="good" />
+            <InfoTile label="Goal" value={`+$${currentOffer.goalBonus}`} tone="gold" />
+            <InfoTile label="Pressure" value={formatSigned(currentOffer.pressureModifier)} tone={currentOffer.pressureModifier > game.contract.pressureModifier ? "warn" : undefined} />
+          </div>
+          <p>{currentOffer.summary}</p>
+          <button className="primary-action" type="button" onClick={() => onAccept(currentOffer)}>
+            Accept Extension
+          </button>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">External interest</span>
+            <h2>{window.offers.length > 0 ? `${window.offers.length} option${window.offers.length === 1 ? "" : "s"}` : "No formal offers"}</h2>
+          </div>
+          <ArrowRightLeft size={19} />
+        </div>
+        {!hasExternalOffers && (
+          <div className="match-hint">
+            <Activity size={16} />
+            <span>Scouts are watching, but no club is ready to make a formal move yet.</span>
+          </div>
+        )}
+      </div>
+
+      {window.offers.map((offer, index) => (
+        <ContractOfferCard
+          current={game.contract}
+          game={game}
+          key={offer.clubId ?? offer.club ?? index}
+          multiple
+          offer={offer}
+          onAccept={onAccept}
+        />
+      ))}
+
+      <button className="secondary-action" type="button" onClick={onClose}>
+        {hasDecision
+          ? currentOffer && hasExternalOffers
+            ? "Decline Offers"
+            : currentOffer
+              ? "Decline Extension"
+              : "Reject Interest"
+          : window.kind === "end-season"
+            ? "Review Season"
+            : "Stay Focused"}
       </button>
     </section>
   );
@@ -987,6 +1116,74 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
 }
 
 
+export function RetirementScreen({ game }: { game: GameState }) {
+  const estimate = getLegacyEstimate(game);
+  const nextGeneration = game.dynasty.generation + 1;
+
+  return (
+    <section className="simple-screen retirement-screen">
+      <ScreenTitle label={`Age ${estimate.age}`} title="Retirement Decision" />
+
+      <div className="card retirement-hero">
+        <div>
+          <span className="metric-label">Legacy estimate</span>
+          <h2>{estimate.totalPoints}</h2>
+          <p>{estimate.eligible ? `Bank points and begin Gen ${nextGeneration}.` : estimate.hint}</p>
+        </div>
+        <div className="season-review-badge">
+          <Sparkles size={20} />
+          <strong>Gen {game.dynasty.generation}</strong>
+          <span>{estimate.momentum}</span>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Multiplier</span>
+            <h2>{estimate.multiplierLabel}</h2>
+          </div>
+          <Trophy size={19} />
+        </div>
+        <div className="selection-progress-card">
+          <div>
+            <strong>Base {estimate.basePoints}</strong>
+            <span>x{estimate.multiplier.toFixed(2)}</span>
+          </div>
+          <ProgressBar value={Math.min(100, estimate.multiplier * 38)} />
+        </div>
+        <p>Higher divisions make the same career output worth more because the environment is harder.</p>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Point sources</span>
+        <div className="stat-grid">
+          {estimate.components.map((component) => (
+            <InfoTile key={component.label} label={component.label} value={`${component.value} / +${component.points}`} tone={component.points >= 25 ? "gold" : undefined} />
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Retirement advice</span>
+            <h2>{estimate.momentum}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <p>{estimate.hint}</p>
+        <div className="next-grid">
+          <InfoTile label="Current LP" value={`${game.dynasty.legacyPoints}`} tone="gold" />
+          <InfoTile label="After retire" value={`${game.dynasty.legacyPoints + estimate.totalPoints}`} tone="good" />
+          <InfoTile label="Next gen" value={`Gen ${nextGeneration}`} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 export function TrainingSummaryScreen({
   attributes,
   summary,
@@ -1315,13 +1512,17 @@ export function HomeScreen({
   game,
   saveStatus,
   onBuySupportUpgrade,
+  onBuyDynastyUpgrade,
   onAcceptSponsorDeal,
+  onOpenRetirement,
   onResetCareer,
 }: {
   game: GameState;
   saveStatus: "saved" | "unsaved";
   onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
+  onBuyDynastyUpgrade: (upgradeId: DynastyUpgradeId) => void;
   onAcceptSponsorDeal: (dealId: string) => void;
+  onOpenRetirement: () => void;
   onResetCareer: () => void;
 }) {
   const [homeView, setHomeView] = useState<HomeView>("base");
@@ -1329,6 +1530,8 @@ export function HomeScreen({
   const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
   const positionModule = getPositionModule(game.positionGroup);
   const potentialOvr = calculatePotentialOvr(game.attributes, positionModule.ovrWeights);
+  const age = getPlayerAge(game);
+  const legacyEstimate = getLegacyEstimate(game);
 
   return (
     <section className="simple-screen">
@@ -1412,6 +1615,55 @@ export function HomeScreen({
               <InfoTile label="Assists" value={`${careerTotals.assists}`} />
               <InfoTile label="Avg rating" value={careerTotals.averageRating.toFixed(1)} tone={careerTotals.averageRating >= 6.8 ? "good" : undefined} />
             </div>
+          </div>
+
+          <div className="card retirement-card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Legacy planning</span>
+                <h2>{legacyEstimate.eligible ? `${legacyEstimate.totalPoints} points ready` : `Retire from age 30`}</h2>
+              </div>
+              <Sparkles size={19} />
+            </div>
+            <div className="next-grid">
+              <InfoTile label="Age" value={`${age}`} />
+              <InfoTile label="Current LP" value={`${game.dynasty.legacyPoints}`} tone="gold" />
+              <InfoTile label="Estimate" value={`+${legacyEstimate.totalPoints}`} tone={legacyEstimate.eligible ? "good" : undefined} />
+            </div>
+            <p>{legacyEstimate.hint}</p>
+            <button className="secondary-action" type="button" onClick={onOpenRetirement}>
+              Review Retirement
+            </button>
+          </div>
+
+          <div className="card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Dynasty economy</span>
+                <h2>Legacy upgrades</h2>
+              </div>
+              <Sparkles size={19} />
+            </div>
+            <div className="next-grid">
+              <InfoTile label="Legacy Points" value={`${game.dynasty.legacyPoints}`} tone="gold" />
+              <InfoTile label="Generation" value={`Gen ${game.dynasty.generation}`} />
+              <InfoTile label="Scope" value="Permanent" />
+            </div>
+            <div className="match-hint">
+              <Sparkles size={16} />
+              <span>Legacy upgrades improve future generations and do not affect cash support in the current run.</span>
+            </div>
+          </div>
+
+          <div className="support-shop-list">
+            {dynastyTrackDefinitions.map((track) => (
+              <DynastyTrackCard
+                key={track.id}
+                game={game}
+                track={track}
+                onBuyDynastyUpgrade={onBuyDynastyUpgrade}
+              />
+            ))}
           </div>
 
           <div className="card dynasty-card">

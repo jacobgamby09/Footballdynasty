@@ -7,6 +7,7 @@ import { COUNTRIES } from "./data/world";
 import { getGenerationProfile } from "./systems/generation";
 import { getLegacyEstimate, getLegacySeasons } from "./systems/legacy";
 import { buyDynastyUpgradeState } from "./systems/dynastyUpgrades";
+import { investEstateState } from "./systems/estate";
 import { buySupportUpgradeState } from "./systems/support";
 import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 import { getUpcomingMatch } from "./systems/selection";
@@ -645,6 +646,10 @@ function App() {
     setGame((state) => buyDynastyUpgradeState(state, upgradeId));
   }
 
+  function investEstate() {
+    setGame((state) => investEstateState(state));
+  }
+
   function acceptSponsorDeal(dealId: string) {
     setGame((state) => acceptSponsorDealState(state, dealId));
   }
@@ -692,6 +697,7 @@ function App() {
               saveStatus={saveStatus}
               onBuySupportUpgrade={buySupportUpgrade}
               onBuyDynastyUpgrade={buyDynastyUpgrade}
+              onInvestEstate={investEstate}
               onAcceptSponsorDeal={acceptSponsorDeal}
               onOpenRetirement={openRetirement}
               onResetCareer={resetCareer}

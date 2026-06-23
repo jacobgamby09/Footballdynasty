@@ -7,6 +7,7 @@ import { seedWorld } from "../data/world";
 import { createGenerationAttributes } from "../systems/generation";
 import { createSeasonFixturesFromWorld } from "../systems/club";
 import { getDynastyNetworkBonus } from "../systems/dynastyUpgrades";
+import { getEstateHeirCash } from "../systems/estate";
 
 export const initialContract: Contract = {
   club: initialClub.name,
@@ -47,7 +48,8 @@ export function createCareerForCountry(
   };
   const networkBonus = getDynastyNetworkBonus(dynasty);
   const startingWage = initialContract.weeklyWage + networkBonus * 8;
-  const startingCash = 420 + networkBonus * 60;
+  // Heir inherits the family trust fund as starting cash (Stage 3) — a material head start.
+  const startingCash = 420 + networkBonus * 60 + getEstateHeirCash(dynasty);
   const startingTrust = 38 + networkBonus * 2;
   // Inherited family standing: later generations start with a prestige floor grown
   // from the bloodline's past success, so sponsor access arrives sooner each gen.

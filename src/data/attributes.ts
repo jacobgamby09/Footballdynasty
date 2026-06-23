@@ -38,6 +38,7 @@ export const initialDynasty: DynastyState = {
   legacyPoints: 0,
   potentialTier: generationProfiles[0].label,
   reputation: 0,
+  estate: 0,
   upgrades: { ...initialDynastyUpgrades },
 };
 

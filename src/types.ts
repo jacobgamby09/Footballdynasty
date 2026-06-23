@@ -226,6 +226,10 @@ export type DynastyState = {
   // inherits, grown from each heir's peak career prestige. Never decreases, so a
   // strong bloodline compounds toward sponsor access over generations.
   reputation: number;
+  // Family trust fund (Stage 3): a cash-funded estate level, bought with surplus cash.
+  // Persists across generations and gives each heir a sqrt-scaled, capped starting-cash
+  // head start — the late-career "spend on yourself vs. set up your child" choice.
+  estate: number;
   upgrades: Record<DynastyUpgradeId, number>;
 };
 
@@ -376,7 +380,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 17;
+  version: 18;
   game: GameState;
 };
 

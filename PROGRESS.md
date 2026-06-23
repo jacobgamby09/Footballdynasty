@@ -1927,3 +1927,43 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - Even so, over a full career late cash is abundant (longevity also only ~33/60 maxed). The
   root "late cash is too plentiful" is best solved by a big late sink — the heir investment
   (a future Stage 3 / dynasty cash-estate) — rather than by inflating individual upgrade costs.
+
+## 2026-06-23 - Stage 3: Family Trust Fund (late-cash sink → heir)
+
+### Why
+
+- Even after the longevity/potential upgrades, over a full career cash stays abundant (no real
+  late scarcity). Stage 3 adds the missing late-career *choice*: a cash sink that serves the
+  dynasty — spend surplus on yourself (longevity/potential/support) OR bank it for your heir.
+
+### Implemented (scope: trust fund / starting capital only)
+
+- `systems/estate.ts`: `getEstateCost(level)` (escalating: 40k -> 1.68M at L20 -> ~7M at L44),
+  `getEstateHeirCash(dynasty)` (sqrt-scaled, capped 60k — diminishing, no cross-gen snowball),
+  `investEstateState` (a true cash sink). `DynastyState.estate` persists across generations.
+- `createCareerForCountry`: heir `startingCash += getEstateHeirCash(dynasty)` — a material
+  head start (distinct from Legacy Points = talent).
+- UI: a Family Trust Fund card in Home → Dynasty (cash / heir-inherits / next-level + Invest
+  button), wired via `App.investEstate`. `SAVE_VERSION` -> 18.
+
+### Why it's safe for the 60/70 curve
+
+- The heir bonus is starting *cash*, and cash buys speed + longevity, NOT the ceiling. The
+  re-anchored soft cap binds (optimal play asymptotes to potential), and potential is itself
+  capped. So a rich heir reaches their generation's potential (~60/70) *faster* and with more
+  peak years — never *higher*. No curve break by construction.
+
+### Verification
+
+- Build green; no console errors.
+- In-browser: investing deducts the cost (cash 100k -> 60k on a 40k buy), estate 0 -> 1,
+  "Heir inherits" -> $9,000, lastEvent confirms. Heir application is the verified one-liner
+  `getEstateHeirCash` wired into `createCareerForCountry`.
+
+### Status
+
+- The long-term cash-upgrade arc is complete: aging + longevity + potential + re-anchor +
+  trust fund. Late-career cash is now a genuine choice (improve self vs. set up heir). The big
+  remaining core-fantasy gap is the **Gen-2 offer-driven start** (inherited name + contract
+  offers instead of the country picker); the trust fund's "club connections" idea (3b) is the
+  natural bridge into it.

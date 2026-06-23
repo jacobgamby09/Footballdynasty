@@ -5,7 +5,7 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-20. Branch `main` @ `631f3aa`._
+_Last updated: 2026-06-23. Branch `main` @ `0d5cda5`._
 
 ---
 
@@ -18,7 +18,7 @@ long-term goal of a multi-generation dynasty.
 
 - **Stack:** React 19 + Vite 8 (rolldown-vite) + TypeScript. State persists to
   `localStorage`. No backend.
-- **Entry:** `src/App.tsx` (~550 lines — the shell + week handlers + screen
+- **Entry:** `src/App.tsx` (~760 lines — the shell + week handlers + screen
   routing). Everything else is modularized under `src/`.
 
 ### Doc map (read these, don't re-derive)
@@ -28,8 +28,9 @@ long-term goal of a multi-generation dynasty.
 | `MATCH_ENGINE.md` | How a match is simulated. |
 | `WORLD_MODEL.md` | **The persistent world** (countries, tiers, promotion/relegation, fixtures). Stage log lives here — start here for world work. |
 | `REFACTOR.md` | History of the `App.tsx` → modules split + the module layering DAG. |
-| `PROGRESS.md` / `NEXT_STEPS.md` | Older running notes. |
-| `HANDOVER.md` | This file. |
+| `PROGRESS.md` | **Active running log** — dated entries per change (read the tail for the latest). |
+| `NEXT_STEPS.md` | Older planning notes. |
+| `HANDOVER.md` | This file — the orientation map. |
 
 ---
 
@@ -61,7 +62,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 12`**.
+   accepted behaviour during development. Currently **`SAVE_VERSION = 13`**.
 
 ---
 
@@ -94,10 +95,12 @@ Key files: `data/world.ts` (`seedWorld`, `COUNTRIES`, name pools),
 
 ---
 
-## 4. What was done THIS session (Stages E → G)
+## 4. Build history
 
-All merged to `main` (`--no-ff`), pushed, branches deleted. Each verified
-in-browser via Playwright + `npm run build` + `balance:season`.
+Two waves so far. **Wave 1 (Stages E–G)** was the world/identity work, each
+shipped on a `feature/world-v2-stage-X` branch and merged `--no-ff`. **Wave 2
+(economy + dynasty layer)** landed afterwards as direct commits on `main`
+(`c3dc692` → `0d5cda5`). Build stays green throughout.
 
 ### Stage E — Gen-1 country selection (`56844e8`)
 - New-game flow now opens a **`CountrySelectScreen`** (7 countries). Picking one
@@ -142,14 +145,57 @@ always-Danish:
 - _(History: it briefly shipped as a single round-robin (15 matches) in `82fba66`,
   then changed to home+away in `631f3aa` per the user's preference.)_
 
+### Wave 2 — economy + dynasty layer (`c3dc692` → `0d5cda5`)
+
+Direct commits on `main`. This added the meta-progression around the
+week-to-week loop. New systems modules and what they do:
+
+- **Dynasty loop** (`17dbc57`) — the core-fantasy spine.
+  - `systems/legacy.ts` — `getLegacyEstimate` scores the finished career into
+    **Legacy Points**; retirement is age-gated (`RETIREMENT_AGE`).
+  - `App.tsx → retireCareer()` banks the points, increments `dynasty.generation`,
+    carries `dynasty` + history forward, and calls `createCareerForCountry(...)`
+    to begin the next generation. New `retirement` screen + `RetirementScreen`.
+  - `systems/dynastyUpgrades.ts` + `data/dynastyUpgrades.ts` — spend Legacy
+    Points on persistent upgrade tracks (`DynastyState.upgrades`).
+  - `systems/generation.ts` — `getGenerationProfile` / `createGenerationAttributes`
+    give later generations a stronger starting attribute base (dynasty bonuses).
+  - ⚠️ **Nuance — not yet the originally-envisioned Gen-2 flow.** The son keeps
+    the hardcoded name "Jonas Vale" and still **starts from the bottom of the
+    same country** (no inherited name, no offer-driven start). Dynasty
+    *continuity* (points, upgrades, generation bonuses, carried history) is in;
+    the offer-driven inherited-name onboarding is still open (see §6).
+- **Prestige + sponsors** (`c3dc692`) — `systems/prestige.ts` (tiers Local
+  Prospect → Icon, threshold-gated) and `systems/sponsors.ts` (deals with
+  weekly retainer + objective bonuses, unlocked by prestige tier).
+- **Support model v2 + expandable upgrades** (`9824101`, `3209438`) — reworked
+  `systems/support.ts` / `data/support.ts` and the support UI.
+- **Transfer windows + free agency** (`17dbc57`, `0d5cda5`) —
+  `systems/transferWindow.ts` opens deterministic mid- and end-season windows
+  with club-fit + offers (`transfer-window` screen). Letting a contract expire
+  now drops the player into a real **free-agent** state (`FreeAgentState`,
+  `free-agent` screen): solo training at 55% XP, short trial offers back into
+  club football. Offer cards have explicit Accept/Decline.
+  `scripts/transfer-window-smoke.mjs` is a dedicated smoke lab.
+- **Training reveal** (`0d5cda5`) — an animated XP-reveal screen
+  (`training-reveal`) between `Start Training` and the development summary; the
+  roll is still deterministic, only the presentation is new.
+- **Gen-1 progression tuning** (`40bdfb6`) — attribute XP / selection / match
+  tuning; `systems/attributeXp.ts`.
+
+New `ScreenKey`s: `training-reveal`, `free-agent`, `transfer-window`,
+`retirement`. New `GameState` slices: `dynasty` (expanded), `transferWindow?`,
+`freeAgent?`, plus sponsor/prestige state.
+
 ---
 
 ## 5. How to work & verify
 
 ```bash
 npm run build          # tsc --noEmit && vite build  — must stay green
-npm run balance:season # season economy lab (engine-only)
+npm run balance:season # season economy lab (engine-only, now transfer-aware)
 npm run balance:match  # match outcome lab
+node scripts/transfer-window-smoke.mjs  # transfer-window smoke
 npm run dev            # vite dev server on 127.0.0.1:5173
 ```
 
@@ -181,27 +227,38 @@ origin). Co-author trailer: `Co-Authored-By: Claude Opus 4.8
 
 ## 6. Open work / next steps
 
-**The big one — the dynasty loop** (core fantasy, still missing):
-retirement → Legacy Points → **Gen 2+ offer-driven start**. Gen 1 picks a
-country; from Gen 2 the son inherits a name and should be **offered contracts**
-rather than choosing a country. The foundations are in place: the player is
-linked to the world by `club.clubId` and is not special-cased in rollover, and
-the transfer/offer system (`systems/transfers.ts`, `systems/contracts.ts`)
-already reads the world and produces demand-gated multi-offers. What's missing:
-a retirement trigger, Legacy Points, and the Gen-2 onboarding screen/flow.
+**The three things flagged in the latest status (most → least important):**
 
-**Smaller / open under earlier stages:**
+1. **Finish the Gen-2 fantasy.** The dynasty loop banks Legacy Points and carries
+   continuity, but the next generation still starts from the bottom of the same
+   country with the hardcoded name "Jonas Vale". The original vision was: the son
+   **inherits a name** and gets an **offer-driven start** (offered contracts based
+   on the family's standing) instead of repeating the country picker. The pieces
+   exist — `club.clubId` linkage, world-reading offers in `systems/transfers.ts` /
+   `systems/contracts.ts`, generation bonuses — so this is wiring `retireCareer()`
+   into the offer flow + a name/onboarding screen, not new infrastructure.
+2. **Sponsor / prestige reachability.** In a Gen-1 `balance:season` run end
+   prestige averages ~137, but the first sponsor needs 350 — so the sponsor
+   economy is effectively unreachable in an early career. Either lower the first
+   thresholds (`systems/prestige.ts`, `systems/sponsors.ts`) or raise prestige
+   gain. Decide the intended pace.
+3. **Balance pass for the longer season.** The economy was tuned around 12
+   matches; seasons are now 30–38. Latest `balance:season` read: rarely promoted
+   past Impact Sub (Rotation Starter almost never), accepted transfers ~0.14/season
+   (very static), and the lab still warns *"trust caps without many transfers; end
+   fitness too low"*. Re-check OVR gain, end fitness, role progression, and whether
+   the transfer market is too quiet.
+
+**Smaller / still open:**
 - **Browse-the-pyramid UI** — let the player view other leagues/divisions in the
   world (the data is all there; it's a read-only screen).
-- **Balance pass for the longer season** — the economy (XP/season, cash,
-  contract weeks, fitness) was tuned around 12 matches; seasons are now 30–38.
-  `balance:season` is now transfer-aware: it opens deterministic mid-season and
-  end-season windows, generates external offers, accepts sensible moves, resets
-  trust on club changes, and reports transfer windows/offers/accepted moves/net
-  tier movement. Re-check OVR gain, end fitness, and whether accepted moves are
-  too frequent or too generous.
-- **Cups** — cup framing was dropped when fixtures went world-based. If desired,
-  a real cup vs. clubs from OTHER leagues is a separate feature.
+- **Cups** — cup framing was dropped when fixtures went world-based. A real cup
+  vs. clubs from OTHER leagues is a separate feature.
+
+`balance:season` is now transfer-aware (opens deterministic windows, generates
+offers, accepts sensible moves, resets trust on club changes, reports
+windows/offers/accepted moves/net tier movement) — use it plus
+`transfer-window-smoke.mjs` when touching the transfer or economy code.
 
 **Watch-outs when extending fixtures/world:**
 - `createSeasonFixtures` (the legacy Danish static list) still exists as the

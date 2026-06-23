@@ -10,9 +10,9 @@ import {
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 
 const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 120);
-// Default to a full career (age 16 -> retirement at 30 = 14 seasons) so the data reflects
-// the whole arc — climbing tiers, not a single grassroots season. Override with --career-seasons.
-const careerSeasons = Number(process.argv.find((arg) => arg.startsWith("--career-seasons="))?.split("=")[1] ?? 14);
+// Default to a full career (age 16 -> ~37 = 22 seasons) so the data reflects the whole arc:
+// climbing tiers, peaking at 28, then the post-peak decline. Override with --career-seasons.
+const careerSeasons = Number(process.argv.find((arg) => arg.startsWith("--career-seasons="))?.split("=")[1] ?? 22);
 const generationCount = Number(process.argv.find((arg) => arg.startsWith("--generations="))?.split("=")[1] ?? 1);
 const labCountry = process.argv.find((arg) => arg.startsWith("--country="))?.split("=")[1] ?? "denmark";
 const leagueAverageOvr = 15;
@@ -195,6 +195,7 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     seasonAssists: 0,
     clubName: getInitialLabClubName(labCountry),
     transferredThisSeason: false,
+    age: 16,
   };
   const startOvr = calculateOvr(flattenAttributes(state.attributes));
   const stats = {
@@ -237,6 +238,7 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
 
   for (let careerSeason = 0; careerSeason < careerSeasons; careerSeason += 1) {
     state.transferredThisSeason = false;
+    state.age = 16 + careerSeason;
     const seasonFixtures = createWorldSeasonFixtures(state.tier, careerSeason, runIndex);
     state.seasonLength = seasonFixtures.length;
     const seasonStartOvr = calculateOvr(flattenAttributes(state.attributes));
@@ -536,6 +538,9 @@ function addMatchStats(stats, match, context) {
 function createSeasonReport(season, state, stats, startOvr) {
   const endOvr = calculateOvr(flattenAttributes(state.attributes));
   const growthProfileOvr = calculateOvr(flattenPotentialAttributes(state.attributes));
+  // Effective OVR = raw skill scaled by the age modifier (what actually shows on the pitch).
+  // After the peak this falls even as raw skill keeps creeping up — the visible decline.
+  const effectiveOvr = calculateOvr(agedFlat(state));
   return {
     season,
     tier: state.tier.label,
@@ -543,6 +548,7 @@ function createSeasonReport(season, state, stats, startOvr) {
     scheduledMatches: stats.scheduledMatches,
     startOvr,
     endOvr,
+    effectiveOvr,
     growthProfileOvr,
     ovrGain: endOvr - startOvr,
     apps: stats.apps,
@@ -692,7 +698,7 @@ function buildContext(state, fixture, matchSeed) {
   // player on a weak club drags results upward (the engine of climbing the pyramid); a weak
   // player can't carry a club above its level. Mirrors the game, where the club takes the
   // player's real match results into the world standings.
-  const playerOvr = calculateOvr(flattenAttributes(state.attributes));
+  const playerOvr = calculateOvr(agedFlat(state));
   const clubStrength = state.clubStrength ?? state.tier.averageOvr;
   const playerLift = clamp((playerOvr - clubStrength) * 0.45, -5, 18);
   const tierTeamStrength = clubStrength + playerLift;
@@ -734,13 +740,13 @@ function simulateMatch(state, context, matchSeed) {
   });
   const appearance = getAppearanceWindow(context.playerRole, state, context, simEvents, matchSeed);
   const minutes = getPlayerMinutesPlayed(context, appearance);
-  const actionAttributes = getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier);
+  const actionAttributes = getLeagueAdjustedAttributes(agedFlat(state), state.tier);
   const adjustedOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile, state.tier);
   const involvementScore =
     state.trust * 0.35 +
     state.fitness * 0.25 +
     getFormScore(state.ratings) * 0.2 +
-    getContextualAbilityScore(calculateOvr(flattenAttributes(state.attributes)), state.tier) * 0.2 +
+    getContextualAbilityScore(calculateOvr(agedFlat(state)), state.tier) * 0.2 +
     getRoleInvolvementBias(context.playerRole) * 10;
   const playerMomentCount = minutes > 0 ? getPlayerMomentCount(context.playerRole, involvementScore, minutes, matchSeed) : 0;
   const moments = createPositionMatchPool({
@@ -815,7 +821,7 @@ function createMatchResult(state, context, moment, choice, resultSeed) {
   const result = resolvePlayerChoice({
     moment,
     choice,
-    attributeValues: getLeagueAdjustedAttributes(flattenAttributes(state.attributes), state.tier),
+    attributeValues: getLeagueAdjustedAttributes(agedFlat(state), state.tier),
     fitness: state.fitness,
     trust: state.trust,
     playerRole: context.playerRole,
@@ -1060,7 +1066,7 @@ function getSelectionReport(state, fixture, importance = "Normal") {
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
-  const playerOvr = calculateOvr(flattenAttributes(state.attributes));
+  const playerOvr = calculateOvr(agedFlat(state));
   const abilityImpact = clamp(Math.round((playerOvr - tier.averageOvr) * 0.8), -8, 10);
   const fixtureGap = (fixture.opponentStrength + tierOffset) - (teamStrength + tierOffset);
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;
@@ -1386,6 +1392,7 @@ function summarizeSeasonCurve(items) {
       scheduledMatches: stat(seasonItems.map((item) => item.scheduledMatches)),
       startOvr: stat(seasonItems.map((item) => item.startOvr)),
       endOvr: stat(seasonItems.map((item) => item.endOvr)),
+      effectiveOvr: stat(seasonItems.map((item) => item.effectiveOvr)),
       growthProfileOvr: stat(seasonItems.map((item) => item.growthProfileOvr)),
       ovrGain: stat(seasonItems.map((item) => item.ovrGain)),
       apps: stat(seasonItems.map((item) => item.apps)),
@@ -1510,7 +1517,7 @@ function getDynastyFlowRead(report) {
   }
 
   const peakSeason = report.seasonCurve.reduce((best, season) => (season.endOvr.avg > best.endOvr.avg ? season : best), report.seasonCurve[0]);
-  const finalGap = finalSeason.endOvr.avg - getTargetOvrForCareerSeason(finalSeason.season);
+  const finalGap = finalSeason.effectiveOvr.avg - getTargetOvrForCareerSeason(finalSeason.season);
   const legacySeedScore = Math.round(finalSeason.endPrestige.avg / 100 + peakSeason.endOvr.avg * 1.5 + report.levelUps.avg / 12);
   const foundation =
     peakSeason.endOvr.avg >= 76 && finalSeason.endPrestige.avg >= 7500
@@ -1552,7 +1559,7 @@ function getLegacyTierMultiplier(tierId) {
 
 function printCareerCurve(report) {
   console.log("Career curve avg:");
-  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | ClubPPG | Cash net | Prestige | Support");
+  console.log("S | Tier | Matches | OVR | EffOVR | Target | +/-(eff) | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | ClubPPG | Cash net | Prestige | Support");
   report.seasonCurve.forEach((season) => {
     const target = getTargetOvrForCareerSeason(season.season);
     console.log(
@@ -1561,8 +1568,9 @@ function printCareerCurve(report) {
         season.tier,
         format(season.scheduledMatches.avg),
         `${format(season.startOvr.avg)}->${format(season.endOvr.avg)}`,
+        `eff ${format(season.effectiveOvr.avg)}`,
         format(target),
-        format(season.endOvr.avg - target),
+        format(season.effectiveOvr.avg - target),
         format(season.ovrGain.avg),
         `${format(season.trainingXp.avg)}/${format(season.matchXp.avg)}`,
         `${format(season.trainingLevelUps.avg)}/${format(season.matchLevelUps.avg)}`,
@@ -1620,11 +1628,12 @@ function getTargetOvrForCareerSeason(season) {
     { season: 3, ovr: 22 },
     { season: 5, ovr: 32 },
     { season: 8, ovr: 45 },
-    { season: 11, ovr: 56 },
-    { season: 14, ovr: 64 },
-    { season: 15, ovr: 65 },
-    { season: 17, ovr: 63 },
-    { season: 20, ovr: 60 },
+    { season: 11, ovr: 58 },
+    { season: 13, ovr: 64 },
+    { season: 14, ovr: 63 },
+    { season: 16, ovr: 60 },
+    { season: 19, ovr: 53 },
+    { season: 22, ovr: 45 },
   ];
   const first = targetCurve[0];
   if (season <= first.season) {
@@ -1676,7 +1685,7 @@ function getBalanceWarnings(report) {
   }
   if (report.careerSeasons > 1) {
     const finalSeason = report.seasonCurve[report.seasonCurve.length - 1];
-    const targetGap = finalSeason.endOvr.avg - getTargetOvrForCareerSeason(finalSeason.season);
+    const targetGap = finalSeason.effectiveOvr.avg - getTargetOvrForCareerSeason(finalSeason.season);
     if (targetGap < -5) {
       warnings.push(`career curve behind target (${format(targetGap)} OVR)`);
     } else if (targetGap > 5) {
@@ -1868,7 +1877,7 @@ function getPendingLabTransferWindowKind(played, total) {
 }
 
 function getLabTransferMarketOffers(state, match, fixture, seed, kind) {
-  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const ovr = calculateOvr(agedFlat(state));
   const currentTierIndex = getTierIndex(state.tier);
   const selection = getSelectionReport(state, fixture);
   const averageRating = average(state.ratings, 6.4);
@@ -1898,7 +1907,7 @@ function getLabTransferMarketOffers(state, match, fixture, seed, kind) {
 function buildLabTransferCandidate(state, tier, slot, seed, formSignal, selectionScore) {
   const currentTierIndex = getTierIndex(state.tier);
   const tierIndex = getTierIndex(tier);
-  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const ovr = calculateOvr(agedFlat(state));
   const tierGap = tierIndex - currentTierIndex;
   const roleBias = tierGap < 0 ? 12 : tierGap === 0 ? 4 : -9 - tierGap * 3;
   const noise = seededNoise(`${seed}-${tier.id}-${slot}-transfer`) * 24 - 8;
@@ -1947,7 +1956,7 @@ function getOfferDecisionScore(state, offer, kind) {
   const tierMove = getTierIndex(offerTier) - currentTierIndex;
   const wageDelta = offer.weeklyWage - state.contract.weeklyWage;
   const roleDelta = getRoleThreshold(offer.rolePromise) - getRoleThreshold(state.contract.rolePromise);
-  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const ovr = calculateOvr(agedFlat(state));
   const underLevelPenalty = Math.max(0, offerTier.averageOvr - ovr - 8) * 2.4;
   const sameClubBias = offer.source === "current-club" ? 5 : 0;
   const windowBias = kind === "end-season" ? 8 : 0;
@@ -1977,7 +1986,7 @@ function getClubContractOffer(state, match, fixture) {
   const current = state.contract;
   const selection = getSelectionReport(state, fixture);
   const averageRating = average(state.ratings, 6.4);
-  const ovr = calculateOvr(flattenAttributes(state.attributes));
+  const ovr = calculateOvr(agedFlat(state));
   const agentLevel = getSupportLevel(state, "agentNegotiation");
   const careerBreakthroughs = getSupportTrackBreakthroughCount(state, "career");
   const rolePromise = getPromisedRole(selection.score, current.rolePromise);
@@ -2048,6 +2057,32 @@ function getLabContractLengthWeeks(state, rolePromise) {
 
 function getTierIndex(tier) {
   return tierOrder.indexOf(tier.id);
+}
+
+// Mirror of systems/aging.ts: effective-ability multiplier from age (peak 28, accelerating
+// decline after). Raw attributes/XP untouched — only performance/selection feel the decline.
+function getAgeModifier(age, peakAge = 28, declineResist = 0) {
+  if (age <= peakAge) {
+    return 1;
+  }
+  const past = age - peakAge;
+  const slope = Math.max(0.008, 0.02 - declineResist * 0.002);
+  const accel = Math.max(0.0015, 0.0035 - declineResist * 0.0004);
+  return clamp(1 - slope * past - accel * past * past, 0.55, 1);
+}
+
+// Age-adjusted flattened attributes for the performance/ability path. Identity before the peak.
+function agedFlat(state) {
+  const flat = flattenAttributes(state.attributes);
+  const modifier = getAgeModifier(state.age ?? 16);
+  if (modifier >= 1) {
+    return flat;
+  }
+  const adjusted = {};
+  for (const key of Object.keys(flat)) {
+    adjusted[key] = clamp(Math.round(flat[key] * modifier), 1, 99);
+  }
+  return adjusted;
 }
 
 // Promotion / relegation at season end, mirroring the game's per-division rules. The club's

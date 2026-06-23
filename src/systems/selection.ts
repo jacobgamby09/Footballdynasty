@@ -2,6 +2,7 @@ import { seededNoise } from "../engine/matchEngineCore";
 import { buildOpponentProfile } from "../matchEngine";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
+import { getAgeAdjustedAttributes, getPlayerAgeFromSeason } from "./aging";
 import { getFormLabel, getFormScore, getPressureLabel } from "./formatting";
 import { calculateOvr, getClubLeagueTier } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
@@ -62,7 +63,10 @@ export function getSelectionReport(
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
-  const playerOvr = calculateOvr(state.attributes, getPositionModule(state.positionGroup).ovrWeights);
+  const playerOvr = calculateOvr(
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season)),
+    getPositionModule(state.positionGroup).ovrWeights,
+  );
   const abilityImpact = clamp(Math.round((playerOvr - leagueTier.averageOvr) * 0.8), -8, 10);
   const fixtureGap = fixture.opponentStrength - state.club.strength;
   const fixtureImpact = fixtureGap >= 6 ? -2 : fixtureGap <= -4 ? 1 : 0;

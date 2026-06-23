@@ -1761,3 +1761,45 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   ~27), clearing the "end fitness too low" warning; supported scenarios unchanged at ~89.
 - Left as healthy design spread (not chased): heavy-support paths run ~+6-7 OVR ahead of the
   target curve and no-support ~-7 behind — the two ends bracketing the moderate-support target.
+
+## 2026-06-23 - Aging & Decline (Stage 1 of long-term cash upgrades)
+
+### Why
+
+- Cash had exactly one sink (support) with a bottomless cost ramp, so the optimal play was
+  always "dump everything into support" — a decisionless economy. The chosen direction: make
+  age matter (peak + decline) so that **longevity** and **potential** become expensive,
+  long-term CASH upgrades (Stage 2) — a real late-career choice (extend/heighten your prime
+  vs. bank for the heir). Stage 1 builds the aging foundation those upgrades sit on.
+
+### Implemented (Stage 1 — aging core, no upgrades yet)
+
+- New `systems/aging.ts`: `getAgeModifier(age, peakAge=28, declineResist=0)` — an
+  effective-ability multiplier that is 1.0 through age 28, then declines (accelerating, floor
+  0.55). `getAgeAdjustedAttributes` scales attribute VALUES by it; raw attributes / XP are
+  untouched (physical decline, not skill loss — so a future longevity upgrade that raises the
+  peak restores full effect). `getPlayerAgeFromSeason(n) = 16 + (n-1)`.
+- Applied to the **effective** ability path only: `systems/selection.ts` (selection OVR) and
+  `systems/match.ts` (match attribute map + contextual OVR, live-match resolution). Identity
+  before the peak, so ages 16-28 are byte-for-byte unchanged.
+- Careers already run past 30 (retirement is opt-in), so no flow change was needed; the
+  decline now gives a real reason to retire. (A hard retirement cap ~40 is noted for Stage 2.)
+- Lab mirrored: `agedFlat(state)` applied to the performance/selection/transfer-interest path
+  (not raw-OVR reporting or training-focus choice); `--career-seasons` default 14 -> 22 (age
+  ~37); target curve extended to peak at season 13 (age 28) then decline; new `EffOVR` column
+  and effective-OVR-based curve comparison.
+
+### Verification
+
+- Build green; no `SAVE_VERSION` change (age is derived from the existing season number).
+- Lab (balanced career): raw OVR keeps climbing (10 -> 78) but **effective OVR peaks ~69 at
+  age 28 then declines to ~43 by age 37**; goals/90 collapse and the player is relegated from
+  Elite late — the intended arc. In-browser: identical attributes show Level fit (effective
+  OVR) 70 at age 28 vs 48 at age 35; no console errors.
+
+### Next
+
+- Stage 2: `longevity` + `potential` as expensive CASH support upgrades wired into the age
+  model (longevity raises peakAge / flattens decline; potential lifts the attribute ceiling),
+  plus a hard retirement cap that longevity extends. Stage 3: simple cash -> Legacy Points
+  overflow.

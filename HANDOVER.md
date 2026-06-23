@@ -5,7 +5,7 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-23. Branch `main` @ `0d5cda5`._
+_Last updated: 2026-06-23. Branch `main` @ `d507ada`. `SAVE_VERSION` 17._
 
 ---
 
@@ -62,7 +62,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 13`**.
+   accepted behaviour during development. Currently **`SAVE_VERSION = 17`**.
 
 ---
 
@@ -187,6 +187,49 @@ New `ScreenKey`s: `training-reveal`, `free-agent`, `transfer-window`,
 `retirement`. New `GameState` slices: `dynasty` (expanded), `transferWindow?`,
 `freeAgent?`, plus sponsor/prestige state.
 
+### Wave 3 — balance lab, aging & the long-term cash-upgrade arc (`c3dc692`+ → `d507ada`)
+
+Direct commits on `main`. Two threads: a trustworthy balance lab, and an aging
+system that turns late-career cash into a real choice. (Read `PROGRESS.md` tail
+for the full blow-by-blow.)
+
+- **Sponsor ladder** (`systems/sponsors.ts`): deals now scale across *all* prestige
+  tiers up to Legend (100k), with a light "Hometown Kit" starter at a new
+  `Local Favourite` (120) tier; `getAvailableSponsorDeals` only offers the highest
+  unlocked band. **Dynasty compounding** (`DynastyState.reputation`): each heir
+  inherits a starting-prestige floor grown from the previous career's peak.
+- **Balance lab made trustworthy** (`scripts/season-balance-lab.mjs`): it used to
+  pin the player at grassroots for a whole career. Now it models **promotion/
+  relegation + transfers** so the player climbs the full pyramid (defaults to a
+  22-season career, ~age 37); `simulateMatch` derives a real team result; per-season
+  `ClubPPG` + `EffOVR` columns; `Promotions`/`Relegations`/`Highest tier`. The lab
+  is now the source of truth for career-long balance — **mirror any game formula you
+  change into it** (it re-implements the engine-adjacent math since it may only
+  import from `engine/`).
+- **Aging & decline** (`systems/aging.ts`): players peak at 28 then physically
+  decline (`getAgeModifier` scales *effective* ability only — raw attributes/XP are
+  untouched). Applied in `selection.ts` + `match.ts`. Careers can run to a hard cap
+  (~40) — `getLegacyEstimate` exposes `forced`/`hardRetirementAge`; `App.startNextSeason`
+  forces retirement past the cap.
+- **Long-term cash upgrades** (the late-career "real choice"):
+  - **Longevity** (`support.ts` `longevity` + Longevity track): breakthroughs push
+    peak age + retirement cap (28→34, 40→46), levels flatten the decline. Expensive.
+  - **Potential** (`potential` + Talent track, baseCost 12000 → ~82k for all 4):
+    each level lifts KEY-attribute potential +1 (capped), applied at purchase by
+    `bumpKeyAttributePotential`. Priced so a balanced build only affords ~2/4 — a
+    genuine "ceiling vs. longevity/development" trade-off, not an auto-buy.
+  - `getAgingProfile(state)` ties longevity → `{ peakAge, declineResist,
+    hardRetirementAge }`.
+- **OVR curve re-anchored to dynasty guidance** (`systems/attributeXp.ts`): the
+  over-potential growth penalty was too soft, so optimal play overshot potential by
+  ~14 (Gen-1 peaked 74). Steepened it so play asymptotes near potential. **Target
+  curve (designer's intent): optimal Gen-1 ≈ 60, Gen-2 ≈ 70, ~+7/generation** — these
+  are guidance, not hard caps. Current optimal: Gen-1 ~64, Gen-2 ~71.6 (fully-maxed
+  potential nudges to ~65 / ~73.5). **Keep new upgrades inside this curve.**
+
+New `SupportUpgradeId`s: `longevity`, `potential`. New `SupportTrackId`s:
+`longevity`, `talent`. New `DynastyState.reputation`.
+
 ---
 
 ## 5. How to work & verify
@@ -227,38 +270,39 @@ origin). Co-author trailer: `Co-Authored-By: Claude Opus 4.8
 
 ## 6. Open work / next steps
 
-**The three things flagged in the latest status (most → least important):**
+**Resolved since the last handover** (don't re-investigate): sponsor reachability
+(full ladder + light starter + dynasty compounding), the longer-season balance
+pass (lab upgrade + fitness floor + OVR re-anchor + aging), and the late-career
+cash sink (longevity + potential are now real choices).
 
-1. **Finish the Gen-2 fantasy.** The dynasty loop banks Legacy Points and carries
+**Priority next steps (most → least important):**
+
+1. **Stage 3 — heir investment / late-cash sink (the dynasty cash-estate).** The
+   honest remaining gap: over a *full* career cash is still abundant (~4M earned;
+   even longevity only ~33/60 maxed), so it's never truly scarce late. The clean
+   fix is a big late sink that ALSO serves the dynasty: spend surplus cash on the
+   heir's head-start (a cash "estate" — starting cash/club/contacts for Gen 2+),
+   parallel to Legacy Points (which buy talent/development). This makes late cash a
+   real choice (improve yourself vs. set up your child) and is the natural Stage 3.
+2. **Finish the Gen-2 fantasy.** The dynasty loop banks Legacy Points and carries
    continuity, but the next generation still starts from the bottom of the same
-   country with the hardcoded name "Jonas Vale". The original vision was: the son
-   **inherits a name** and gets an **offer-driven start** (offered contracts based
-   on the family's standing) instead of repeating the country picker. The pieces
-   exist — `club.clubId` linkage, world-reading offers in `systems/transfers.ts` /
-   `systems/contracts.ts`, generation bonuses — so this is wiring `retireCareer()`
-   into the offer flow + a name/onboarding screen, not new infrastructure.
-2. **Sponsor / prestige reachability.** In a Gen-1 `balance:season` run end
-   prestige averages ~137, but the first sponsor needs 350 — so the sponsor
-   economy is effectively unreachable in an early career. Either lower the first
-   thresholds (`systems/prestige.ts`, `systems/sponsors.ts`) or raise prestige
-   gain. Decide the intended pace.
-3. **Balance pass for the longer season.** The economy was tuned around 12
-   matches; seasons are now 30–38. Latest `balance:season` read: rarely promoted
-   past Impact Sub (Rotation Starter almost never), accepted transfers ~0.14/season
-   (very static), and the lab still warns *"trust caps without many transfers; end
-   fitness too low"*. Re-check OVR gain, end fitness, role progression, and whether
-   the transfer market is too quiet.
+   country with the hardcoded name "Jonas Vale". Vision: the son **inherits a name**
+   and gets an **offer-driven start** (contracts based on the family's standing)
+   instead of repeating the country picker. Pieces exist — `club.clubId`, world-
+   reading offers in `systems/transfers.ts` / `systems/contracts.ts`, generation
+   bonuses — so it's wiring `retireCareer()` into the offer flow + a name/onboarding
+   screen, not new infrastructure. (Stage 3's cash-estate dovetails with this.)
 
 **Smaller / still open:**
-- **Browse-the-pyramid UI** — let the player view other leagues/divisions in the
-  world (the data is all there; it's a read-only screen).
-- **Cups** — cup framing was dropped when fixtures went world-based. A real cup
-  vs. clubs from OTHER leagues is a separate feature.
+- **Browse-the-pyramid UI** — view other leagues/divisions (data is all there).
+- **Cups** — dropped when fixtures went world-based; a real cup vs. OTHER leagues
+  is a separate feature.
+- **Potential vs. growth-into-ceiling timing** — potential is most effective bought
+  early (more seasons to grow into it) but is now mid-career-priced; fine, just noted.
 
-`balance:season` is now transfer-aware (opens deterministic windows, generates
-offers, accepts sensible moves, resets trust on club changes, reports
-windows/offers/accepted moves/net tier movement) — use it plus
-`transfer-window-smoke.mjs` when touching the transfer or economy code.
+`balance:season` is the source of truth for career-long balance — run it (and
+`transfer-window-smoke.mjs`) when touching transfer/economy/growth/aging code, and
+mirror any game-formula change into the lab.
 
 **Watch-outs when extending fixtures/world:**
 - `createSeasonFixtures` (the legacy Danish static list) still exists as the

@@ -73,6 +73,102 @@ export const sponsorDefinitions: SponsorDeal[] = [
     weeksRemaining: 10,
     summary: "Pays for visible creative output rather than goals.",
   },
+  {
+    id: "national-energy",
+    name: "National Energy Drink",
+    tierLabel: "National Profile",
+    prestigeRequired: 7_500,
+    weeklyRetainer: 200,
+    objectiveBonus: 650,
+    objective: { type: "goal", target: 1, label: "Score 1 goal" },
+    pressureModifier: 3,
+    weeksRemaining: 12,
+    summary: "A national brand wants you fronting the campaign — real money, real expectations.",
+  },
+  {
+    id: "broadcast-feature",
+    name: "Broadcast Feature Spot",
+    tierLabel: "National Profile",
+    prestigeRequired: 7_500,
+    weeklyRetainer: 165,
+    objectiveBonus: 520,
+    objective: { type: "rating", target: 7.2, label: "Earn 7.2+ rating" },
+    pressureModifier: 2,
+    weeksRemaining: 10,
+    summary: "Recurring broadcast spot. Steady money for consistent, high-rated performances.",
+  },
+  {
+    id: "boot-flagship",
+    name: "Boot Brand Flagship",
+    tierLabel: "Star Player",
+    prestigeRequired: 20_000,
+    weeklyRetainer: 620,
+    objectiveBonus: 2_000,
+    objective: { type: "goal", target: 1, label: "Score 1 goal" },
+    pressureModifier: 4,
+    weeksRemaining: 12,
+    summary: "Flagship boot deal — you are the face of the line. Big money, big pressure to deliver.",
+  },
+  {
+    id: "lifestyle-label",
+    name: "Lifestyle Label",
+    tierLabel: "Star Player",
+    prestigeRequired: 20_000,
+    weeklyRetainer: 520,
+    objectiveBonus: 1_600,
+    objective: { type: "assist", target: 1, label: "Create 1 assist" },
+    pressureModifier: 3,
+    weeksRemaining: 12,
+    summary: "A lifestyle label built around your flair and creativity rather than raw goals.",
+  },
+  {
+    id: "global-kit",
+    name: "Global Kit Partner",
+    tierLabel: "Icon",
+    prestigeRequired: 50_000,
+    weeklyRetainer: 1_500,
+    objectiveBonus: 5_000,
+    objective: { type: "goal", target: 1, label: "Score 1 goal" },
+    pressureModifier: 5,
+    weeksRemaining: 14,
+    summary: "A global kit partner. Iconic money, and the whole world watching every match.",
+  },
+  {
+    id: "prestige-watch",
+    name: "Luxury Watch House",
+    tierLabel: "Icon",
+    prestigeRequired: 50_000,
+    weeklyRetainer: 1_200,
+    objectiveBonus: 4_000,
+    objective: { type: "rating", target: 7.5, label: "Earn 7.5+ rating" },
+    pressureModifier: 4,
+    weeksRemaining: 12,
+    summary: "A luxury watch house aligning with your elite, week-in week-out consistency.",
+  },
+  {
+    id: "legacy-campaign",
+    name: "Global Legacy Campaign",
+    tierLabel: "Legend",
+    prestigeRequired: 100_000,
+    weeklyRetainer: 3_200,
+    objectiveBonus: 9_500,
+    objective: { type: "goal", target: 1, label: "Score 1 goal" },
+    pressureModifier: 5,
+    weeksRemaining: 16,
+    summary: "A career-defining global campaign. Legend money for a legend's output.",
+  },
+  {
+    id: "signature-brand",
+    name: "Signature Brand",
+    tierLabel: "Legend",
+    prestigeRequired: 100_000,
+    weeklyRetainer: 2_600,
+    objectiveBonus: 8_000,
+    objective: { type: "rating", target: 7.5, label: "Earn 7.5+ rating" },
+    pressureModifier: 5,
+    weeksRemaining: 16,
+    summary: "Your own signature brand — the bloodline's name on the product.",
+  },
 ];
 
 export function getAvailableSponsorDeals(game: GameState) {
@@ -80,7 +176,15 @@ export function getAvailableSponsorDeals(game: GameState) {
     return [];
   }
 
-  return sponsorDefinitions.filter((deal) => game.prestige >= deal.prestigeRequired);
+  // Only the deals that match the player's CURRENT standing: the highest prestige
+  // band they have unlocked. A star isn't pestered with the $14 hometown kit, and the
+  // ladder feels progressive as bigger brands replace smaller ones on the way up.
+  const unlocked = sponsorDefinitions.filter((deal) => game.prestige >= deal.prestigeRequired);
+  if (unlocked.length === 0) {
+    return [];
+  }
+  const topThreshold = Math.max(...unlocked.map((deal) => deal.prestigeRequired));
+  return unlocked.filter((deal) => deal.prestigeRequired === topThreshold);
 }
 
 export function acceptSponsorDealState(state: GameState, dealId: string): GameState {

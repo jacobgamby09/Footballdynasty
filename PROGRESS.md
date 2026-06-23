@@ -1650,3 +1650,43 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 
 - Build green; the only remaining `familyNetwork` references are the three intended track
   references (type, track definition, track-breakthrough lookup).
+
+## 2026-06-23 - Sponsor Balance: Full Ladder Across All Prestige Tiers
+
+### Problem
+
+- The sponsor ladder stopped at the Regional Name tier (1,500 prestige), but the prestige
+  ladder runs to Legend (100,000). Retainers ($14-95/wk) were trivial against upper league
+  wages ($1,800-30,000/wk), so sponsors became irrelevant exactly when prestige was highest.
+
+### Implemented
+
+- Extended the sponsor ladder so every prestige tier has tier-appropriate deals, with
+  retainers/bonuses scaled to that tier's wage band:
+  - National Profile (7,500): National Energy ($200/wk, +$650 goal) · Broadcast Feature
+    ($165/wk, +$520 rating).
+  - Star Player (20,000): Boot Brand Flagship ($620/wk, +$2,000 goal) · Lifestyle Label
+    ($520/wk, +$1,600 assist).
+  - Icon (50,000): Global Kit Partner ($1,500/wk, +$5,000 goal) · Luxury Watch House
+    ($1,200/wk, +$4,000 rating).
+  - Legend (100,000): Global Legacy Campaign ($3,200/wk, +$9,500 goal) · Signature Brand
+    ($2,600/wk, +$8,000 rating).
+  - Pressure scales with the money (goal deals 3→5, rating/assist deals 2→5), so the big
+    campaigns carry real expectation.
+- `getAvailableSponsorDeals` now offers only the **highest unlocked prestige band's** deals,
+  so a star isn't pestered with the $14 hometown kit and the ladder feels progressive.
+- Mirrored the new deals + the top-band filter into the season balance lab.
+
+### Verification
+
+- Build green.
+- Lab (grassroots-locked) unaffected: light hometown sponsor still unlocks ~week 30.
+- In-browser via injected prestige: at 8,000 only the two National deals show; at 120,000
+  only the two Legend deals show ($3,200 / $2,600 retainers), with all lower deals correctly
+  hidden. No console errors.
+
+### Note
+
+- The balance lab keeps the player at grassroots all career, so it cannot exercise the upper
+  sponsor tiers — those were validated in-browser. A future lab upgrade could model tier
+  promotion to balance upper-tier prestige/sponsor income end-to-end.

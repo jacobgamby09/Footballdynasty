@@ -109,6 +109,14 @@ const sponsorDefinitions = [
   { id: "academy-ambassador", prestigeRequired: 350, weeklyRetainer: 24, objectiveBonus: 75, objective: { type: "appearance", target: 1 }, pressureModifier: -1, weeksRemaining: 6 },
   { id: "regional-sportswear", prestigeRequired: 1500, weeklyRetainer: 95, objectiveBonus: 260, objective: { type: "goal", target: 1 }, pressureModifier: 3, weeksRemaining: 10 },
   { id: "technical-gear", prestigeRequired: 1500, weeklyRetainer: 80, objectiveBonus: 220, objective: { type: "assist", target: 1 }, pressureModifier: 2, weeksRemaining: 10 },
+  { id: "national-energy", prestigeRequired: 7500, weeklyRetainer: 200, objectiveBonus: 650, objective: { type: "goal", target: 1 }, pressureModifier: 3, weeksRemaining: 12 },
+  { id: "broadcast-feature", prestigeRequired: 7500, weeklyRetainer: 165, objectiveBonus: 520, objective: { type: "rating", target: 7.2 }, pressureModifier: 2, weeksRemaining: 10 },
+  { id: "boot-flagship", prestigeRequired: 20000, weeklyRetainer: 620, objectiveBonus: 2000, objective: { type: "goal", target: 1 }, pressureModifier: 4, weeksRemaining: 12 },
+  { id: "lifestyle-label", prestigeRequired: 20000, weeklyRetainer: 520, objectiveBonus: 1600, objective: { type: "assist", target: 1 }, pressureModifier: 3, weeksRemaining: 12 },
+  { id: "global-kit", prestigeRequired: 50000, weeklyRetainer: 1500, objectiveBonus: 5000, objective: { type: "goal", target: 1 }, pressureModifier: 5, weeksRemaining: 14 },
+  { id: "prestige-watch", prestigeRequired: 50000, weeklyRetainer: 1200, objectiveBonus: 4000, objective: { type: "rating", target: 7.5 }, pressureModifier: 4, weeksRemaining: 12 },
+  { id: "legacy-campaign", prestigeRequired: 100000, weeklyRetainer: 3200, objectiveBonus: 9500, objective: { type: "goal", target: 1 }, pressureModifier: 5, weeksRemaining: 16 },
+  { id: "signature-brand", prestigeRequired: 100000, weeklyRetainer: 2600, objectiveBonus: 8000, objective: { type: "rating", target: 7.5 }, pressureModifier: 5, weeksRemaining: 16 },
 ];
 const supportUpgradeDefinitions = [
   { id: "xpFloor", maxLevel: 160, baseCost: 90 },
@@ -1054,7 +1062,13 @@ function getPrestigeLeverageScore(prestige) {
 }
 
 function getBestSponsorOffer(state) {
-  const available = sponsorDefinitions.filter((deal) => state.prestige >= deal.prestigeRequired);
+  const unlocked = sponsorDefinitions.filter((deal) => state.prestige >= deal.prestigeRequired);
+  if (unlocked.length === 0) {
+    return undefined;
+  }
+  // Mirror the game: only the highest unlocked prestige band is on offer.
+  const topThreshold = Math.max(...unlocked.map((deal) => deal.prestigeRequired));
+  const available = unlocked.filter((deal) => deal.prestigeRequired === topThreshold);
   return available.sort((a, b) => getSponsorExpectedValue(b) - getSponsorExpectedValue(a))[0];
 }
 

@@ -1687,6 +1687,51 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 
 ### Note
 
-- The balance lab keeps the player at grassroots all career, so it cannot exercise the upper
-  sponsor tiers — those were validated in-browser. A future lab upgrade could model tier
-  promotion to balance upper-tier prestige/sponsor income end-to-end.
+- ~~The balance lab keeps the player at grassroots all career~~ — **resolved** in the lab
+  upgrade below; it now climbs the full pyramid, so the upper tiers ARE exercised.
+
+## 2026-06-23 - Balance Lab Upgrade: Tier Climbing & Trustworthy Career Data
+
+### Problem
+
+- The lab pinned the player at grassroots for an entire career (`state.tier` was set once and
+  never changed), so it could not exercise wages, prestige, sponsors or progression at any
+  higher tier — exactly the data we now need to trust. It also defaulted to a single career
+  season, and had a latent bug: `getMatchPrestigeDelta` read `match.teamGoals` /
+  `match.opponentGoals` which were never set, so every match scored prestige as a draw.
+
+### Implemented
+
+- **Team results.** `simulateMatch` now derives the club's full-time score from the sim
+  events (`getSimScoreAtMinute(simEvents, 90)`) and returns `teamGoals` / `opponentGoals` —
+  fixing the always-a-draw prestige bug and feeding the standings.
+- **Club strength + player lift.** The player starts at the WEAKEST club in the bottom
+  division (`clubStrength = teamRange[0]`, like `createCareerForCountry`). Match team strength
+  is `clubStrength + playerLift` (a strong player drags a weak club up; a weak one can't), so
+  results — and therefore promotion — are driven by the player, mirroring the game's
+  `advanceWorldMatchweek`.
+- **Promotion / relegation between seasons.** `resolveTierMovement` moves the player WITH
+  their club on season-long form: promotion at ~1.7+ points/game, relegation at ~1.0- ppg,
+  top tier no promotion, bottom no relegation. Skipped if the player already transferred that
+  season (that move already set the tier). Transfers (existing) remain the other climb path.
+- **Full-career default.** `--career-seasons` now defaults to 14 (age 16 -> retirement at 30)
+  and `--seasons` (Monte Carlo) to 120, so the default report shows the whole arc.
+- **Reporting.** Per-season table gains a `ClubPPG` column (the club's league form); the
+  career summary gains `Promotions`, `Relegations` and `Highest tier reached`.
+
+### Verification
+
+- Build green; full default run ~20-50s.
+- Climb is believable and support-sensitive: no-support careers plateau around National Pro /
+  Top Flight (career curve behind target, ~0.8 promotions & ~1.0 relegations); balanced/dev
+  support reach Elite (p50) with National Profile prestige (~11-13k). Promotions AND
+  relegations both fire at sane rates; the per-season ClubPPG makes the logic transparent.
+- The upper sponsor tiers (added earlier) are now genuinely exercised by the lab rather than
+  only in-browser.
+
+### Caveat
+
+- The lab models one transfer policy ("accept clearly better offers"), so climbing is
+  transfer-dominated with promotion as the secondary path; a "loyal / decline transfers"
+  policy would show more promotions. Rival strength in a division is abstracted into the ppg
+  thresholds rather than a full round-robin.

@@ -26,8 +26,9 @@ export type SupportUpgradeId =
   | "recoveryBaseline"
   | "agentNegotiation"
   | "sponsorshipAppeal"
-  | "longevity";
-export type SupportTrackId = "training" | "recovery" | "career" | "longevity";
+  | "longevity"
+  | "potential";
+export type SupportTrackId = "training" | "recovery" | "career" | "longevity" | "talent";
 export type DynastyUpgradeId =
   | "academyKeyStart"
   | "academyGeneralStart"
@@ -375,7 +376,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 16;
+  version: 17;
   game: GameState;
 };
 

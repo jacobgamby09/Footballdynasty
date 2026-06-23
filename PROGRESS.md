@@ -1866,3 +1866,36 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   generations by Legacy and within a career, modestly, by the upcoming cash `potential`
   upgrade); **support = speed / longevity / economy**, not ceiling. With the cap now binding,
   a capped cash potential upgrade is a clean lever.
+
+## 2026-06-23 - Potential Cash Upgrade (Stage 2b)
+
+### Implemented
+
+- New **`potential`** support upgrade ("Specialist coaching", own **Talent** track, maxLevel 4,
+  baseCost 600). Buying a level raises the **potential (ceiling)** of the player's KEY
+  attributes (position OVR-weighted) by +1, capped at 95 — applied at purchase time
+  (`bumpKeyAttributePotential` in `systems/support.ts`), so the growth soft-cap, UI labels and
+  growthProfileOvr all reflect it with zero threading. Non-key attributes are untouched.
+- Per-career (attributes regenerate each generation), so it must be re-bought — like the rest
+  of support. `SAVE_VERSION` -> 17. Lab mirrored (upgrade + Talent track + buy-time bump).
+
+### Balance (the key constraint — must respect the 60/70 generational guidance)
+
+- Because the re-anchored soft cap now binds, raising potential directly lifts the ceiling, so
+  the upgrade is hard-capped (maxLevel 4) to stay inside the guidance. Fully invested
+  (balanced + potential), peak effective OVR: **Gen-1 65.3, Gen-2 73.5, Gen-3 79.5** — a
+  +2-3 lift over the no-potential baseline (63 / 70 / 77), and under the "don't exceed" lines
+  (Gen-1 70, Gen-2 75).
+
+### Verification
+
+- Build green; no console errors.
+- In-browser: Talent track renders (5 tracks total); Invest buys a level; Finishing potential
+  61->62, Off Ball 62->63 (key), Tackling 43 unchanged (non-key); "Talent breakthrough" fires.
+
+### Status of the long-term cash-upgrade arc
+
+- Stage 1 (aging core), Stage 2 (longevity + retirement cap), the OVR re-anchor, and Stage 2b
+  (potential) are all done. Late-career cash is now a real choice: longevity (more elite
+  years) vs. potential (higher ceiling) vs. banking for the heir. Stage 3 (cash -> Legacy
+  Points overflow) remains optional.

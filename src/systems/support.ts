@@ -1,7 +1,19 @@
 import { supportTrackDefinitions, supportUpgradeDefinitions, supportUpgradeMap } from "../data/support";
+import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { HARD_RETIREMENT_AGE, PEAK_AGE } from "./aging";
-import type { GameState, SupportTrackDefinition, SupportTrackId, SupportUpgradeDefinition, SupportUpgradeId } from "../types";
+import type { Attribute, GameState, SupportTrackDefinition, SupportTrackId, SupportUpgradeDefinition, SupportUpgradeId } from "../types";
+
+// "Specialist coaching" (the potential upgrade) raises the ceiling of the player's KEY
+// attributes by 1 per level (capped at 95). Applied at purchase so every consumer of
+// potential — the growth soft-cap, the UI labels, growthProfileOvr — reflects it for free.
+export function bumpKeyAttributePotential(state: Pick<GameState, "attributes" | "positionGroup">): Attribute[] {
+  const weights = getPositionModule(state.positionGroup).ovrWeights;
+  return state.attributes.map((attribute) => {
+    const isKey = (weights[attribute.label] ?? 0) > 0;
+    return isKey ? { ...attribute, potential: clamp(attribute.potential + 1, attribute.potential, 95) } : attribute;
+  });
+}
 
 export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgradeId): GameState {
   const upgrade = supportUpgradeDefinitions.find((item) => item.id === upgradeId);
@@ -40,6 +52,7 @@ export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgra
     ...state,
     cash: state.cash - cost,
     supportUpgrades: nextSupportUpgrades,
+    attributes: upgradeId === "potential" ? bumpKeyAttributePotential(state) : state.attributes,
     lastEvent: breakthroughName
       ? `${track?.name} breakthrough unlocked: ${breakthroughName}.`
       : `${upgrade.name} is now level ${nextLevel}.`,

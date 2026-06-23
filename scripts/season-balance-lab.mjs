@@ -133,6 +133,7 @@ const supportUpgradeDefinitions = [
   { id: "agentNegotiation", maxLevel: 80, baseCost: 220 },
   { id: "sponsorshipAppeal", maxLevel: 80, baseCost: 260 },
   { id: "longevity", maxLevel: 60, baseCost: 300 },
+  { id: "potential", maxLevel: 4, baseCost: 600 },
 ];
 const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 const supportTrackDefinitions = [
@@ -140,10 +141,11 @@ const supportTrackDefinitions = [
   { id: "recovery", upgradeIds: ["trainingLoad", "matchRecovery", "recoveryBaseline"], breakpoints: [6, 16, 32, 55, 85, 120] },
   { id: "career", upgradeIds: ["agentNegotiation", "sponsorshipAppeal"], breakpoints: [4, 12, 28, 50, 80, 120] },
   { id: "longevity", upgradeIds: ["longevity"], breakpoints: [6, 14, 26, 40, 55, 60] },
+  { id: "talent", upgradeIds: ["potential"], breakpoints: [1, 2, 3, 4] },
 ];
 const supportScenarios = [
   { id: "none", label: "No upgrades", priorities: [], cashReserve: 999999 },
-  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "longevity", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
+  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "potential", "longevity", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
   { id: "development", label: "Development spending", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency", "recoveryBaseline", "trainingLoad", "agentNegotiation"], cashReserve: 60 },
   { id: "recovery", label: "Recovery spending", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery", "xpFloor", "xpCeiling", "agentNegotiation"], cashReserve: 60 },
   { id: "training-track", label: "Training track focus", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 60, focusTrack: "training", focusCashReserve: 20, focusOnly: true },
@@ -1764,6 +1766,14 @@ function buySupportUpgrades(state, scenario) {
 
     state.cash -= cost;
     state.supportUpgrades[upgradeId] = currentLevel + 1;
+    if (upgradeId === "potential") {
+      // Mirror bumpKeyAttributePotential: +1 potential to each key attribute (capped 95).
+      for (const key of Object.keys(ovrWeights)) {
+        if (state.attributes[key]) {
+          state.attributes[key].potential = clamp(state.attributes[key].potential + 1, state.attributes[key].potential, 95);
+        }
+      }
+    }
     spent += cost;
     purchases += 1;
     bought = true;

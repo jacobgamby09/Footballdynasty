@@ -100,6 +100,14 @@ export const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
     baseCost: 300,
     effect: "Pushes your peak age later, softens the decline and extends how long you can play.",
   },
+  {
+    id: "potential",
+    name: "Specialist coaching",
+    category: "Talent",
+    maxLevel: 4,
+    baseCost: 600,
+    effect: "Each level raises the ceiling (potential) of your key attributes by 1 — a small, capped lift to how high you can grow this career.",
+  },
 ];
 
 export const supportTrackDefinitions: SupportTrackDefinition[] = [
@@ -139,6 +147,15 @@ export const supportTrackDefinitions: SupportTrackDefinition[] = [
     breakthroughs: ["Pro habits", "Sports science", "Peak extension", "Veteran engine", "Ageless", "Timeless"],
     effect: "Each breakthrough pushes your peak age and retirement later; levels flatten the decline.",
   },
+  {
+    id: "talent",
+    name: "Talent",
+    category: "Ceiling",
+    upgradeIds: ["potential"],
+    breakpoints: [1, 2, 3, 4],
+    breakthroughs: ["Refined craft", "Hidden gear", "Ceiling raised", "Untapped talent"],
+    effect: "Raises the potential of your key attributes — a small, capped lift to your ceiling this career.",
+  },
 ];
 
 export const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade])) as Record<
@@ -159,4 +176,5 @@ export const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
   agentNegotiation: 0,
   sponsorshipAppeal: 0,
   longevity: 0,
+  potential: 0,
 };

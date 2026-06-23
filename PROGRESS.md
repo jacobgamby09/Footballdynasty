@@ -1803,3 +1803,34 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   model (longevity raises peakAge / flattens decline; potential lifts the attribute ceiling),
   plus a hard retirement cap that longevity extends. Stage 3: simple cash -> Legacy Points
   overflow.
+
+## 2026-06-23 - Longevity Cash Upgrade + Retirement Cap (Stage 2)
+
+### Implemented
+
+- New **`longevity`** support upgrade (cash, per-career, baseCost 300 on the steep shared
+  ramp — the expensive late-career sink) in its own **Longevity** track (`data/support.ts`).
+- `systems/support.ts → getAgingProfile(state)` derives `{ peakAge, declineResist,
+  hardRetirementAge }` from longevity: each track **breakthrough** pushes the peak age and the
+  retirement cap one year later (28->34, 40->46); raw **levels** flatten the decline slope
+  (`declineResist`). Wired into selection + match via `getAgeAdjustedAttributes(..., peakAge,
+  declineResist)`.
+- **Hard retirement cap:** `getLegacyEstimate` now returns `forced` / `hardRetirementAge`;
+  `App.startNextSeason` routes to the retirement screen instead of starting another season
+  once the player passes the cap (longevity extends it).
+- Lab mirrored: longevity upgrade + track + a `longevity-track` scenario; `agedFlat` uses the
+  longevity peak/declineResist. `SAVE_VERSION` -> 16 (new `supportUpgrades` key).
+
+### Verification
+
+- Build green; Support UI shows the new Longevity track (4 tracks total); no console errors.
+- Lab (longevity-track vs no-longevity), late-career **effective** OVR:
+  - No longevity: peaks ~28, then crashes — age 37 eff ~36, relegated to National Pro.
+  - Longevity-track: peak pushed to ~age 33, eff ~68, and **age 37 eff ~66, still Elite**.
+  - So the expensive longevity investment buys many extra elite years — the intended payoff.
+
+### Next
+
+- Stage 2b (optional): `potential` cash upgrade to lift the attribute soft-cap (more invasive
+  — must thread support context into `getAttributeGrowthPressure`).
+- Stage 3: simple cash -> Legacy Points overflow.

@@ -501,6 +501,11 @@ function App() {
   }
 
   function startNextSeason() {
+    // At the hard age cap the body is done — retirement is forced rather than optional.
+    if (getLegacyEstimate(game).forced) {
+      setActiveScreen("retirement");
+      return;
+    }
     setGame((state) => startNextSeasonState(state));
     setActiveScreen("player");
   }

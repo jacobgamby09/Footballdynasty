@@ -5,6 +5,7 @@ import { clamp } from "../utils";
 import { getAgeAdjustedAttributes, getPlayerAgeFromSeason } from "./aging";
 import { getFormLabel, getFormScore, getPressureLabel } from "./formatting";
 import { calculateOvr, getClubLeagueTier } from "./ovr";
+import { getAgingProfile } from "./support";
 import { getCurrentFixture } from "./seasonState";
 import type { MatchRole, PositionModule } from "../positionRoles";
 import type { Contract, FitnessAvailability, Fixture, GameState, SelectionReport, UpcomingMatch } from "../types";
@@ -63,8 +64,9 @@ export function getSelectionReport(
   const formImpact = Math.round((form - 50) * 0.18);
   const ratingImpact = Math.round((lastRating - 6.4) * 6);
   const importanceImpact = importance === "High" ? -3 : importance === "Low" ? 1 : 0;
+  const aging = getAgingProfile(state);
   const playerOvr = calculateOvr(
-    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season)),
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), aging.peakAge, aging.declineResist),
     getPositionModule(state.positionGroup).ovrWeights,
   );
   const abilityImpact = clamp(Math.round((playerOvr - leagueTier.averageOvr) * 0.8), -8, 10);

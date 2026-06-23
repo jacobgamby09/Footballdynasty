@@ -132,21 +132,24 @@ const supportUpgradeDefinitions = [
   { id: "recoveryBaseline", maxLevel: 80, baseCost: 125 },
   { id: "agentNegotiation", maxLevel: 80, baseCost: 220 },
   { id: "sponsorshipAppeal", maxLevel: 80, baseCost: 260 },
+  { id: "longevity", maxLevel: 60, baseCost: 300 },
 ];
 const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 const supportTrackDefinitions = [
   { id: "training", upgradeIds: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], breakpoints: [5, 15, 28, 48, 75, 110] },
   { id: "recovery", upgradeIds: ["trainingLoad", "matchRecovery", "recoveryBaseline"], breakpoints: [6, 16, 32, 55, 85, 120] },
   { id: "career", upgradeIds: ["agentNegotiation", "sponsorshipAppeal"], breakpoints: [4, 12, 28, 50, 80, 120] },
+  { id: "longevity", upgradeIds: ["longevity"], breakpoints: [6, 14, 26, 40, 55, 60] },
 ];
 const supportScenarios = [
   { id: "none", label: "No upgrades", priorities: [], cashReserve: 999999 },
-  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
+  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "longevity", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
   { id: "development", label: "Development spending", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency", "recoveryBaseline", "trainingLoad", "agentNegotiation"], cashReserve: 60 },
   { id: "recovery", label: "Recovery spending", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery", "xpFloor", "xpCeiling", "agentNegotiation"], cashReserve: 60 },
   { id: "training-track", label: "Training track focus", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 60, focusTrack: "training", focusCashReserve: 20, focusOnly: true },
   { id: "recovery-track", label: "Recovery track focus", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery"], cashReserve: 60, focusTrack: "recovery", focusCashReserve: 20, focusOnly: true },
   { id: "career-track", label: "Career track focus", priorities: ["agentNegotiation", "sponsorshipAppeal"], cashReserve: 60, focusTrack: "career", focusCashReserve: 20, focusOnly: true },
+  { id: "longevity-track", label: "Longevity track focus", priorities: ["recoveryBaseline", "xpFloor", "xpCeiling", "longevity"], cashReserve: 60, focusTrack: "longevity", focusCashReserve: 20 },
 ];
 
 const activeSupportScenarios =
@@ -2072,9 +2075,12 @@ function getAgeModifier(age, peakAge = 28, declineResist = 0) {
 }
 
 // Age-adjusted flattened attributes for the performance/ability path. Identity before the peak.
+// Longevity support pushes the peak later and flattens the decline (mirror of getAgingProfile).
 function agedFlat(state) {
   const flat = flattenAttributes(state.attributes);
-  const modifier = getAgeModifier(state.age ?? 16);
+  const peakAge = 28 + getSupportTrackBreakthroughCount(state, "longevity");
+  const declineResist = Math.floor(getSupportLevel(state, "longevity") / 12);
+  const modifier = getAgeModifier(state.age ?? 16, peakAge, declineResist);
   if (modifier >= 1) {
     return flat;
   }

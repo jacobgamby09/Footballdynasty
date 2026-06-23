@@ -1,5 +1,6 @@
 import { supportTrackDefinitions, supportUpgradeDefinitions, supportUpgradeMap } from "../data/support";
 import { clamp } from "../utils";
+import { HARD_RETIREMENT_AGE, PEAK_AGE } from "./aging";
 import type { GameState, SupportTrackDefinition, SupportTrackId, SupportUpgradeDefinition, SupportUpgradeId } from "../types";
 
 export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgradeId): GameState {
@@ -183,6 +184,27 @@ export function getWeeklySupportRecoveryBonus(baselineLevel: number) {
 
 export function getMatchActionRecoveryRelief(level: number) {
   return Math.min(12, Math.floor(level / 4));
+}
+
+// --- Longevity (Stage 2 long-term cash upgrade) ---------------------------------------------
+// Each longevity breakthrough pushes the peak age and the retirement cap one year later; raw
+// levels flatten the post-peak decline. So a heavily-invested veteran peaks later, fades more
+// slowly, and can keep playing toward ~46 — the expensive late-career cash payoff.
+export function getLongevityPeakBonus(state: Pick<GameState, "supportUpgrades">) {
+  return getSupportTrackBreakthroughCount(state, "longevity");
+}
+
+export function getLongevityDeclineResist(state: Pick<GameState, "supportUpgrades">) {
+  return Math.floor(getSupportLevel(state, "longevity") / 12);
+}
+
+export function getAgingProfile(state: Pick<GameState, "supportUpgrades">) {
+  const peakBonus = getLongevityPeakBonus(state);
+  return {
+    peakAge: PEAK_AGE + peakBonus,
+    declineResist: getLongevityDeclineResist(state),
+    hardRetirementAge: HARD_RETIREMENT_AGE + peakBonus,
+  };
 }
 
 export function getRecoveryFitnessFloor(baselineLevel: number, breakthroughs = 0) {

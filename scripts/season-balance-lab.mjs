@@ -134,6 +134,9 @@ const supportUpgradeDefinitions = [
   { id: "sponsorshipAppeal", maxLevel: 80, baseCost: 260 },
   { id: "longevity", maxLevel: 60, baseCost: 300 },
   { id: "potential", maxLevel: 4, baseCost: 12000 },
+  { id: "consistency", maxLevel: 10, baseCost: 9000, requiresPrestige: 1500 },
+  { id: "eliteConditioning", maxLevel: 10, baseCost: 14000, requiresPrestige: 7500 },
+  { id: "marquee", maxLevel: 10, baseCost: 22000, requiresPrestige: 20000 },
 ];
 const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 const supportTrackDefinitions = [
@@ -142,10 +145,11 @@ const supportTrackDefinitions = [
   { id: "career", upgradeIds: ["agentNegotiation", "sponsorshipAppeal"], breakpoints: [4, 12, 28, 50, 80, 120] },
   { id: "longevity", upgradeIds: ["longevity"], breakpoints: [6, 14, 26, 40, 55, 60] },
   { id: "talent", upgradeIds: ["potential"], breakpoints: [1, 2, 3, 4] },
+  { id: "elite", upgradeIds: ["consistency", "eliteConditioning", "marquee"], breakpoints: [4, 10, 18, 26, 30] },
 ];
 const supportScenarios = [
   { id: "none", label: "No upgrades", priorities: [], cashReserve: 999999 },
-  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "potential", "longevity", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
+  { id: "balanced", label: "Balanced spending", priorities: ["xpFloor", "xpCeiling", "trainingLoad", "recoveryBaseline", "matchRecovery", "focusSlot2Unlock", "focusSlot2Efficiency", "agentNegotiation", "sponsorshipAppeal", "potential", "consistency", "eliteConditioning", "marquee", "longevity", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 80, spread: true },
   { id: "development", label: "Development spending", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency", "recoveryBaseline", "trainingLoad", "agentNegotiation"], cashReserve: 60 },
   { id: "recovery", label: "Recovery spending", priorities: ["recoveryBaseline", "trainingLoad", "matchRecovery", "xpFloor", "xpCeiling", "agentNegotiation"], cashReserve: 60 },
   { id: "training-track", label: "Training track focus", priorities: ["xpFloor", "xpCeiling", "focusSlot2Unlock", "focusSlot2Efficiency", "focusSlot3Unlock", "focusSlot3Efficiency"], cashReserve: 60, focusTrack: "training", focusCashReserve: 20, focusOnly: true },
@@ -1834,6 +1838,9 @@ function getAffordableSupportUpgrades(state, upgradeIds, cashReserve) {
 }
 
 function isSupportUpgradeUnlocked(state, upgrade) {
+  if (upgrade.requiresPrestige && state.prestige < upgrade.requiresPrestige) {
+    return false;
+  }
   const requirements = upgrade.requires ?? {};
   return Object.entries(requirements).every(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId) >= requiredLevel);
 }

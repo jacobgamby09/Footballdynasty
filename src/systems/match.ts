@@ -10,7 +10,7 @@ import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFi
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { getMatchPrestigeDelta } from "./prestige";
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
-import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getConsistencyRatingFloor, getEliteConditioningCeilingBonus, getMarqueeBonus, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
@@ -58,26 +58,35 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const baseFitnessDelta = match ? getMatchFitnessDelta(match, results) + weeklyRecoveryBonus : rawTotals.fitnessDelta + weeklyRecoveryBonus;
   const projectedFitness = clamp(state.fitness + baseFitnessDelta, 0, 100);
   const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
-  const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
+  // Elite conditioning lifts the fitness ceiling (stay fresher for longer) — non-OVR.
+  const recoveryCeiling = Math.min(99, getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs) + getEliteConditioningCeilingBonus(state));
   const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);
+  // Consistency coaching raises the rating floor — bad games hurt less (non-OVR).
+  if (playerAppeared) {
+    totals.rating = Math.max(totals.rating, 5.4 + getConsistencyRatingFloor(state));
+  }
   const moraleDelta = playerAppeared ? (totals.rating >= 7 ? 3 : -2) : 0;
   const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
+  // Marquee status boosts both sponsor income (added to the appeal bonus) and prestige gain.
+  const marqueeBonus = getMarqueeBonus(state);
   const sponsorPayout = applySponsorAppealBonus(
     getSponsorPayout(state.sponsor, totals, playerAppeared),
-    getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")),
+    getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")) + marqueeBonus,
   );
   const cashDelta = contractEarnings.total + sponsorPayout.total;
   const prestigeDelta =
     match
-      ? getMatchPrestigeDelta({
-          totals,
-          tierId: state.club.tierId,
-          matchImportance: match.matchImportance,
-          playerAppeared,
-        })
+      ? Math.round(
+          getMatchPrestigeDelta({
+            totals,
+            tierId: state.club.tierId,
+            matchImportance: match.matchImportance,
+            playerAppeared,
+          }) * (1 + marqueeBonus),
+        )
       : 0;
   const pressureDelta =
     totals.goals * 2 +

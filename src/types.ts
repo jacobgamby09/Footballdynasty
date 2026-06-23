@@ -27,8 +27,11 @@ export type SupportUpgradeId =
   | "agentNegotiation"
   | "sponsorshipAppeal"
   | "longevity"
-  | "potential";
-export type SupportTrackId = "training" | "recovery" | "career" | "longevity" | "talent";
+  | "potential"
+  | "consistency"
+  | "eliteConditioning"
+  | "marquee";
+export type SupportTrackId = "training" | "recovery" | "career" | "longevity" | "talent" | "elite";
 export type DynastyUpgradeId =
   | "academyKeyStart"
   | "academyGeneralStart"
@@ -312,6 +315,9 @@ export type SupportUpgradeDefinition = {
   baseCost: number;
   effect: string;
   requires?: Partial<Record<SupportUpgradeId, number>>;
+  // Prestige gate: the upgrade only unlocks once the player reaches this prestige. Used for the
+  // tier-gated "Elite" perks so mid-late cash buys fresh, meaningful (non-OVR) upgrades.
+  requiresPrestige?: number;
 };
 
 export type SupportTrackDefinition = {
@@ -380,7 +386,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 18;
+  version: 19;
   game: GameState;
 };
 

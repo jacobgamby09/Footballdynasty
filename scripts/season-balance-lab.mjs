@@ -1564,7 +1564,7 @@ function getLegacyTierMultiplier(tierId) {
 
 function printCareerCurve(report) {
   console.log("Career curve avg:");
-  console.log("S | Tier | Matches | OVR | EffOVR | Target | +/-(eff) | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | ClubPPG | Cash net | Prestige | Support");
+  console.log("S | Tier | Matches | OVR | Pot | EffOVR | Target | +/-(eff) | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | ClubPPG | Spent | Prestige | Support");
   report.seasonCurve.forEach((season) => {
     const target = getTargetOvrForCareerSeason(season.season);
     console.log(
@@ -1573,6 +1573,7 @@ function printCareerCurve(report) {
         season.tier,
         format(season.scheduledMatches.avg),
         `${format(season.startOvr.avg)}->${format(season.endOvr.avg)}`,
+        `pot ${format(season.growthProfileOvr.avg)}`,
         `eff ${format(season.effectiveOvr.avg)}`,
         format(target),
         format(season.effectiveOvr.avg - target),
@@ -1585,7 +1586,7 @@ function printCareerCurve(report) {
         `${format(season.goalsPer90.avg)}/${format(season.assistsPer90.avg)}/${format(season.chancesCreatedPer90.avg)}`,
         format(season.endFitness.avg),
         season.clubPpg.avg.toFixed(2),
-        formatMoney(season.netCash.avg),
+        `spent ${formatMoney(season.cashSpent.avg)}`,
         `${format(season.endPrestige.avg)} ${season.prestigeTier}`,
         format(season.supportLevels.avg),
       ].join(" | "),

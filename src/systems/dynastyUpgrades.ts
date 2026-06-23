@@ -143,7 +143,7 @@ export function getDynastyTrainingCeilingBonus(dynasty: DynastyState) {
 }
 
 export function getDynastyNetworkBonus(dynasty: DynastyState) {
-  return getDynastyTrackBreakthroughCount(dynasty, "familyNetwork") + Math.floor(getDynastyUpgradeLevel(dynasty, "familyNetwork") / 10);
+  return getDynastyTrackBreakthroughCount(dynasty, "familyNetwork") + Math.floor(getDynastyUpgradeLevel(dynasty, "networkReach") / 10);
 }
 
 export function getDynastyTrackCurrentBonusLines(dynasty: DynastyState, track: DynastyTrackDefinition) {

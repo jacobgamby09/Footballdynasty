@@ -34,7 +34,7 @@ export const dynastyUpgradeDefinitions: DynastyUpgradeDefinition[] = [
     effect: "Progress toward permanent +1 weekly XP ceiling.",
   },
   {
-    id: "familyNetwork",
+    id: "networkReach",
     name: "Family network",
     category: "Family Network",
     maxLevel: 30,
@@ -66,7 +66,7 @@ export const dynastyTrackDefinitions: DynastyTrackDefinition[] = [
     id: "familyNetwork",
     name: "Family Network",
     category: "Career access",
-    upgradeIds: ["familyNetwork"],
+    upgradeIds: ["networkReach"],
     breakpoints: [2, 5, 9, 14, 20, 28],
     breakthroughs: ["Local contact", "Known surname", "Better trial terms", "Scout visibility", "Agent pathway", "Family reputation"],
     effect: "Improves next generation starting contract, cash and early career access.",
@@ -83,5 +83,5 @@ export const initialDynastyUpgrades: Record<DynastyUpgradeId, number> = {
   academyGeneralStart: 0,
   bloodlineXpFloor: 0,
   bloodlineXpCeiling: 0,
-  familyNetwork: 0,
+  networkReach: 0,
 };

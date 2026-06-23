@@ -8,7 +8,7 @@ import type {
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
+export type ScreenKey = NavKey | "dynasty-create" | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
@@ -225,6 +225,8 @@ export type DynastyState = {
   legacyLevel: number;
   legacyPoints: number;
   potentialTier: string;
+  familyName: string;
+  nationality: CountryId;
   // Carried family standing: the starting prestige floor the NEXT generation
   // inherits, grown from each heir's peak career prestige. Never decreases, so a
   // strong bloodline compounds toward sponsor access over generations.
@@ -234,6 +236,19 @@ export type DynastyState = {
   // head start — the late-career "spend on yourself vs. set up your child" choice.
   estate: number;
   upgrades: Record<DynastyUpgradeId, number>;
+};
+
+export type PlayerIdentity = {
+  firstName: string;
+  lastName: string;
+  nationality: CountryId;
+};
+
+export type NewCareerSetup = {
+  firstName: string;
+  lastName: string;
+  nationality: CountryId;
+  positionGroup: PositionGroup;
 };
 
 export type Contract = {
@@ -352,6 +367,7 @@ export type DynastyTrackDefinition = {
 
 export type GameState = {
   week: number;
+  player: PlayerIdentity;
   positionGroup: PositionGroup;
   positionCode: string;
   archetype: string;
@@ -386,7 +402,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 19;
+  version: 20;
   game: GameState;
 };
 

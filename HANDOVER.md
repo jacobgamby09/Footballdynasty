@@ -5,7 +5,13 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-23 (through tier-gated Elite perks). Branch `main`. `SAVE_VERSION` 19._
+_Last updated: 2026-06-23 (through Create Dynasty V1). Branch `main`. `SAVE_VERSION` 20._
+
+**Current onboarding note:** new games now start with Create Dynasty before
+country selection. It captures first name, family/dynasty last name, nationality
+and the current playable position (Striker only). Any older Gen-2 note about a
+hardcoded "Jonas Vale" name is stale; the remaining Gen-2 gap is offer-driven
+heir start logic.
 
 ---
 
@@ -61,8 +67,8 @@ save-resume, often without an obvious error.
 4. **Bump `SAVE_VERSION` when the save/world shape changes.** It lives in
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
-   saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 19`**.
+   saves and the app falls back to onboarding. That is the intended, accepted
+   behaviour during development. Currently **`SAVE_VERSION = 20`**.
 
 ---
 

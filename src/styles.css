@@ -2348,6 +2348,117 @@ button {
   line-height: 1.45;
 }
 
+.create-dynasty-screen {
+  gap: 10px;
+}
+
+.dynasty-create-card {
+  display: grid;
+  gap: 13px;
+}
+
+.identity-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.identity-form-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.identity-form-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.identity-form-grid input {
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.identity-form-grid input:focus {
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.nationality-grid,
+.position-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.nationality-button,
+.position-choice {
+  min-height: 58px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  text-align: left;
+}
+
+.nationality-button {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 9px;
+}
+
+.nationality-button span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nationality-button strong,
+.position-choice strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nationality-button.is-active,
+.position-choice.is-active {
+  border-color: var(--border-strong);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(200, 243, 95, 0.16), transparent 4.2rem),
+    rgba(121, 255, 87, 0.08);
+}
+
+.position-choice {
+  padding: 11px;
+}
+
+.position-choice span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.position-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .country-select-screen {
   gap: 10px;
 }

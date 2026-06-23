@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, ScreenKey, SupportUpgradeId } from "./types";
+import type { Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
 import { createCareerForCountry } from "./state/initialState";
 import { COUNTRIES } from "./data/world";
@@ -18,16 +18,20 @@ import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
 import { BottomNav } from "./components/shared";
-import { ClubScreen, ContractOfferScreen, CountrySelectScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
+
+const heirFirstNames = ["Noah", "Lucas", "Mikkel", "Oscar", "Elias", "Victor", "Oliver", "Felix"];
 
 function App() {
   const [careerStarted, setCareerStarted] = useState<boolean>(() => hasSavedGame());
-  const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => (hasSavedGame() ? "player" : "country-select"));
+  const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => (hasSavedGame() ? "player" : "dynasty-create"));
   const [game, setGame] = useState<GameState>(() => loadSavedGame());
   const [matchSpeed, setMatchSpeed] = useState<MatchSpeed>(2);
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved">("saved");
+  const [newCareerSetup, setNewCareerSetup] = useState<NewCareerSetup | undefined>();
 
   const activeNav =
+    activeScreen === "dynasty-create" ||
     activeScreen === "country-select" ||
     activeScreen === "pre-match" ||
     activeScreen === "match" ||
@@ -603,7 +607,8 @@ function App() {
       return;
     }
 
-    const confirmed = window.confirm(`Retire Jonas Vale and bank ${estimate.totalPoints} Legacy Points? This will start Gen ${game.dynasty.generation + 1}.`);
+    const playerName = `${game.player.firstName} ${game.player.lastName}`;
+    const confirmed = window.confirm(`Retire ${playerName} and bank ${estimate.totalPoints} Legacy Points? This will start Gen ${game.dynasty.generation + 1}.`);
     if (!confirmed) {
       return;
     }
@@ -625,14 +630,16 @@ function App() {
         potentialTier: getGenerationProfile(nextGeneration).label,
         reputation: inheritedReputation,
       };
+      const nextFirstName = heirFirstNames[(nextGeneration - 2) % heirFirstNames.length] ?? "Noah";
       const nextState = createCareerForCountry(country?.id ?? "denmark", {
         dynasty: nextDynasty,
         dynastyHistory: getLegacySeasons(state),
+        firstName: nextFirstName,
       });
 
       return {
         ...nextState,
-        lastEvent: `Jonas Vale retired with ${latestEstimate.totalPoints} Legacy Points banked. Gen ${nextGeneration} begins.`,
+        lastEvent: `${state.player.firstName} ${state.player.lastName} retired with ${latestEstimate.totalPoints} Legacy Points banked. ${nextFirstName} ${state.player.lastName} begins Gen ${nextGeneration}.`,
       };
     });
     setActiveScreen("player");
@@ -666,12 +673,18 @@ function App() {
 
     clearSavedGame();
     setCareerStarted(false);
-    setActiveScreen("country-select");
+    setNewCareerSetup(undefined);
+    setActiveScreen("dynasty-create");
     setSaveStatus("saved");
   }
 
+  function createDynasty(setup: NewCareerSetup) {
+    setNewCareerSetup(setup);
+    setActiveScreen("country-select");
+  }
+
   function startCareerInCountry(countryId: CountryId) {
-    setGame(createCareerForCountry(countryId));
+    setGame(createCareerForCountry(countryId, { setup: newCareerSetup }));
     setCareerStarted(true);
     setActiveScreen("player");
     setSaveStatus("saved");
@@ -681,6 +694,7 @@ function App() {
     <main className="app-shell">
       <section className="app-frame" aria-label="Football Dynasty">
         <div className="screen-scroll">
+          {activeScreen === "dynasty-create" && <CreateDynastyScreen countries={COUNTRIES} onCreate={createDynasty} />}
           {activeScreen === "country-select" && <CountrySelectScreen countries={COUNTRIES} onPick={startCareerInCountry} />}
           {activeScreen === "player" && <PlayerScreen game={game} />}
           {activeScreen === "training" && (
@@ -752,7 +766,7 @@ function App() {
           {activeScreen === "retirement" && <RetirementScreen game={game} />}
         </div>
 
-        {activeScreen !== "country-select" && (
+        {activeScreen !== "dynasty-create" && activeScreen !== "country-select" && (
           <BottomNav
             activeNav={activeNav}
             advanceLabel={advanceLabel}

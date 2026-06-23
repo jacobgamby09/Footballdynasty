@@ -62,6 +62,12 @@ Første version fokuserer på angriberpositionen. Målet er ikke at bygge hele s
 
 Fundamentet skal dog designes generisk, så midtbane, forsvar og andre roller kan tilføjes senere uden at skrive hele spillet om.
 
+Playable position scope: the code foundation can still stay generic, but the
+design direction is now offensive roles only. Striker is playable first; Winger
+and Attacking Midfielder are future expansion roles. Goalkeeper and defensive
+roles are out of scope for the playable loop because goals, assists and attacking
+involvements should remain the core fantasy.
+
 ## Player Attributes
 
 Attributes bør være generelle nok til alle positioner, men kunne vægtes forskelligt pr. rolle.

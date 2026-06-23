@@ -5,7 +5,7 @@ import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
 import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveMatchReadiness, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
-import { calculatePotentialOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
+import { getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
@@ -22,7 +22,7 @@ import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTabl
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game }: { game: GameState }) {
@@ -461,7 +461,6 @@ export function TrainingScreen({
             <div className="attribute-breakdown-grid">
               <InfoTile label="Base requirement" value={`${detailGrowth.baseRequirement} XP`} />
               <InfoTile label="Growth pressure" value={`x${detailGrowth.pressure.multiplier.toFixed(2)}`} tone={detailGrowth.pressure.tone === "fast" ? "good" : detailGrowth.pressure.tone === "normal" ? undefined : "gold"} />
-              <InfoTile label="Profile marker" value={`${detailStat.potential}`} />
               <InfoTile label="Selected range" value={detailGrowth.trainingRange} tone={detailGrowth.isSelected ? "good" : undefined} />
             </div>
             <div className="attribute-modal-impact">
@@ -1661,8 +1660,6 @@ export function HomeScreen({
   const [homeView, setHomeView] = useState<HomeView>("base");
   const currentSnapshot = createDynastySeasonSnapshot(game);
   const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
-  const positionModule = getPositionModule(game.positionGroup);
-  const potentialOvr = calculatePotentialOvr(game.attributes, positionModule.ovrWeights);
   const age = getPlayerAge(game);
   const legacyEstimate = getLegacyEstimate(game);
 
@@ -1705,9 +1702,9 @@ export function HomeScreen({
               <p>{game.dynasty.potentialTier}</p>
             </div>
             <div>
-              <span className="metric-label">Growth profile</span>
-              <h2>{potentialOvr}</h2>
-              <p>{positionModule.shortCode} marker</p>
+              <span className="metric-label">Career age</span>
+              <h2>{age}</h2>
+              <p>{legacyEstimate.eligible ? "Retirement eligible" : "Building career"}</p>
             </div>
           </div>
           <div className="card save-card">
@@ -1830,7 +1827,7 @@ export function HomeScreen({
             <div className="section-heading">
               <div>
                 <span className="metric-label">Season history</span>
-                <h2>Jonas Vale</h2>
+                <h2>{game.player.firstName} {game.player.lastName}</h2>
               </div>
               <BarChart3 size={19} />
             </div>
@@ -1995,6 +1992,103 @@ export function SupportShopView({
 }
 
 
+
+export function CreateDynastyScreen({ countries, onCreate }: { countries: Country[]; onCreate: (setup: NewCareerSetup) => void }) {
+  const [firstName, setFirstName] = useState("Jonas");
+  const [lastName, setLastName] = useState("Vale");
+  const [nationality, setNationality] = useState<CountryId>("denmark");
+  const selectedCountry = countries.find((country) => country.id === nationality) ?? countries[0];
+
+  function submit() {
+    onCreate({
+      firstName: firstName.trim() || "Jonas",
+      lastName: lastName.trim() || "Vale",
+      nationality,
+      positionGroup: "Forward",
+    });
+  }
+
+  return (
+    <section className="simple-screen create-dynasty-screen">
+      <ScreenTitle label="New dynasty" title="Create your player" />
+
+      <div className="card dynasty-create-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Identity</span>
+            <h2>Family name matters</h2>
+          </div>
+          <UserRound size={19} />
+        </div>
+        <div className="identity-form-grid">
+          <label>
+            <span>First name</span>
+            <input value={firstName} onChange={(event) => setFirstName(event.target.value)} maxLength={18} />
+          </label>
+          <label>
+            <span>Last name</span>
+            <input value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={18} />
+          </label>
+        </div>
+        <div className="match-hint">
+          <Sparkles size={16} />
+          <span>{lastName.trim() || "Vale"} becomes the dynasty name for future generations.</span>
+        </div>
+      </div>
+
+      <div className="card dynasty-create-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Nationality</span>
+            <h2>{selectedCountry?.flag} {selectedCountry?.name}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <div className="nationality-grid">
+          {countries.map((country) => (
+            <button
+              key={country.id}
+              className={`nationality-button ${country.id === nationality ? "is-active" : ""}`}
+              type="button"
+              onClick={() => setNationality(country.id)}
+            >
+              <span>{country.flag}</span>
+              <strong>{country.name}</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card dynasty-create-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Position</span>
+            <h2>Attack first</h2>
+          </div>
+          <Target size={19} />
+        </div>
+        <div className="position-choice-grid">
+          <button className="position-choice is-active" type="button">
+            <strong>Striker</strong>
+            <span>Playable now</span>
+          </button>
+          <button className="position-choice" type="button" disabled>
+            <strong>Winger</strong>
+            <span>Coming later</span>
+          </button>
+          <button className="position-choice" type="button" disabled>
+            <strong>Attacking mid</strong>
+            <span>Coming later</span>
+          </button>
+        </div>
+      </div>
+
+      <button className="primary-action" type="button" onClick={submit}>
+        Continue
+      </button>
+    </section>
+  );
+}
 
 export function CountrySelectScreen({ countries, onPick }: { countries: Country[]; onPick: (id: CountryId) => void }) {
   return (

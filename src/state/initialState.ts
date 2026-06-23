@@ -1,5 +1,5 @@
 import { positionModules } from "../positionRoles";
-import type { ClubState, Contract, CountryId, DynastySeason, DynastyState, GameState } from "../types";
+import type { ClubState, Contract, CountryId, DynastySeason, DynastyState, GameState, NewCareerSetup } from "../types";
 import { initialDynasty } from "../data/attributes";
 import { initialClub } from "../data/leagues";
 import { initialSupportUpgrades } from "../data/support";
@@ -29,9 +29,20 @@ export const initialContract: Contract = {
 // offer-driven (the son inherits a name) as part of the dynasty loop.
 export function createCareerForCountry(
   countryId: CountryId,
-  options: { dynasty?: DynastyState; dynastyHistory?: DynastySeason[] } = {},
+  options: { dynasty?: DynastyState; dynastyHistory?: DynastySeason[]; setup?: NewCareerSetup; firstName?: string } = {},
 ): GameState {
-  const dynasty = options.dynasty ?? initialDynasty;
+  const setup = options.setup ?? {
+    firstName: options.firstName ?? "Jonas",
+    lastName: options.dynasty?.familyName ?? initialDynasty.familyName,
+    nationality: options.dynasty?.nationality ?? initialDynasty.nationality,
+    positionGroup: "Forward" as const,
+  };
+  const dynasty = {
+    ...(options.dynasty ?? initialDynasty),
+    familyName: setup.lastName,
+    nationality: setup.nationality,
+  };
+  const positionModule = positionModules[setup.positionGroup];
   const world = seedWorld();
   const bottomLeague = Object.values(world.leagues)
     .filter((league) => league.countryId === countryId)
@@ -57,9 +68,14 @@ export function createCareerForCountry(
 
   return {
     week: 1,
-    positionGroup: "Forward",
-    positionCode: positionModules.Forward.shortCode,
-    archetype: positionModules.Forward.defaultArchetype,
+    player: {
+      firstName: setup.firstName,
+      lastName: setup.lastName,
+      nationality: setup.nationality,
+    },
+    positionGroup: setup.positionGroup,
+    positionCode: positionModule.shortCode,
+    archetype: positionModule.defaultArchetype,
     cash: startingCash,
     prestige: startingPrestige,
     fitness: 86,
@@ -70,7 +86,7 @@ export function createCareerForCountry(
     trainingFocuses: ["Finishing"],
     trainingCompletedWeek: 0,
     intensity: "Balanced",
-    attributes: createGenerationAttributes(dynasty.generation, positionModules.Forward, dynasty),
+    attributes: createGenerationAttributes(dynasty.generation, positionModule, dynasty),
     seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },
     season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixturesFromWorld(club, world), results: [] },
     club,

@@ -30,7 +30,7 @@ export function Header({ game }: { game: GameState }) {
 
       <div className="player-identity">
         <div className="eyebrow">Week {game.week} - Season {game.season.season}</div>
-        <h1>Jonas Vale</h1>
+        <h1>{game.player.firstName} {game.player.lastName}</h1>
         <div className="identity-row">
           <span>{getPlayerAge(game)} yrs</span>
           <span>{game.positionCode}</span>

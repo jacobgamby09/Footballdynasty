@@ -10,7 +10,7 @@ import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 19;
+const SAVE_VERSION = 20;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
@@ -39,6 +39,7 @@ export function createInitialState(): GameState {
 export function cloneGameState(state: GameState): GameState {
   return {
     ...state,
+    player: { ...state.player },
     attributes: state.attributes.map((attribute) => ({ ...attribute })),
     seasonStats: {
       ...state.seasonStats,
@@ -140,6 +141,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
   return {
     ...fallback,
     ...saved,
+    player: normalizePlayer(saved.player, saved.dynasty, fallback.player),
     positionCode: getPositionModule(saved.positionGroup ?? fallback.positionGroup).shortCode,
     archetype: saved.archetype ?? getPositionModule(saved.positionGroup ?? fallback.positionGroup).defaultArchetype,
     attributes: mergeSavedAttributes(saved.attributes ?? fallback.attributes),
@@ -175,6 +177,14 @@ export function normalizeSavedGame(saved: GameState): GameState {
     activeMatch: undefined,
     lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
     lastTraining: saved.lastTraining ? cloneTrainingSummary(saved.lastTraining) : undefined,
+  };
+}
+
+function normalizePlayer(savedPlayer: GameState["player"] | undefined, savedDynasty: GameState["dynasty"] | undefined, fallbackPlayer: GameState["player"]) {
+  return {
+    firstName: savedPlayer?.firstName ?? fallbackPlayer.firstName,
+    lastName: savedPlayer?.lastName ?? savedDynasty?.familyName ?? fallbackPlayer.lastName,
+    nationality: savedPlayer?.nationality ?? savedDynasty?.nationality ?? fallbackPlayer.nationality,
   };
 }
 
@@ -263,6 +273,8 @@ function normalizeDynasty(savedDynasty: DynastyState | undefined, fallbackDynast
   return {
     ...fallbackDynasty,
     ...(savedDynasty ?? {}),
+    familyName: savedDynasty?.familyName ?? fallbackDynasty.familyName,
+    nationality: savedDynasty?.nationality ?? fallbackDynasty.nationality,
     upgrades: normalizeDynastyUpgrades(savedDynasty?.upgrades as Partial<Record<string, number>> | undefined),
   };
 }

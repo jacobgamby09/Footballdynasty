@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-06-23
+
+### Create Dynasty V1
+
+- Added a first-run Create Dynasty flow before country selection.
+- New careers now capture player first name, family/dynasty last name, nationality and position setup before choosing the starting club country.
+- Position choice is intentionally scoped to Striker for now, with Winger and Attacking Midfielder shown as future offensive-role expansion.
+- Player header, dynasty history and retirement text now read from persistent player identity instead of the old hardcoded Jonas Vale label.
+- Dynasty state now stores `familyName` and `nationality`, and `GameState` now stores `player`.
+- Retiring into the next generation preserves the family name and creates a new first name for the heir.
+- Save version bumped to 20 because player identity and dynasty family/nationality are now part of persisted state.
+
 ## 2026-06-22
 
 ### Transfer Window V1

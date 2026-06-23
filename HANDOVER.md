@@ -5,7 +5,7 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-23. Branch `main` @ `d507ada`. `SAVE_VERSION` 17._
+_Last updated: 2026-06-23 (through Stage 3 — Family Trust Fund). Branch `main`. `SAVE_VERSION` 18._
 
 ---
 
@@ -62,7 +62,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 17`**.
+   accepted behaviour during development. Currently **`SAVE_VERSION = 18`**.
 
 ---
 
@@ -227,8 +227,15 @@ for the full blow-by-blow.)
   are guidance, not hard caps. Current optimal: Gen-1 ~64, Gen-2 ~71.6 (fully-maxed
   potential nudges to ~65 / ~73.5). **Keep new upgrades inside this curve.**
 
+- **Stage 3 — Family Trust Fund** (`systems/estate.ts`): the late-career cash sink that
+  serves the dynasty. `DynastyState.estate` (persists) is a cash-bought level
+  (`investEstateState`, escalating cost 40k → ~1.7M); each heir inherits a sqrt-scaled,
+  capped (60k) starting-cash bonus (`getEstateHeirCash`, added in `createCareerForCountry`).
+  Distinct from Legacy Points (talent) — this is MATERIAL inheritance. Safe for the curve:
+  cash buys speed/longevity, not the ceiling. UI: Trust Fund card in Home → Dynasty.
+
 New `SupportUpgradeId`s: `longevity`, `potential`. New `SupportTrackId`s:
-`longevity`, `talent`. New `DynastyState.reputation`.
+`longevity`, `talent`. New `DynastyState` fields: `reputation`, `estate`.
 
 ---
 
@@ -272,19 +279,15 @@ origin). Co-author trailer: `Co-Authored-By: Claude Opus 4.8
 
 **Resolved since the last handover** (don't re-investigate): sponsor reachability
 (full ladder + light starter + dynasty compounding), the longer-season balance
-pass (lab upgrade + fitness floor + OVR re-anchor + aging), and the late-career
-cash sink (longevity + potential are now real choices).
+pass (lab upgrade + fitness floor + OVR re-anchor + aging), the late-career cash
+sink (longevity + potential), AND **Stage 3 (Family Trust Fund)** — surplus cash
+now banks into the heir's starting capital, so late cash is a genuine choice
+(improve yourself vs. set up your child). Only the **trust-fund** scope shipped;
+the "club connections → better heir start" idea (3b) is the bridge to #1 below.
 
 **Priority next steps (most → least important):**
 
-1. **Stage 3 — heir investment / late-cash sink (the dynasty cash-estate).** The
-   honest remaining gap: over a *full* career cash is still abundant (~4M earned;
-   even longevity only ~33/60 maxed), so it's never truly scarce late. The clean
-   fix is a big late sink that ALSO serves the dynasty: spend surplus cash on the
-   heir's head-start (a cash "estate" — starting cash/club/contacts for Gen 2+),
-   parallel to Legacy Points (which buy talent/development). This makes late cash a
-   real choice (improve yourself vs. set up your child) and is the natural Stage 3.
-2. **Finish the Gen-2 fantasy.** The dynasty loop banks Legacy Points and carries
+1. **Finish the Gen-2 fantasy** (the big remaining core-fantasy gap). The dynasty loop banks Legacy Points and carries
    continuity, but the next generation still starts from the bottom of the same
    country with the hardcoded name "Jonas Vale". Vision: the son **inherits a name**
    and gets an **offer-driven start** (contracts based on the family's standing)

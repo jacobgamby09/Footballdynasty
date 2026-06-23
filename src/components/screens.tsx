@@ -7,6 +7,7 @@ import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainin
 import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveMatchReadiness, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculatePotentialOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
+import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
@@ -18,7 +19,7 @@ import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
@@ -1643,6 +1644,7 @@ export function HomeScreen({
   saveStatus,
   onBuySupportUpgrade,
   onBuyDynastyUpgrade,
+  onInvestEstate,
   onAcceptSponsorDeal,
   onOpenRetirement,
   onResetCareer,
@@ -1651,6 +1653,7 @@ export function HomeScreen({
   saveStatus: "saved" | "unsaved";
   onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
   onBuyDynastyUpgrade: (upgradeId: DynastyUpgradeId) => void;
+  onInvestEstate: () => void;
   onAcceptSponsorDeal: (dealId: string) => void;
   onOpenRetirement: () => void;
   onResetCareer: () => void;
@@ -1783,6 +1786,33 @@ export function HomeScreen({
               <Sparkles size={16} />
               <span>Legacy upgrades improve future generations and do not affect cash support in the current run.</span>
             </div>
+          </div>
+
+          <div className="card">
+            <div className="section-heading">
+              <div>
+                <span className="metric-label">Family trust fund</span>
+                <h2>Estate level {game.dynasty.estate}</h2>
+              </div>
+              <Coins size={19} />
+            </div>
+            <div className="next-grid">
+              <InfoTile label="Cash" value={`$${game.cash.toLocaleString()}`} tone="gold" />
+              <InfoTile label="Heir inherits" value={`$${getEstateHeirCash(game.dynasty).toLocaleString()}`} tone="good" />
+              <InfoTile label="Next level" value={`+$${(getEstateHeirCash({ estate: game.dynasty.estate + 1 }) - getEstateHeirCash(game.dynasty)).toLocaleString()}`} />
+            </div>
+            <div className="match-hint">
+              <Coins size={16} />
+              <span>Bank surplus cash for your heir's starting capital — your money either improves you now or sets up your child.</span>
+            </div>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={game.cash < getEstateCost(game.dynasty.estate)}
+              onClick={onInvestEstate}
+            >
+              Invest ${getEstateCost(game.dynasty.estate).toLocaleString()}
+            </button>
           </div>
 
           <div className="support-shop-list">

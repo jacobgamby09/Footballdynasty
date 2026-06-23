@@ -10,7 +10,7 @@ import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFi
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { getMatchPrestigeDelta } from "./prestige";
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
-import { applyRecoveryCeiling, applyRecoveryFloor, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
@@ -809,7 +809,8 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
   const matchSeed = createMatchSeed(state, context);
   const positionModule = getPositionModule(state.positionGroup);
   const leagueTier = getClubLeagueTier(state.club);
-  const agedAttributes = getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season));
+  const matchAging = getAgingProfile(state);
+  const agedAttributes = getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), matchAging.peakAge, matchAging.declineResist);
   const matchAttributeValues = getLeagueAdjustedAttributeValueMap(agedAttributes, leagueTier);
   const matchOpponentProfile = getLeagueAdjustedOpponentProfile(context.opponentProfile, leagueTier);
   const contextualOvr = getContextualAbilityScore(calculateOvr(agedAttributes, positionModule.ovrWeights), leagueTier);
@@ -919,8 +920,9 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
   const leagueTier = getClubLeagueTier(state.club);
+  const resultAging = getAgingProfile(state);
   const matchAttributeValues = getLeagueAdjustedAttributeValueMap(
-    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season)),
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), resultAging.peakAge, resultAging.declineResist),
     leagueTier,
   );
   const matchOpponentProfile = state.activeMatch
@@ -1119,8 +1121,9 @@ export function applyMatchSupportEffects<T extends { rating: number; fitnessDelt
 
 
 export function simulateRemainingPlayerMoments(state: GameState, match: MatchState): MatchResult[] {
+  const remainingAging = getAgingProfile(state);
   const matchAttributeValues = getLeagueAdjustedAttributeValueMap(
-    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season)),
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), remainingAging.peakAge, remainingAging.declineResist),
     getClubLeagueTier(state.club),
   );
   return match.events

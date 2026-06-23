@@ -92,6 +92,14 @@ export const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
     baseCost: 260,
     effect: "+2% sponsor retainers and objective bonuses per level.",
   },
+  {
+    id: "longevity",
+    name: "Sports science",
+    category: "Longevity",
+    maxLevel: 60,
+    baseCost: 300,
+    effect: "Pushes your peak age later, softens the decline and extends how long you can play.",
+  },
 ];
 
 export const supportTrackDefinitions: SupportTrackDefinition[] = [
@@ -122,6 +130,15 @@ export const supportTrackDefinitions: SupportTrackDefinition[] = [
     breakthroughs: ["Agent retained", "Better terms", "Sponsor-ready", "Transfer network", "Commercial pull", "Power broker"],
     effect: "Improves contract leverage and sponsor income.",
   },
+  {
+    id: "longevity",
+    name: "Longevity",
+    category: "Career length",
+    upgradeIds: ["longevity"],
+    breakpoints: [6, 14, 26, 40, 55, 60],
+    breakthroughs: ["Pro habits", "Sports science", "Peak extension", "Veteran engine", "Ageless", "Timeless"],
+    effect: "Each breakthrough pushes your peak age and retirement later; levels flatten the decline.",
+  },
 ];
 
 export const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade])) as Record<
@@ -141,4 +158,5 @@ export const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
   recoveryBaseline: 0,
   agentNegotiation: 0,
   sponsorshipAppeal: 0,
+  longevity: 0,
 };

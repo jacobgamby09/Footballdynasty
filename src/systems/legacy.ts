@@ -3,6 +3,7 @@ import { getPositionModule } from "../positionRoles";
 import { calculateOvr } from "./ovr";
 import { getAverageRating } from "./formatting";
 import { createDynastySeasonSnapshot } from "./season";
+import { getAgingProfile } from "./support";
 import type { DynastySeason, GameState, LeagueTierId } from "../types";
 
 export type LegacyComponent = {
@@ -14,6 +15,8 @@ export type LegacyComponent = {
 export type LegacyEstimate = {
   age: number;
   eligible: boolean;
+  forced: boolean;
+  hardRetirementAge: number;
   seasons: DynastySeason[];
   totalPoints: number;
   basePoints: number;
@@ -74,9 +77,12 @@ export function getLegacyEstimate(game: GameState): LegacyEstimate {
   const totalPoints = Math.max(0, Math.round(basePoints * multiplier));
   const momentum = getLegacyMomentum(age, totals.averageRating, game.seasonStats.apps);
 
+  const hardRetirementAge = getAgingProfile(game).hardRetirementAge;
   return {
     age,
     eligible: age >= RETIREMENT_AGE,
+    forced: age >= hardRetirementAge,
+    hardRetirementAge,
     seasons,
     totalPoints,
     basePoints,

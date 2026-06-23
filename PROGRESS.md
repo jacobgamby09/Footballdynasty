@@ -1899,3 +1899,31 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   (potential) are all done. Late-career cash is now a real choice: longevity (more elite
   years) vs. potential (higher ceiling) vs. banking for the heir. Stage 3 (cash -> Legacy
   Points overflow) remains optional.
+
+## 2026-06-23 - Potential upgrade: real opportunity cost (re-cost)
+
+### Why
+
+- The lab models cash (priority-order buys, affordability, reserve), but it revealed the
+  potential upgrade at baseCost 600 was ~6.5k total = 0.16% of ~4.15M career income, so it was
+  auto-maxed (`talent 4.00`) in every career — NOT a real trade-off, just a free +2-3 OVR.
+
+### Change
+
+- Raised `potential` baseCost 600 -> 12000 (game + lab). The 4 levels now cost ~82k total
+  (12k / 16.7k / 22.8k / 30.2k) — a deliberate mid-career investment. Effect unchanged
+  (maxLevel 4, +1 key-attribute potential per level).
+
+### Result (lab)
+
+- A default balanced build now only affords **~2 of 4** levels (`talent 2.08`), so it competes
+  with other spending — a genuine "raise the ceiling vs. develop/longevity" choice. Peak
+  effective OVR: Gen-1 **63.9**, Gen-2 **71.6** (closer to the 60/70 guidance). A player who
+  deliberately prioritises potential can still max it (4/4 -> ~65 / ~73.5) by sacrificing
+  elsewhere.
+
+### Note (deeper, deferred)
+
+- Even so, over a full career late cash is abundant (longevity also only ~33/60 maxed). The
+  root "late cash is too plentiful" is best solved by a big late sink — the heir investment
+  (a future Stage 3 / dynasty cash-estate) — rather than by inflating individual upgrade costs.

@@ -133,7 +133,7 @@ const supportUpgradeDefinitions = [
   { id: "agentNegotiation", maxLevel: 80, baseCost: 220 },
   { id: "sponsorshipAppeal", maxLevel: 80, baseCost: 260 },
   { id: "longevity", maxLevel: 60, baseCost: 300 },
-  { id: "potential", maxLevel: 4, baseCost: 600 },
+  { id: "potential", maxLevel: 4, baseCost: 12000 },
 ];
 const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 const supportTrackDefinitions = [

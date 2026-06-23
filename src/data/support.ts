@@ -105,8 +105,8 @@ export const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
     name: "Specialist coaching",
     category: "Talent",
     maxLevel: 4,
-    baseCost: 600,
-    effect: "Each level raises the ceiling (potential) of your key attributes by 1 — a small, capped lift to how high you can grow this career.",
+    baseCost: 12000,
+    effect: "Each level raises the ceiling (potential) of your key attributes by 1 — a small, capped lift to how high you can grow this career. A real mid-career investment.",
   },
 ];
 

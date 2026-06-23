@@ -2,6 +2,18 @@ import type { GameState, MatchTotals, SponsorDeal, SponsorPayout } from "../type
 
 export const sponsorDefinitions: SponsorDeal[] = [
   {
+    id: "hometown-kit",
+    name: "Hometown Kit Deal",
+    tierLabel: "Local Favourite",
+    prestigeRequired: 120,
+    weeklyRetainer: 14,
+    objectiveBonus: 45,
+    objective: { type: "appearance", target: 1, label: "Make an appearance" },
+    pressureModifier: -1,
+    weeksRemaining: 6,
+    summary: "Your hometown club shop wants your name on a shirt. Small money, friendly terms — the first to believe in you.",
+  },
+  {
     id: "local-boot-room",
     name: "Local Boot Room",
     tierLabel: "Known Talent",

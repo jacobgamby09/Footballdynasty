@@ -94,6 +94,7 @@ const leagueTiers = [
 ];
 const prestigeTiers = [
   { id: "local-prospect", label: "Local Prospect", threshold: 0 },
+  { id: "local-favourite", label: "Local Favourite", threshold: 120 },
   { id: "known-talent", label: "Known Talent", threshold: 350 },
   { id: "regional-name", label: "Regional Name", threshold: 1500 },
   { id: "national-profile", label: "National Profile", threshold: 7500 },
@@ -102,6 +103,7 @@ const prestigeTiers = [
   { id: "legend", label: "Legend", threshold: 100000 },
 ];
 const sponsorDefinitions = [
+  { id: "hometown-kit", prestigeRequired: 120, weeklyRetainer: 14, objectiveBonus: 45, objective: { type: "appearance", target: 1 }, pressureModifier: -1, weeksRemaining: 6 },
   { id: "local-boot-room", prestigeRequired: 350, weeklyRetainer: 35, objectiveBonus: 120, objective: { type: "goal", target: 1 }, pressureModifier: 1, weeksRemaining: 8 },
   { id: "recovery-drink", prestigeRequired: 350, weeklyRetainer: 28, objectiveBonus: 90, objective: { type: "rating", target: 7 }, pressureModifier: 0, weeksRemaining: 6 },
   { id: "academy-ambassador", prestigeRequired: 350, weeklyRetainer: 24, objectiveBonus: 75, objective: { type: "appearance", target: 1 }, pressureModifier: -1, weeksRemaining: 6 },
@@ -142,17 +144,26 @@ const activeSupportScenarios =
     ? supportScenarios.filter((scenario) => scenario.id === "none" || scenario.id === "balanced" || scenario.id.endsWith("-track"))
     : supportScenarios;
 
+// Family standing compounds across generations: each gen inherits a prestige floor
+// grown from the previous gen's avg end prestige (same sqrt*3, never-decreasing rule
+// as the game's retireCareer). Tracked per scenario so the carry is apples-to-apples.
+const inheritedPrestigeByScenario = new Map();
+
 for (let generation = 1; generation <= generationCount; generation += 1) {
   activeSupportScenarios.forEach((scenario) => {
+    const inheritedPrestige = inheritedPrestigeByScenario.get(scenario.id) ?? 0;
     const reports = [];
     for (let index = 0; index < seasons; index += 1) {
-      reports.push(simulateCareer(index, scenario, generation));
+      reports.push(simulateCareer(index, scenario, generation, inheritedPrestige));
     }
-    printSeasonReport(summarizeSeasons(reports), scenario, generation);
+    const summary = summarizeSeasons(reports);
+    const nextFloor = Math.max(inheritedPrestige, Math.round(Math.sqrt(Math.max(0, summary.endPrestige.avg)) * 3));
+    inheritedPrestigeByScenario.set(scenario.id, nextFloor);
+    printSeasonReport(summary, scenario, generation);
   });
 }
 
-function simulateCareer(runIndex, scenario, generation = 1) {
+function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 0) {
   const state = {
     trust: 38,
     fitness: 86,
@@ -160,7 +171,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
     pressure: 26,
     ratings: [],
     cash: 420,
-    prestige: 12,
+    prestige: 12 + Math.round(inheritedPrestige),
     tier: leagueTiers[0],
     supportUpgrades: createInitialSupportUpgrades(),
     attributes: createGenerationAttributes(generation),

@@ -186,7 +186,10 @@ export function getMatchActionRecoveryRelief(level: number) {
 }
 
 export function getRecoveryFitnessFloor(baselineLevel: number, breakthroughs = 0) {
-  return Math.min(68, 28 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
+  // Base floor 34: a player who never invests in recovery sits "tired but playable", not
+  // permanently exhausted. Recovery investment still matters a lot (floor climbs to 68, plus
+  // a higher ceiling), but ignoring it is below-par rather than broken.
+  return Math.min(68, 34 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
 }
 
 export function getRecoveryFitnessCeiling(baselineLevel: number, breakthroughs = 0) {

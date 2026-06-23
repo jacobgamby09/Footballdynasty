@@ -2256,7 +2256,7 @@ function getMatchActionRecoveryRelief(level) {
 }
 
 function getRecoveryFitnessFloor(baselineLevel, breakthroughs = 0) {
-  return Math.min(68, 28 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
+  return Math.min(68, 34 + Math.round(baselineLevel * 0.75 + breakthroughs * 4));
 }
 
 function getRecoveryFitnessCeiling(baselineLevel, breakthroughs = 0) {

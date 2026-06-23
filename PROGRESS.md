@@ -1735,3 +1735,29 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   transfer-dominated with promotion as the secondary path; a "loyal / decline transfers"
   policy would show more promotions. Rival strength in a division is abstracted into the ppg
   thresholds rather than a full round-robin.
+
+## 2026-06-23 - Balance Pass: Softer No-Recovery Fitness Floor
+
+### Finding (from the upgraded full-career lab)
+
+- The progression system is broadly healthy: support investment meaningfully changes outcomes
+  (OVR gain 46->60, fitness 28->89, highest tier Top Flight->Elite), and supported paths track
+  the target OVR curve. Most warnings came from the no-support *control* scenario, which is
+  meant to lag.
+- The one clear issue: the no-recovery fitness floor was **28** — below the lab's own
+  "too low" threshold (30). Because fitness settles at the floor, a player who never invests
+  in recovery sat at ~27 fitness for an entire career (barely playable), not just below par.
+
+### Change
+
+- Raised the base recovery fitness floor 28 -> 34 in `systems/support.ts`
+  (`getRecoveryFitnessFloor`) and mirrored it in the lab. Recovery investment is still highly
+  valuable (floor climbs to 68, ceiling untouched at 70-88) — ignoring it is now "tired but
+  playable" rather than broken. Pure computed value; no `SAVE_VERSION` change.
+
+### Verification
+
+- Build green. Lab: no-support / training-track / career-track end fitness now ~33-34 (was
+  ~27), clearing the "end fitness too low" warning; supported scenarios unchanged at ~89.
+- Left as healthy design spread (not chased): heavy-support paths run ~+6-7 OVR ahead of the
+  target curve and no-support ~-7 behind — the two ends bracketing the moderate-support target.

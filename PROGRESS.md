@@ -1586,3 +1586,44 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - Letting a contract expire should be a valid but risky strategy.
 - Declining offers should create time pressure and lower training efficiency, not a hidden automatic stay.
 - Trial offers should get the player back into club football quickly without feeling like long-term security.
+
+## 2026-06-23 - Sponsor Access: Light Starter + Dynasty Compounding
+
+### Implemented
+
+- Added a **light starter sponsor** so a strong Gen-1 can earn a first deal without
+  waiting for the full "Known Talent" status:
+  - New prestige tier `Local Favourite` at **120** (between Local Prospect and Known Talent).
+  - New sponsor `Hometown Kit Deal` (prestigeRequired 120, $14/wk retainer, $45 appearance
+    objective, low pressure) — small, friendly, the first to believe in you.
+- Added **dynasty compounding** so sponsor access arrives sooner each generation:
+  - `DynastyState.reputation` (new persisted field): a starting-prestige floor the heir
+    inherits, grown from each career's peak prestige via `sqrt(endPrestige) * 3`,
+    never-decreasing (`Math.max` with the previous value).
+  - `createCareerForCountry` now starts the player at `12 + reputation`.
+  - `retireCareer` banks the new floor into the next generation's dynasty.
+- Mirrored both into the season balance lab (new tier + sponsor + per-generation inherited
+  prestige carry), and bumped `SAVE_VERSION` to 14.
+
+### Verification
+
+- Build green (tsc + vite).
+- Balance lab (3 gens × 6 career-seasons): Gen-1 reaches the light sponsor ~week 31 (start of
+  season 2 — earned, not instant); Gen 2+ start above 120 so it's available from week 1
+  (compounding works). End prestige compounds gen over gen (~1652 → ~3400+).
+- In-browser: fresh Gen-1 = prestige 12 / reputation 0; light sponsor not offered at 119,
+  offered at 120+; only a harmless favicon 404 in console.
+
+### Design Intent
+
+- Sponsors stay status-gated and realistic — the big deals (350 / 1500) still take real
+  status to reach.
+- A standout Gen-1 gets a small taste (the hometown deal) without cheapening the real ones.
+- A successful bloodline compounds: the heir's family name already means something locally,
+  so the light sponsor is available from the start of later generations.
+
+### Noted (not fixed here)
+
+- `data/dynastyUpgrades.ts` has a **duplicated `familyNetwork` id** — worth de-duping.
+- The lab models a `sponsorshipAppeal` / `agentNegotiation` career track whose upgrade ids
+  don't exist in `data/dynastyUpgrades.ts` (lab/data drift).

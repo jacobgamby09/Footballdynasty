@@ -220,6 +220,10 @@ export type DynastyState = {
   legacyLevel: number;
   legacyPoints: number;
   potentialTier: string;
+  // Carried family standing: the starting prestige floor the NEXT generation
+  // inherits, grown from each heir's peak career prestige. Never decreases, so a
+  // strong bloodline compounds toward sponsor access over generations.
+  reputation: number;
   upgrades: Record<DynastyUpgradeId, number>;
 };
 
@@ -370,7 +374,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 13;
+  version: 14;
   game: GameState;
 };
 

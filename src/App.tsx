@@ -606,11 +606,18 @@ function App() {
       const latestEstimate = getLegacyEstimate(state);
       const country = getCountryForClub(state.world, state.club.clubId, state.club.shortCode);
       const nextGeneration = state.dynasty.generation + 1;
+      // Family standing compounds: the heir inherits a prestige floor grown from this
+      // career's peak. Diminishing (sqrt) so it never trivialises, and never drops.
+      const inheritedReputation = Math.max(
+        state.dynasty.reputation ?? 0,
+        Math.round(Math.sqrt(Math.max(0, state.prestige)) * 3),
+      );
       const nextDynasty = {
         ...state.dynasty,
         generation: nextGeneration,
         legacyPoints: state.dynasty.legacyPoints + latestEstimate.totalPoints,
         potentialTier: getGenerationProfile(nextGeneration).label,
+        reputation: inheritedReputation,
       };
       const nextState = createCareerForCountry(country?.id ?? "denmark", {
         dynasty: nextDynasty,

@@ -11,6 +11,7 @@ export type PrestigeTier = {
 
 export const prestigeTiers: PrestigeTier[] = [
   { id: "local-prospect", label: "Local Prospect", threshold: 0, sponsorUnlock: "Local attention" },
+  { id: "local-favourite", label: "Local Favourite", threshold: 120, sponsorUnlock: "First local deal" },
   { id: "known-talent", label: "Known Talent", threshold: 350, sponsorUnlock: "Local sponsor interest" },
   { id: "regional-name", label: "Regional Name", threshold: 1_500, sponsorUnlock: "Regional sponsor interest" },
   { id: "national-profile", label: "National Profile", threshold: 7_500, sponsorUnlock: "National sponsor pool" },

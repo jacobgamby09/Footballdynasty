@@ -49,6 +49,9 @@ export function createCareerForCountry(
   const startingWage = initialContract.weeklyWage + networkBonus * 8;
   const startingCash = 420 + networkBonus * 60;
   const startingTrust = 38 + networkBonus * 2;
+  // Inherited family standing: later generations start with a prestige floor grown
+  // from the bloodline's past success, so sponsor access arrives sooner each gen.
+  const startingPrestige = 12 + Math.round(dynasty.reputation ?? 0);
 
   return {
     week: 1,
@@ -56,7 +59,7 @@ export function createCareerForCountry(
     positionCode: positionModules.Forward.shortCode,
     archetype: positionModules.Forward.defaultArchetype,
     cash: startingCash,
-    prestige: 12,
+    prestige: startingPrestige,
     fitness: 86,
     morale: 74,
     pressure: 26,

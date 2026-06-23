@@ -1834,3 +1834,35 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - Stage 2b (optional): `potential` cash upgrade to lift the attribute soft-cap (more invasive
   — must thread support context into `getAttributeGrowthPressure`).
 - Stage 3: simple cash -> Legacy Points overflow.
+
+## 2026-06-23 - Re-anchor the OVR curve to the generational targets
+
+### Problem
+
+- Multi-generation lab revealed the optimal (balanced-support) curve had drifted far above the
+  intended dynasty guidance (Gen-1 ~60, Gen-2 ~70): Gen-1 peaked at **74** effective OVR (79
+  raw), Gen-2 **80**, Gen-3 **84**. The generation *potentials* were fine (~60 / ~68 / ~76) —
+  the soft cap was too soft, so a long heavy-support career blew ~14 past potential.
+
+### Change
+
+- Steepened the over-potential growth penalty in `systems/attributeXp.ts`
+  (`getAttributeGrowthPressure`) and its lab mirror: the over-curve XP-cost multiplier went
+  `1 + over*0.22 + over^1.2*0.08` -> `1 + over*0.7 + over^1.6*0.22`. Reaching your potential is
+  unchanged (the >=0 zones are untouched); only growing *past* it is now much harder, so optimal
+  play asymptotes near potential instead of overshooting.
+- Pure formula change; no `SAVE_VERSION` change.
+
+### Verification (lab, balanced = optimal)
+
+- Generational peak effective OVR now **Gen-1 ~63, Gen-2 ~70 (exact), Gen-3 ~77** — a gradual
+  ~+7/generation climb matching the 60/70 guidance.
+- Gen-1 spread is healthy: no-support ~54, tracks 57-60, development/balanced 62-63 — support
+  matters without exploding the ceiling.
+
+### Note
+
+- This makes the model coherent for Stage 2b: **ceiling = talent** (potential, raised across
+  generations by Legacy and within a career, modestly, by the upcoming cash `potential`
+  upgrade); **support = speed / longevity / economy**, not ceiling. With the cap now binding,
+  a capped cash potential upgrade is a clean lever.

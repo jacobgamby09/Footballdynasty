@@ -980,7 +980,7 @@ function getAttributeGrowthMultiplier(attribute) {
     return 0.95;
   }
   const overProfile = Math.abs(distance);
-  return 1 + overProfile * 0.22 + Math.pow(overProfile, 1.2) * 0.08;
+  return 1 + overProfile * 0.7 + Math.pow(overProfile, 1.6) * 0.22;
 }
 
 function getGenerationProfile(generation) {

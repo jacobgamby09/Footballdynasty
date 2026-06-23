@@ -153,7 +153,6 @@ export function CareerCard({ game }: { game: GameState }) {
   const [showOvrDetails, setShowOvrDetails] = useState(false);
   const positionModule = getPositionModule(game.positionGroup);
   const ovr = calculateOvr(game.attributes, positionModule.ovrWeights);
-  const potentialOvr = calculatePotentialOvr(game.attributes, positionModule.ovrWeights);
   const ovrBreakdown = getOvrBreakdown(game.attributes, positionModule);
   const seasonComplete = isSeasonComplete(game.season);
   const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
@@ -201,14 +200,9 @@ export function CareerCard({ game }: { game: GameState }) {
               OVR is your role-based current ability. For {positionModule.shortCode}, only the weighted attributes below count, so a single
               specialist stat will not inflate your full position rating.
             </p>
-            <div className="readiness-modal-score">
-              <strong>{potentialOvr}</strong>
-              <span>Current growth profile marker</span>
-              <ProgressBar value={potentialOvr} />
-            </div>
             <p>
-              This is not a hard cap. Progress above the marker is possible, but each level becomes more expensive unless better facilities,
-              support, performance or future dynasty advantages improve the growth curve.
+              There is no visible hard cap. Higher levels become more expensive over time, and better facilities, support, performance and
+              future dynasty advantages improve how efficiently you keep developing.
             </p>
             <div className="ovr-weight-list" aria-label="OVR weighted attributes">
               {ovrBreakdown.map((item) => (
@@ -261,7 +255,7 @@ export function ReadinessStrip({ game }: { game: GameState }) {
   const selectedDetails = selectedItem ? getReadinessDetails(game, selectedItem.label) : [];
 
   return (
-    <section className="readiness-grid" aria-label="Readiness">
+    <section className="readiness-grid" aria-label="Fitness and form">
       {readiness.map((item) => {
         const Icon = item.icon;
         return (
@@ -287,7 +281,7 @@ export function ReadinessStrip({ game }: { game: GameState }) {
           >
             <div className="section-heading">
               <div>
-                <span className="metric-label">Readiness</span>
+                <span className="metric-label">Fitness</span>
                 <h2>{selectedItem.label}</h2>
               </div>
               <button className="icon-button" type="button" aria-label="Close readiness details" onClick={() => setSelectedReadiness(undefined)}>
@@ -397,8 +391,9 @@ export function getReadinessDetails(game: GameState, label: string) {
 
 export function NextActionCard({ game }: { game: GameState }) {
   const seasonComplete = isSeasonComplete(game.season);
-  const isMatchDay = hasPlayableFixture(game.season);
-  const needsTraining = game.trainingCompletedWeek !== game.week && !seasonComplete;
+  const isFreeAgent = Boolean(game.freeAgent);
+  const isMatchDay = !isFreeAgent && hasPlayableFixture(game.season);
+  const needsTraining = !isFreeAgent && game.trainingCompletedWeek !== game.week && !seasonComplete;
   const focus = getCurrentTrainingFocuses(game)[0];
   const projection = getTrainingProjection(game);
   const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
@@ -408,9 +403,11 @@ export function NextActionCard({ game }: { game: GameState }) {
     <section className="card next-card">
       <div className="section-heading">
         <div>
-          <span className="metric-label">{seasonComplete ? "Season complete" : !needsTraining && isMatchDay ? "Match Day" : "Next Action"}</span>
+          <span className="metric-label">{isFreeAgent ? "Contract market" : seasonComplete ? "Season complete" : !needsTraining && isMatchDay ? "Match Day" : "Next Action"}</span>
           <h2>
-            {seasonComplete
+            {isFreeAgent
+              ? "Find a club"
+              : seasonComplete
               ? "Review season"
               : !needsTraining && isMatchDay && upcomingMatch
               ? formatFixtureTitle(upcomingMatch.venue, upcomingMatch.opponentShort, game.club.shortName)
@@ -423,12 +420,14 @@ export function NextActionCard({ game }: { game: GameState }) {
       </div>
 
       <div className="next-grid">
-        <InfoTile label="Role" value={!needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.playerRole : seasonComplete ? "Review" : "Prospect"} />
-        <InfoTile label="Focus" value={!needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.tacticalFocus : seasonComplete ? "Season" : focus} />
+        <InfoTile label="Role" value={isFreeAgent ? "Free Agent" : !needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.playerRole : seasonComplete ? "Review" : "Prospect"} />
+        <InfoTile label="Focus" value={isFreeAgent ? "Solo training" : !needsTraining && isMatchDay && upcomingMatch ? upcomingMatch.tacticalFocus : seasonComplete ? "Season" : focus} />
         <InfoTile
-          label={needsTraining ? "XP Range" : seasonComplete ? "Reward" : "Status"}
+          label={isFreeAgent ? "Market" : needsTraining ? "XP Range" : seasonComplete ? "Reward" : "Status"}
           value={
-            needsTraining && focusRange
+            isFreeAgent
+              ? `${game.freeAgent?.weeks ?? 0} wks`
+              : needsTraining && focusRange
               ? `${focusRange.min}-${focusRange.max}`
               : seasonComplete
                 ? `+$${getSeasonReview(game).cashReward}`
@@ -443,7 +442,9 @@ export function NextActionCard({ game }: { game: GameState }) {
       <div className="match-hint">
         <Activity size={16} />
         <span>
-          {seasonComplete
+          {isFreeAgent
+            ? "Sim weeks to keep solo training while waiting for trial offers."
+            : seasonComplete
             ? "Season is complete. Review the campaign and start the next one."
             : !needsTraining && isMatchDay && upcomingMatch
             ? `${upcomingMatch.competition}. ${upcomingMatch.selection.summary}`
@@ -602,7 +603,7 @@ export function RelationshipsCard({ game }: { game: GameState }) {
 export function ContractMarketCard({ game }: { game: GameState }) {
   const marketValue = 18 + Math.round((calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights) - 50) * 2.5) + game.seasonStats.goals * 2;
   const contract = game.contract;
-  const status = getContractStatusLabel(game);
+  const status = game.freeAgent ? "Free Agent" : getContractStatusLabel(game);
   const prestige = getPrestigeStatus(game.prestige);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
   const clubFit = getClubFitStatus(game);
@@ -613,14 +614,14 @@ export function ContractMarketCard({ game }: { game: GameState }) {
       <div className="section-heading">
         <div>
           <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}Contract</span>
-          <h2>{contract.label}</h2>
+          <h2>{game.freeAgent ? "No club contract" : contract.label}</h2>
         </div>
         <BadgeDollarSign size={19} />
       </div>
       <div className="contract-hero">
         <div>
           <span>Weekly wage</span>
-          <strong>${contract.weeklyWage}</strong>
+          <strong>${game.freeAgent ? 0 : contract.weeklyWage}</strong>
         </div>
         <div>
           <span>Role promise</span>
@@ -628,9 +629,9 @@ export function ContractMarketCard({ game }: { game: GameState }) {
         </div>
       </div>
       <div className="next-grid">
-        <InfoTile label="Left" value={`${contract.weeksRemaining} wks`} />
+        <InfoTile label="Left" value={game.freeAgent ? "None" : `${contract.weeksRemaining} wks`} />
         <InfoTile label="Goal bonus" value={`+$${contract.goalBonus}`} tone="gold" />
-        <InfoTile label="Status" value={status} tone={game.contractOffer ? "good" : contract.weeksRemaining <= 1 ? "warn" : undefined} />
+        <InfoTile label="Status" value={status} tone={game.contractOffer ? "good" : game.freeAgent || contract.weeksRemaining <= 1 ? "warn" : undefined} />
       </div>
       <div className="next-grid">
         <InfoTile label="Appearance" value={`+$${contract.appearanceBonus}`} />
@@ -649,7 +650,9 @@ export function ContractMarketCard({ game }: { game: GameState }) {
             ? game.contractOffer.source === "external-club"
               ? `${game.contractOffer.club} has made an offer.`
               : "The club has new terms ready for you."
-            : prestige.tierIndex >= 1
+            : game.freeAgent
+              ? "You are training away from a club while your agent looks for trial terms."
+              : prestige.tierIndex >= 1
               ? `${prestige.current.label}. Your name is starting to matter in contract talks.`
               : "Local interest. Strong output can improve the next package."}
         </span>

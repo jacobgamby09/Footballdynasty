@@ -13,13 +13,13 @@ import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, 
 import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
 import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
-import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getDevelopmentEnvironment, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
+import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
@@ -59,7 +59,7 @@ export function ContractOfferScreen({
   current: Contract;
   offers: ContractOffer[];
   onAccept: (offer: ContractOffer) => void;
-  onDecline: () => void;
+  onDecline: (offer?: ContractOffer) => void;
 }) {
   const multiple = offers.length > 1;
   const primary = offers[0];
@@ -79,6 +79,7 @@ export function ContractOfferScreen({
           multiple={multiple}
           offer={offer}
           onAccept={onAccept}
+          onDecline={onDecline}
         />
       ))}
 
@@ -90,10 +91,46 @@ export function ContractOfferScreen({
           <InfoTile label="Role" value={current.rolePromise} />
         </div>
       </div>
+    </section>
+  );
+}
 
-      <button className="secondary-action" type="button" onClick={onDecline}>
-        Decline {multiple ? "all" : "for now"}
-      </button>
+
+export function FreeAgentMarketScreen({ game }: { game: GameState }) {
+  const weeks = game.freeAgent?.weeks ?? 0;
+  const training = game.lastTraining;
+
+  return (
+    <section className="simple-screen contract-offer-screen">
+      <ScreenTitle label="Contract market" title="Free Agent" />
+
+      <div className="card free-agent-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Between clubs</span>
+            <h2>{weeks === 0 ? "Waiting for calls" : `${weeks} week${weeks === 1 ? "" : "s"} out`}</h2>
+          </div>
+          <BadgeDollarSign size={19} />
+        </div>
+        <p>You are training away from a club setup. Your agent is looking for short trial terms, but weekly XP is reduced until you sign.</p>
+        <div className="stat-grid">
+          <InfoTile label="Club" value="None" tone="warn" />
+          <InfoTile label="Wage" value="$0/wk" tone="warn" />
+          <InfoTile label="Training XP" value="55%" />
+          <InfoTile label="Market" value={weeks >= 2 ? "Active" : "Quiet"} tone={weeks >= 2 ? "good" : undefined} />
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Latest solo work</span>
+        <div className="next-grid">
+          <InfoTile label="Focus" value={training?.focuses[0] ?? game.selectedFocus} />
+          <InfoTile label="XP" value={training ? `+${sumXp(training.xp)}` : "None"} tone={training ? "good" : undefined} />
+          <InfoTile label="Fitness" value={training ? formatSigned(training.fitnessDelta) : `${game.fitness}`} tone={(training?.fitnessDelta ?? 0) < 0 ? "warn" : "good"} />
+        </div>
+      </div>
+
+      <WeekNote icon={<Activity size={16} />} text="Use Sim Week to keep training and wait for a new trial offer." />
     </section>
   );
 }
@@ -207,6 +244,7 @@ export function TransferWindowScreen({
           multiple
           offer={offer}
           onAccept={onAccept}
+          onDecline={onClose}
         />
       ))}
 
@@ -232,12 +270,14 @@ function ContractOfferCard({
   multiple,
   offer,
   onAccept,
+  onDecline,
 }: {
   current: Contract;
   game: GameState;
   multiple: boolean;
   offer: ContractOffer;
   onAccept: (offer: ContractOffer) => void;
+  onDecline: (offer: ContractOffer) => void;
 }) {
   const country = getCountryForClub(game.world, offer.clubId);
 
@@ -269,11 +309,14 @@ function ContractOfferCard({
         <InfoTile label="Pressure" value={formatSigned(offer.pressureModifier)} tone={offer.pressureModifier > current.pressureModifier ? "warn" : undefined} />
       </div>
       <p>{offer.summary}</p>
-      {multiple && (
-        <button className="primary-action" type="button" onClick={() => onAccept(offer)}>
-          Accept {offer.club}
+      <div className="contract-action-row">
+        <button className="secondary-action" type="button" onClick={() => onDecline(offer)}>
+          Decline
         </button>
-      )}
+        <button className="primary-action" type="button" onClick={() => onAccept(offer)}>
+          Accept {multiple ? offer.club : "Offer"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -297,12 +340,26 @@ export function TrainingScreen({
   const detailStat = detailAttribute ? game.attributes.find((attribute) => attribute.label === detailAttribute) : undefined;
   const detailGrowth = detailStat ? getAttributeGrowthDetail(game, detailStat) : undefined;
   const positionModule = getPositionModule(game.positionGroup);
-  const environment = getDevelopmentEnvironment(getClubLeagueTier(game.club));
   const focusCapacity = getTrainingFocusCapacity(game);
 
   return (
     <section className="simple-screen">
       <ScreenTitle label="Training" title="Confirm session" />
+      <div className="card segmented-card">
+        <span className="metric-label">Intensity</span>
+        <div className="segmented-control">
+          {(["Light", "Balanced", "Hard"] as Intensity[]).map((intensity) => (
+            <button
+              className={game.intensity === intensity ? "is-selected" : ""}
+              key={intensity}
+              type="button"
+              onClick={() => onIntensityChange(intensity)}
+            >
+              {intensity}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="card">
         <div className="section-heading">
           <div>
@@ -311,17 +368,12 @@ export function TrainingScreen({
           </div>
           <Dumbbell size={19} />
         </div>
-        <InfoRow label="Facilities" value={`Lv ${environment.facilityLevel} - ${Math.round(environment.xpMultiplier * 100)}% XP`} />
-        <InfoRow label="Focus slots" value={`${focuses.length}/${focusCapacity} active`} />
-        <InfoRow label="Session quality" value={projected.qualityLabel} />
-        <ProgressRow label="Readiness" value={game.fitness} accent="lime" />
-        <ProgressRow
-          label={`${focus} XP range`}
-          value={focusRange ? focusRange.max : 0}
-          display={focusRange ? `${focusRange.min}-${focusRange.max} XP` : "No focus"}
-          accent="lime"
-        />
-        <ProgressRow label="Fitness impact" value={Math.abs(projected.fitnessDelta) * 10} display={`${projected.fitnessDelta}`} accent="neutral" />
+        <div className="training-outcome-grid">
+          <InfoTile label="Fitness" value={`${game.fitness}`} tone={game.fitness >= 60 ? "good" : game.fitness < 40 ? "warn" : undefined} />
+          <InfoTile label="Focus slots" value={`${focusCapacity}`} />
+          <InfoTile label="XP range" value={focusRange ? `${focusRange.min}-${focusRange.max}` : "None"} tone="good" />
+          <InfoTile label="Fitness impact" value={`${projected.fitnessDelta}`} tone={projected.fitnessDelta < 0 ? "warn" : "good"} />
+        </div>
       </div>
 
       <div className="card training-slot-card">
@@ -352,7 +404,6 @@ export function TrainingScreen({
                 <span className="stat-focus-name">{attribute.label}</span>
                 <span className="stat-focus-value">{attribute.value}</span>
                 <small>{info.group}</small>
-                {isFocused && <em className="focus-slot-pill">{focusIndex === 0 ? "Main" : `Slot ${focusIndex + 1}`}</em>}
                 <button
                   className="stat-info-button"
                   type="button"
@@ -427,23 +478,6 @@ export function TrainingScreen({
           </div>
         </div>
       )}
-
-      <div className="card segmented-card">
-        <span className="metric-label">Intensity</span>
-        <div className="segmented-control">
-          {(["Light", "Balanced", "Hard"] as Intensity[]).map((intensity) => (
-            <button
-              className={game.intensity === intensity ? "is-selected" : ""}
-              key={intensity}
-              type="button"
-              onClick={() => onIntensityChange(intensity)}
-            >
-              {intensity}
-            </button>
-          ))}
-        </div>
-      </div>
-
     </section>
   );
 }
@@ -574,7 +608,7 @@ export function MatchMomentScreen({
           <small>{pitchStatus.detail}</small>
         </div>
         <div className="match-role-meta">
-          <span>Readiness {liveReadiness}/100</span>
+          <span>Fitness {liveReadiness}/100</span>
           <b>{getFitnessAvailability(liveReadiness)}</b>
         </div>
       </div>
@@ -706,7 +740,7 @@ export function MatchMomentScreen({
           <InfoTile label="Assists" value={`${totals.assists}`} />
           <InfoTile label="Chances" value={`${totals.chancesCreated}`} tone={totals.chancesCreated > 0 ? "good" : undefined} />
           <InfoTile label="Trust" value={`${totals.trustDelta > 0 ? "+" : ""}${totals.trustDelta}`} />
-          <InfoTile label="Readiness" value={`${liveReadiness}`} tone={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : undefined} />
+          <InfoTile label="Fitness" value={`${liveReadiness}`} tone={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : undefined} />
           <InfoTile label="Rating" value={totals.rating.toFixed(1)} tone="gold" />
         </div>
       </div>
@@ -888,6 +922,111 @@ export function PostMatchSummaryScreen({ attributes, summary }: { attributes: At
         </div>
       </div>
 
+    </section>
+  );
+}
+
+
+function getTrainingRevealTier(rollRatio: number) {
+  if (rollRatio >= 0.92) {
+    return { label: "Breakthrough roll", className: "is-breakthrough", copy: "Almost everything clicked." };
+  }
+  if (rollRatio >= 0.72) {
+    return { label: "Sharp session", className: "is-sharp", copy: "A strong return from the work." };
+  }
+  if (rollRatio >= 0.42) {
+    return { label: "Solid session", className: "is-solid", copy: "Useful progress banked." };
+  }
+  return { label: "Low roll", className: "is-low", copy: "The work counts, but the gains stayed modest." };
+}
+
+
+export function TrainingRevealScreen({ summary }: { summary: TrainingSummary }) {
+  const xpEntries = summary.focuses
+    .map((focus) => ({ focus, xp: summary.xp[focus] ?? 0, range: summary.ranges[focus] }))
+    .filter((entry) => entry.xp > 0 || entry.range);
+  const totalXp = xpEntries.reduce((sum, entry) => sum + entry.xp, 0);
+  const totalMin = xpEntries.reduce((sum, entry) => sum + (entry.range?.min ?? 0), 0);
+  const totalMax = xpEntries.reduce((sum, entry) => sum + (entry.range?.max ?? 0), 0);
+  const rollRatio = totalMax > totalMin ? clamp((totalXp - totalMin) / (totalMax - totalMin), 0, 1) : totalXp > 0 ? 1 : 0;
+  const meterValue = totalMax > 0 ? clamp((totalXp / totalMax) * 100, 0, 100) : 0;
+  const tier = getTrainingRevealTier(rollRatio);
+  const [displayXp, setDisplayXp] = useState(0);
+
+  useEffect(() => {
+    const duration = 1450 + Math.round(rollRatio * 550);
+    let frame = 0;
+    const startedAt = window.performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - startedAt;
+      const progress = clamp(elapsed / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayXp(Math.round(totalXp * eased));
+
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [rollRatio, totalXp]);
+
+  const revealStyle = {
+    "--training-reveal-progress": `${meterValue}%`,
+    "--training-reveal-duration": `${1450 + Math.round(rollRatio * 550)}ms`,
+  } as CSSProperties;
+
+  return (
+    <section className="simple-screen training-reveal-screen">
+      <ScreenTitle label={`Week ${summary.week} training`} title="Training Result" />
+
+      <div className={`card training-reveal-card ${tier.className}`} style={revealStyle}>
+        <div className="training-reveal-orbit" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="training-reveal-topline">
+          <span className="metric-label">{summary.intensity} intensity</span>
+          <Dumbbell size={20} />
+        </div>
+        <div className="training-reveal-score" aria-live="polite">
+          <strong>+{displayXp}</strong>
+          <span>XP</span>
+        </div>
+        <div className="training-reveal-meter" aria-label={`${totalXp} XP gained out of ${totalMax} possible`}>
+          <span />
+        </div>
+        <div className="training-reveal-result">
+          <strong>{tier.label}</strong>
+          <p>{tier.copy}</p>
+        </div>
+      </div>
+
+      <div className="card training-reveal-details">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">XP outcome</span>
+            <h2>{summary.qualityLabel}</h2>
+          </div>
+          <Sparkles size={19} />
+        </div>
+        <div className="xp-list">
+          {xpEntries.map((entry) => (
+            <div className="xp-item" key={entry.focus}>
+              <span>{entry.focus}</span>
+              <strong>
+                +{entry.xp} XP
+                {entry.range ? <small>{entry.range.min}-{entry.range.max}</small> : null}
+              </strong>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <WeekNote icon={<Activity size={16} />} text="Review the exact attribute and career impact on the summary screen." />
     </section>
   );
 }
@@ -1261,18 +1400,9 @@ export function TrainingSummaryScreen({
         <div className="chip-row">
           <span className="soft-chip">{summary.intensity} intensity</span>
           <span className="soft-chip">{summary.qualityLabel}</span>
-          {summary.focuses.map((focus) => {
-            const range = summary.ranges[focus];
-            return (
-              <span className="soft-chip" key={focus}>
-                {focus}
-                {range ? ` ${range.min}-${range.max} XP` : ""}
-              </span>
-            );
-          })}
           {summary.focuses.map((focus) => (
             <span className="soft-chip" key={`${focus}-actual`}>
-              +{summary.xp[focus] ?? 0} XP gain
+              {focus} +{summary.xp[focus] ?? 0} XP
             </span>
           ))}
         </div>

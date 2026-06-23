@@ -1349,6 +1349,12 @@ button {
   gap: 8px;
 }
 
+.training-outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .specialist-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1435,25 +1441,6 @@ button {
   font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.focus-slot-pill {
-  position: absolute;
-  right: 34px;
-  bottom: 9px;
-  max-width: 62px;
-  overflow: hidden;
-  padding: 4px 6px;
-  border-radius: 999px;
-  color: #10140d;
-  background: var(--lime);
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 950;
-  line-height: 1;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .stat-info-button {
@@ -2341,6 +2328,26 @@ button {
   line-height: 1.45;
 }
 
+.contract-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.free-agent-card {
+  border-color: rgba(244, 200, 74, 0.28);
+  background:
+    radial-gradient(circle at 86% 12%, rgba(244, 200, 74, 0.13), transparent 9rem),
+    var(--card);
+}
+
+.free-agent-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .country-select-screen {
   gap: 10px;
 }
@@ -2840,6 +2847,215 @@ button {
 
 .summary-screen {
   padding-bottom: 10px;
+}
+
+.training-reveal-screen {
+  padding-bottom: 16px;
+}
+
+.training-reveal-card {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  min-height: 310px;
+  overflow: hidden;
+  align-content: center;
+  border-color: rgba(200, 243, 95, 0.24);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(200, 243, 95, 0.22), transparent 12rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.014)),
+    var(--surface);
+}
+
+.training-reveal-card.is-low {
+  border-color: rgba(255, 255, 255, 0.11);
+}
+
+.training-reveal-card.is-sharp,
+.training-reveal-card.is-breakthrough {
+  box-shadow:
+    0 0 0 1px rgba(200, 243, 95, 0.12),
+    0 0 34px rgba(154, 255, 76, 0.16);
+}
+
+.training-reveal-card.is-breakthrough {
+  border-color: rgba(200, 243, 95, 0.78);
+  background:
+    radial-gradient(circle at 50% 36%, rgba(200, 243, 95, 0.34), transparent 13rem),
+    radial-gradient(circle at 84% 12%, rgba(244, 200, 74, 0.14), transparent 8rem),
+    linear-gradient(145deg, rgba(200, 243, 95, 0.13), rgba(255, 255, 255, 0.02)),
+    var(--surface);
+}
+
+.training-reveal-card.is-breakthrough::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(112deg, transparent 0%, rgba(255, 255, 255, 0.15) 44%, transparent 66%);
+  transform: translateX(-130%);
+  animation: level-shine 1500ms ease-out 500ms both;
+}
+
+.training-reveal-topline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.training-reveal-topline svg {
+  color: var(--lime);
+}
+
+.training-reveal-score {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 9px;
+  color: var(--lime);
+  text-align: center;
+}
+
+.training-reveal-score strong {
+  color: var(--text);
+  font-size: 78px;
+  line-height: 0.9;
+  font-weight: 950;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 24px rgba(200, 243, 95, 0.34);
+}
+
+.training-reveal-score span {
+  color: var(--lime);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.training-reveal-meter {
+  position: relative;
+  z-index: 1;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.training-reveal-meter span {
+  display: block;
+  width: var(--training-reveal-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1fb65f, var(--lime));
+  box-shadow: 0 0 18px rgba(154, 255, 76, 0.42);
+  animation: training-reveal-fill var(--training-reveal-duration) cubic-bezier(0.16, 0.88, 0.22, 1) both;
+}
+
+.training-reveal-card.is-breakthrough .training-reveal-meter span {
+  background: linear-gradient(90deg, #21c468, var(--lime) 62%, #f4c84a);
+  box-shadow:
+    0 0 18px rgba(154, 255, 76, 0.55),
+    0 0 26px rgba(244, 200, 74, 0.28);
+}
+
+@keyframes training-reveal-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--training-reveal-progress);
+  }
+}
+
+.training-reveal-result {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.training-reveal-result strong {
+  color: var(--lime);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.training-reveal-result p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.training-reveal-orbit {
+  position: absolute;
+  inset: 28px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.training-reveal-orbit span {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 16px rgba(200, 243, 95, 0.65);
+  animation: reveal-pulse 1200ms ease-in-out infinite;
+}
+
+.training-reveal-orbit span:nth-child(1) {
+  top: 16%;
+  left: 18%;
+}
+
+.training-reveal-orbit span:nth-child(2) {
+  top: 24%;
+  right: 14%;
+  animation-delay: 220ms;
+}
+
+.training-reveal-orbit span:nth-child(3) {
+  right: 28%;
+  bottom: 18%;
+  animation-delay: 440ms;
+}
+
+.training-reveal-card.is-low .training-reveal-orbit,
+.training-reveal-card.is-solid .training-reveal-orbit {
+  opacity: 0.22;
+}
+
+.training-reveal-card.is-breakthrough .training-reveal-orbit {
+  opacity: 0.85;
+}
+
+@keyframes reveal-pulse {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+.training-reveal-details .xp-item strong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.training-reveal-details .xp-item small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
 }
 
 .summary-hero-card {

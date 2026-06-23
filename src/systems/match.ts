@@ -58,7 +58,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const projectedFitness = clamp(state.fitness + baseFitnessDelta, 0, 100);
   const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
-  const adjustedFitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
+  const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);

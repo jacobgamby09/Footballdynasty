@@ -202,7 +202,15 @@ export function applyRecoveryFloor(currentFitness: number, projectedFitness: num
   return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
 }
 
-export function applyRecoveryCeiling(projectedFitness: number, ceiling: number) {
+export function applyRecoveryCeiling(currentFitness: number, projectedFitness: number, ceiling: number) {
+  if (projectedFitness <= currentFitness) {
+    return projectedFitness;
+  }
+
+  if (currentFitness >= ceiling) {
+    return currentFitness;
+  }
+
   if (projectedFitness <= ceiling) {
     return projectedFitness;
   }

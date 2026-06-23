@@ -234,6 +234,7 @@ export function getTrainingProjection(state: GameState) {
   getCurrentTrainingFocuses(state).forEach((focus, index) => {
     const baseRange = getBaseTrainingRange(state, focus);
     const focusWeight = getTrainingFocusWeight(state, index);
+    const clubContextMultiplier = state.freeAgent ? 0.55 : 1;
     ranges[focus] = {
       min: Math.max(
         1,
@@ -241,7 +242,8 @@ export function getTrainingProjection(state: GameState) {
           (baseRange.min * intensity.xpFloor + environment.xpFloorBonus + getTrainingXpFloorBonus(effectiveXpFloorLevel) + dynastyXpFloorBonus) *
             focusWeight *
             environment.xpMultiplier *
-            qualityProfile.xpMultiplier,
+            qualityProfile.xpMultiplier *
+            clubContextMultiplier,
         ),
       ),
       max: Math.max(
@@ -250,7 +252,8 @@ export function getTrainingProjection(state: GameState) {
           (baseRange.max * intensity.xpCeiling + environment.xpFloorBonus + getTrainingXpCeilingBonus(effectiveXpCeilingLevel) + dynastyXpCeilingBonus) *
             focusWeight *
             environment.xpMultiplier *
-            qualityProfile.xpMultiplier,
+            qualityProfile.xpMultiplier *
+            clubContextMultiplier,
         ),
       ),
     };
@@ -264,7 +267,7 @@ export function getTrainingProjection(state: GameState) {
   return {
     ranges,
     quality: qualityProfile.quality,
-    qualityLabel: qualityProfile.label,
+    qualityLabel: state.freeAgent ? `Solo ${qualityProfile.label.toLowerCase()}` : qualityProfile.label,
     qualityProfile,
     fitnessDelta: getProjectedTrainingFitness(state, rawFitnessDelta) - state.fitness,
     moraleDelta: intensity.moraleDelta,
@@ -294,7 +297,7 @@ function getProjectedTrainingFitness(state: GameState, fitnessDelta: number) {
   const floor = getRecoveryFitnessFloor(baselineLevel, recoveryBreakthroughs);
   const ceiling = getRecoveryFitnessCeiling(baselineLevel, recoveryBreakthroughs);
 
-  return applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, floor), ceiling);
+  return applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, floor), ceiling);
 }
 
 
@@ -335,7 +338,7 @@ export function getTrainingQualityProfileByQuality(quality: TrainingQuality): Tr
       quality: "Poor",
       xpMultiplier: 0.72,
       label: "Poor session",
-      description: "Low readiness limited the work.",
+      description: "Low fitness limited the work.",
     },
     Solid: {
       quality: "Solid",
@@ -347,7 +350,7 @@ export function getTrainingQualityProfileByQuality(quality: TrainingQuality): Tr
       quality: "Sharp",
       xpMultiplier: 1.18,
       label: "Sharp session",
-      description: "Good readiness lifted the session.",
+      description: "Good fitness lifted the session.",
     },
     Breakthrough: {
       quality: "Breakthrough",

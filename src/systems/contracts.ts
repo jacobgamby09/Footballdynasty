@@ -13,6 +13,10 @@ import { getInterestedWorldClubs, worldClubToClubState } from "./transfers";
 import type { MatchRole } from "../positionRoles";
 import type { Contract, ContractOffer, GameState, LastMatchSummary, LeagueTier, MatchTotals, WorldClub } from "../types";
 
+export function getOfferKey(offer: Pick<ContractOffer, "club" | "clubId">) {
+  return offer.clubId ?? offer.club;
+}
+
 export function getMatchContractEarnings(contract: Contract, totals: Pick<MatchTotals, "goals" | "assists">, madeSquad: boolean) {
   const appearanceBonus = madeSquad ? contract.appearanceBonus : 0;
   const goalBonus = totals.goals * contract.goalBonus;
@@ -55,6 +59,17 @@ function buildContractBonuses(weeklyWage: number, source: "current" | "external"
     goalBonus: roundToNearest(sourceBase.goal + weeklyWage * 0.14, 5),
     assistBonus: roundToNearest(sourceBase.assist + weeklyWage * 0.11, 5),
   };
+}
+
+function getContractLengthWeeks(game: GameState, role: MatchRole) {
+  const seasonLength = Math.max(12, game.season.fixtures.length || 30);
+  if (role === "Starter") {
+    return seasonLength * 2;
+  }
+  if (role === "Rotation Starter") {
+    return Math.round(seasonLength * 1.5);
+  }
+  return seasonLength;
 }
 
 
@@ -103,7 +118,62 @@ export function acceptContractOfferState(state: GameState, chosen?: ContractOffe
     contract: contractFromOffer(offer),
     contractOffer: undefined,
     contractOffers: undefined,
+    freeAgent: undefined,
     lastEvent: `${offer.title} accepted. ${offer.club} now pays $${offer.weeklyWage}/wk.`,
+  };
+}
+
+
+export function enterFreeAgentMarketState(state: GameState, declinedOffers: ContractOffer[] = []): GameState {
+  const declinedOfferKeys = [
+    ...(state.freeAgent?.declinedOfferKeys ?? []),
+    ...declinedOffers.map(getOfferKey),
+  ];
+
+  return {
+    ...state,
+    contractOffer: undefined,
+    contractOffers: undefined,
+    transferWindow: undefined,
+    freeAgent: {
+      weeks: state.freeAgent?.weeks ?? 0,
+      declinedOfferKeys: Array.from(new Set(declinedOfferKeys)),
+    },
+    lastEvent: "You declined the available terms. You are training away from a club while your agent looks for a short trial.",
+  };
+}
+
+
+export function advanceFreeAgentMarketState(state: GameState): GameState {
+  const freeAgent = state.freeAgent ?? { weeks: 0, declinedOfferKeys: [] };
+  const weeks = freeAgent.weeks + 1;
+  const nextState: GameState = {
+    ...state,
+    week: state.week + 1,
+    freeAgent: {
+      ...freeAgent,
+      weeks,
+      declinedOfferKeys: [...freeAgent.declinedOfferKeys],
+    },
+    contractOffer: undefined,
+    contractOffers: undefined,
+    activeMatch: undefined,
+  };
+  const forcedOffer = weeks >= 3;
+  const marketRoll = seededNoise(`${state.week}-${state.season.season}-${state.prestige}-${weeks}-free-agent-week`);
+  const offer = forcedOffer || marketRoll >= 0.34 ? getFreeAgentTrialOffer(nextState) : undefined;
+
+  if (!offer) {
+    return {
+      ...nextState,
+      lastEvent: `Free agent week ${weeks}. Solo training is useful, but the XP output is lower without club facilities.`,
+    };
+  }
+
+  return {
+    ...nextState,
+    contractOffer: offer,
+    lastEvent: `${offer.club} offers a short trial. Review the terms before moving forward.`,
   };
 }
 
@@ -179,7 +249,7 @@ export function getClubContractOffer(game: GameState, lastMatch?: LastMatchSumma
 
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
   const title = current.weeksRemaining <= 0 ? "New club terms" : meaningfulUpgrade ? "Improved club offer" : "Extension offer";
-  const weeks = rolePromise === "Starter" ? 12 : rolePromise === "Rotation Starter" ? 10 : 8;
+  const weeks = getContractLengthWeeks(game, rolePromise);
   const bonuses = buildContractBonuses(weeklyWage);
 
   return {
@@ -275,7 +345,7 @@ export function getExpiredContractMarketOffer(game: GameState, lastMatch?: LastM
     label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Fresh start deal",
     title: "Free agent offer",
     weeklyWage,
-    weeks: rolePromise === "Starter" ? 12 : 8,
+    weeks: getContractLengthWeeks(game, rolePromise),
     rolePromise,
     appearanceBonus: bonuses.appearanceBonus,
     goalBonus: bonuses.goalBonus,
@@ -321,7 +391,7 @@ function buildOfferFromWorldClub(game: GameState, club: WorldClub, currentTier: 
     label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Fresh start deal",
     title: "Transfer offer",
     weeklyWage,
-    weeks: rolePromise === "Starter" ? 12 : 8,
+    weeks: getContractLengthWeeks(game, rolePromise),
     rolePromise,
     appearanceBonus: bonuses.appearanceBonus,
     goalBonus: bonuses.goalBonus,
@@ -331,6 +401,55 @@ function buildOfferFromWorldClub(game: GameState, club: WorldClub, currentTier: 
     summary: getExternalContractOfferSummary(club.name, tier, currentTier, rolePromise, weeklyWage, game.contract.weeklyWage),
     source: "external-club",
     tierId: club.tierId,
+  };
+}
+
+
+function getFreeAgentTrialOffer(game: GameState): ContractOffer | undefined {
+  const declinedKeys = new Set(game.freeAgent?.declinedOfferKeys ?? []);
+  const currentTier = getContractLeagueTier(game.contract);
+
+  if (game.world) {
+    const interested = getInterestedWorldClubs(game)
+      .filter((entry) => !declinedKeys.has(entry.club.id) && !declinedKeys.has(entry.club.name));
+    const fallbackClub = Object.values(game.world.clubs)
+      .filter((club) => !declinedKeys.has(club.id) && !declinedKeys.has(club.name))
+      .filter((club) => club.shortCode !== game.club.shortCode)
+      .sort((a, b) => {
+        const tierGapA = Math.abs(getLeagueTierIndex(a.tierId) - getLeagueTierIndex(currentTier.id));
+        const tierGapB = Math.abs(getLeagueTierIndex(b.tierId) - getLeagueTierIndex(currentTier.id));
+        return tierGapA - tierGapB || a.reputation - b.reputation;
+      })[0];
+    const club = interested[0]?.club ?? fallbackClub;
+    if (club) {
+      return toTrialOffer(buildOfferFromWorldClub(game, club, currentTier), game);
+    }
+  }
+
+  const offer = getExpiredContractMarketOffer(game);
+  return offer && !declinedKeys.has(getOfferKey(offer)) ? toTrialOffer(offer, game) : undefined;
+}
+
+
+function toTrialOffer(offer: ContractOffer, game: GameState): ContractOffer {
+  const trialWage = Math.max(25, roundToNearest(offer.weeklyWage * 0.72, 5));
+  const bonuses = buildContractBonuses(trialWage, "external");
+
+  return {
+    ...offer,
+    title: "Trial opportunity",
+    label: "Trial terms",
+    weeklyWage: trialWage,
+    weeks: 4,
+    rolePromise: offer.rolePromise === "Starter" ? "Rotation Starter" : offer.rolePromise,
+    appearanceBonus: bonuses.appearanceBonus,
+    goalBonus: bonuses.goalBonus,
+    assistBonus: bonuses.assistBonus,
+    signingBonus: 0,
+    pressureModifier: Math.min(offer.pressureModifier, 2),
+    summary: `${offer.club} will take a short look at you on trial terms. It is not security, but it gets you back into club football.`,
+    source: "external-club",
+    tierId: offer.tierId ?? game.contract.tierId,
   };
 }
 

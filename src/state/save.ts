@@ -10,7 +10,7 @@ import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 12;
+const SAVE_VERSION = 13;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
@@ -57,6 +57,7 @@ export function cloneGameState(state: GameState): GameState {
     sponsor: state.sponsor ? cloneSponsorDeal(state.sponsor) : undefined,
     contractOffer: state.contractOffer ? { ...state.contractOffer } : undefined,
     contractOffers: state.contractOffers?.map((offer) => ({ ...offer })),
+    freeAgent: state.freeAgent ? { ...state.freeAgent, declinedOfferKeys: [...state.freeAgent.declinedOfferKeys] } : undefined,
     transferWindow: state.transferWindow
       ? {
           ...state.transferWindow,
@@ -161,6 +162,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
     sponsor: saved.sponsor ? cloneSponsorDeal(saved.sponsor) : undefined,
     contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
     contractOffers: saved.contractOffers?.map((offer) => ({ ...offer })),
+    freeAgent: saved.freeAgent ? { ...saved.freeAgent, declinedOfferKeys: [...(saved.freeAgent.declinedOfferKeys ?? [])] } : undefined,
     transferWindow: saved.transferWindow
       ? {
           ...saved.transferWindow,

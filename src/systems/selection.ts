@@ -300,9 +300,9 @@ export function getPlayerMomentCount(role: UpcomingMatch["playerRole"], involvem
 
   const roleRatesPer90: Record<UpcomingMatch["playerRole"], number> = {
     Bench: 0,
-    "Impact Sub": 2.4,
-    "Rotation Starter": 3.0,
-    Starter: 3.35,
+    "Impact Sub": 3.1,
+    "Rotation Starter": 3.65,
+    Starter: 4.0,
   };
   const involvementModifier = clamp((involvementScore - 50) / 46, -0.45, 0.45);
   const expectedMoments = Math.max(0, (minutes / 90) * roleRatesPer90[role] * (1 + involvementModifier));

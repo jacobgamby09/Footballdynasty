@@ -91,7 +91,7 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       possession: 0.35,
       defending: 0.25,
       transition: 0.55,
-      preferredForwardCategories: ["shot", "first_time_finish", "run_behind", "hold_up", "aerial_duel", "late_pressure"],
+      preferredForwardCategories: ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure"],
     },
     performanceWeights: { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 },
     highlightCategories: ["Shot", "Run Behind", "Hold-up", "Aerial Duel", "Pressing", "Late Chance"],

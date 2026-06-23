@@ -111,7 +111,7 @@ export function chooseAutoSimChoice(input) {
       const attributeScore = averageAttributes(input.attributeValues, choice.uses);
       const riskScore = choice.risk === "Low" ? 4 : choice.risk === "Medium" ? 3 : 0;
       const managerScore = choice.manager === "Likes" ? 4 : choice.manager === "Neutral" ? 2 : -2;
-      const outputScore = choice.outcome === "goal" ? 9 : choice.outcome === "assist" ? 9 : 4;
+      const outputScore = choice.outcome === "goal" ? 12 : choice.outcome === "assist" ? 9 : 4;
       const decisiveCategory = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure", "counter", "link_up"].includes(input.moment.category);
       const ambitionAdjustment = decisiveCategory && choice.outcome !== "trust" ? Math.max(0, (input.trust - 35) / 8) : 0;
       const fitnessAdjustment =
@@ -252,28 +252,28 @@ export function createSeededRandom(seed) {
 
 const highlightConfig = {
   shot: {
-    baseWeight: 1.15,
+    baseWeight: 1.45,
     primaryAttributes: ["Finishing", "Composure", "Off Ball"],
     opponentCounters: ["keeper", "defense"],
     preferredService: ["Mixed", "Good"],
     scoreStateTags: ["level", "trailing", "late"],
-    categoryBonus: 2,
+    categoryBonus: 4,
   },
   first_time_finish: {
-    baseWeight: 0.95,
+    baseWeight: 1.25,
     primaryAttributes: ["Finishing", "First Touch", "Composure"],
     opponentCounters: ["keeper", "defense"],
     preferredService: ["Good"],
     scoreStateTags: ["level", "trailing"],
-    categoryBonus: 2,
+    categoryBonus: 4,
   },
   run_behind: {
-    baseWeight: 1,
+    baseWeight: 1.18,
     primaryAttributes: ["Off Ball", "Acceleration", "Pace"],
     opponentCounters: ["centerBackPace", "defensiveLine"],
     scoreStateTags: ["level", "trailing", "counter"],
     preferredLine: ["Mid", "High"],
-    categoryBonus: 0,
+    categoryBonus: 2,
   },
   hold_up: {
     baseWeight: 0.85,
@@ -285,12 +285,12 @@ const highlightConfig = {
     categoryBonus: 0,
   },
   aerial_duel: {
-    baseWeight: 0.8,
+    baseWeight: 0.95,
     primaryAttributes: ["Heading", "Strength", "Off Ball"],
     opponentCounters: ["aerialDefense", "defense"],
     preferredService: ["Low", "Mixed"],
     scoreStateTags: ["trailing", "late", "set_piece"],
-    categoryBonus: 0,
+    categoryBonus: 1,
   },
   press: {
     baseWeight: 0.8,
@@ -324,11 +324,11 @@ const highlightConfig = {
     categoryBonus: 0,
   },
   late_pressure: {
-    baseWeight: 0.7,
+    baseWeight: 0.95,
     primaryAttributes: ["Composure", "Finishing", "First Touch"],
     opponentCounters: ["keeper", "fatigueResistance"],
     scoreStateTags: ["late", "trailing", "level"],
-    categoryBonus: -1,
+    categoryBonus: 2,
   },
 };
 
@@ -351,8 +351,8 @@ function getMomentGenerationScore(input) {
   const roleWeight = getRoleHighlightWeight(input.moment, input.role);
   const positionWeight = input.preferredCategories?.length
     ? input.preferredCategories.includes(input.moment.category)
-      ? 1.18
-      : 0.82
+      ? 1.35
+      : 0.72
     : 1;
   const seededJitter = 0.65 + seededNoise(`${input.matchSeed}-${input.moment.id}-highlight-weight`) * 0.7;
 
@@ -469,13 +469,13 @@ function getChanceQualityContext(moment, playerScore, opponentModifier) {
   const rawQuality = playerScore - opponentModifier;
   const qualityScore = rawQuality + (highlightConfig[moment.category]?.categoryBonus ?? 0);
 
-  if (qualityScore >= 68) {
+  if (qualityScore >= 64) {
     return { quality: "Clear chance", modifier: 3 };
   }
-  if (qualityScore >= 58) {
+  if (qualityScore >= 54) {
     return { quality: "Good chance", modifier: 1 };
   }
-  if (qualityScore >= 46) {
+  if (qualityScore >= 42) {
     return { quality: "Half chance", modifier: -1 };
   }
   return { quality: "Difficult chance", modifier: -4 };
@@ -520,22 +520,22 @@ function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") 
 
   const goalRates = {
     Great: {
-      "Clear chance": 0.68,
-      "Good chance": 0.48,
-      "Half chance": 0.22,
-      "Difficult chance": 0.08,
+      "Clear chance": 0.9,
+      "Good chance": 0.74,
+      "Half chance": 0.52,
+      "Difficult chance": 0.22,
     },
     Good: {
-      "Clear chance": 0.38,
-      "Good chance": 0.24,
-      "Half chance": 0.08,
-      "Difficult chance": 0.02,
+      "Clear chance": 0.72,
+      "Good chance": 0.52,
+      "Half chance": 0.32,
+      "Difficult chance": 0.1,
     },
     Okay: {
-      "Clear chance": 0.08,
-      "Good chance": 0.035,
-      "Half chance": 0.012,
-      "Difficult chance": 0,
+      "Clear chance": 0.32,
+      "Good chance": 0.18,
+      "Half chance": 0.08,
+      "Difficult chance": 0.015,
     },
     Poor: {
       "Clear chance": 0,
@@ -546,22 +546,22 @@ function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") 
   };
   const assistChanceRates = {
     Great: {
-      "Clear chance": 0.72,
-      "Good chance": 0.52,
-      "Half chance": 0.26,
-      "Difficult chance": 0.09,
+      "Clear chance": 0.82,
+      "Good chance": 0.66,
+      "Half chance": 0.42,
+      "Difficult chance": 0.16,
     },
     Good: {
-      "Clear chance": 0.45,
-      "Good chance": 0.3,
-      "Half chance": 0.12,
-      "Difficult chance": 0.035,
+      "Clear chance": 0.62,
+      "Good chance": 0.46,
+      "Half chance": 0.24,
+      "Difficult chance": 0.08,
     },
     Okay: {
-      "Clear chance": 0.14,
-      "Good chance": 0.07,
-      "Half chance": 0.025,
-      "Difficult chance": 0,
+      "Clear chance": 0.24,
+      "Good chance": 0.14,
+      "Half chance": 0.06,
+      "Difficult chance": 0.01,
     },
     Poor: {
       "Clear chance": 0,

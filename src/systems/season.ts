@@ -135,13 +135,15 @@ export function getSeasonContractOffer(game: GameState, review = getSeasonReview
   const weeklyWage = roundToNearest(clamp(Math.max(current.weeklyWage, performanceWage) * leverage, tier.wageRange[0], wageCap), 10);
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
   const title = weeklyWage > current.weeklyWage || rolePromise !== current.rolePromise ? "Improved terms" : "Contract extended";
+  const seasonLength = Math.max(12, game.season.fixtures.length || 30);
+  const weeks = rolePromise === "Starter" ? seasonLength * 2 : rolePromise === "Rotation Starter" ? Math.round(seasonLength * 1.5) : seasonLength;
 
   return {
     club: current.club,
     label: rolePromise === "Starter" ? "First team deal" : rolePromise === "Rotation Starter" ? "Rotation deal" : "Development deal",
     title,
     weeklyWage,
-    weeks: 12,
+    weeks,
     rolePromise,
     appearanceBonus: roundToNearest(12 + weeklyWage * 0.08, 5),
     goalBonus: roundToNearest(20 + weeklyWage * 0.14, 5),

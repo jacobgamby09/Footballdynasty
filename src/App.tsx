@@ -11,13 +11,13 @@ import { buySupportUpgradeState } from "./systems/support";
 import { hasPlayableFixture, isSeasonComplete } from "./systems/seasonState";
 import { getUpcomingMatch } from "./systems/selection";
 import { applyTrainingWeek, getCurrentTrainingFocuses, getTrainingFocusCapacity } from "./systems/training";
-import { acceptContractOfferState } from "./systems/contracts";
+import { acceptContractOfferState, advanceFreeAgentMarketState, enterFreeAgentMarketState, getOfferKey } from "./systems/contracts";
 import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
 import { BottomNav } from "./components/shared";
-import { ClubScreen, ContractOfferScreen, CountrySelectScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubScreen, ContractOfferScreen, CountrySelectScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
 
 function App() {
   const [careerStarted, setCareerStarted] = useState<boolean>(() => hasSavedGame());
@@ -31,7 +31,9 @@ function App() {
     activeScreen === "pre-match" ||
     activeScreen === "match" ||
     activeScreen === "summary" ||
+    activeScreen === "training-reveal" ||
     activeScreen === "training-summary" ||
+    activeScreen === "free-agent" ||
     activeScreen === "week-summary" ||
     activeScreen === "contract-offer" ||
     activeScreen === "transfer-window" ||
@@ -40,8 +42,9 @@ function App() {
       ? undefined
       : activeScreen;
   const seasonComplete = isSeasonComplete(game.season);
-  const isMatchDay = hasPlayableFixture(game.season);
-  const needsTraining = game.trainingCompletedWeek !== game.week && !seasonComplete;
+  const isFreeAgent = Boolean(game.freeAgent);
+  const isMatchDay = !isFreeAgent && hasPlayableFixture(game.season);
+  const needsTraining = !isFreeAgent && game.trainingCompletedWeek !== game.week && !seasonComplete;
   const requiresTransferDecision =
     activeScreen === "transfer-window" &&
     Boolean(game.transferWindow?.currentClubOffer || game.transferWindow?.offers.length);
@@ -54,8 +57,12 @@ function App() {
         : "In Match"
       : activeScreen === "summary"
         ? "Week Summary"
+      : activeScreen === "training-reveal"
+        ? "Development Summary"
       : activeScreen === "training-summary"
         ? "Continue Career"
+      : activeScreen === "free-agent"
+        ? "Sim Week"
       : activeScreen === "week-summary"
         ? game.contractOffer || game.contractOffers?.length
           ? "Contract"
@@ -63,7 +70,7 @@ function App() {
             ? "Season Review"
             : "Next Week"
       : activeScreen === "contract-offer"
-        ? "Accept Offer"
+        ? "Decision Required"
       : activeScreen === "transfer-window"
         ? requiresTransferDecision
           ? "Decision Required"
@@ -76,6 +83,8 @@ function App() {
           ? "End Run"
         : activeScreen === "training" && needsTraining
           ? "Start Training"
+        : game.contractOffer || game.contractOffers?.length
+          ? "Contract"
         : seasonComplete
           ? "Season Review"
         : needsTraining
@@ -195,6 +204,11 @@ function App() {
       return;
     }
 
+    if (activeScreen === "training-reveal") {
+      setActiveScreen("training-summary");
+      return;
+    }
+
     if (activeScreen === "week-summary") {
       closeWeekSummary();
       return;
@@ -213,6 +227,11 @@ function App() {
       return;
     }
 
+    if (activeScreen === "free-agent") {
+      simulateFreeAgentWeek();
+      return;
+    }
+
     if (activeScreen === "season-review") {
       startNextSeason();
       return;
@@ -224,12 +243,16 @@ function App() {
     }
 
     if (activeScreen === "contract-offer") {
-      acceptContractOffer();
       return;
     }
 
     if (activeScreen === "transfer-window") {
       closeTransferWindow();
+      return;
+    }
+
+    if (game.contractOffer || game.contractOffers?.length) {
+      setActiveScreen("contract-offer");
       return;
     }
 
@@ -245,6 +268,11 @@ function App() {
 
     if (needsTraining) {
       setActiveScreen("training");
+      return;
+    }
+
+    if (game.freeAgent) {
+      setActiveScreen("free-agent");
       return;
     }
 
@@ -264,7 +292,7 @@ function App() {
 
   function startTraining() {
     setGame((state) => applyTrainingWeek(state));
-    setActiveScreen("training-summary");
+    setActiveScreen("training-reveal");
   }
 
   function resolveMatchChoice(choice: MatchChoice) {
@@ -456,7 +484,9 @@ function App() {
 
   function closeWeekSummary() {
     setActiveScreen(
-      game.transferWindow
+      game.freeAgent && !game.contractOffer && !game.contractOffers?.length
+        ? "free-agent"
+        : game.transferWindow
         ? "transfer-window"
         : game.contractOffer || game.contractOffers?.length
           ? "contract-offer"
@@ -488,14 +518,63 @@ function App() {
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
-  function declineContractOffer() {
-    setGame((state) => ({
-      ...state,
-      contractOffer: undefined,
-      contractOffers: undefined,
-      lastEvent: "Contract offer declined. The club may return with terms later.",
-    }));
-    setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
+  function declineContractOffer(offer?: ContractOffer) {
+    setGame((state) => {
+      const availableOffers = state.contractOffers ?? (state.contractOffer ? [state.contractOffer] : []);
+      const declined = offer ?? availableOffers[0];
+      const remainingOffers = declined
+        ? availableOffers.filter((item) => getOfferKey(item) !== getOfferKey(declined))
+        : [];
+      const isExpiredMarket = state.contract.weeksRemaining <= 0 || declined?.source === "external-club" || Boolean(state.freeAgent);
+
+      if (remainingOffers.length > 0) {
+        return {
+          ...state,
+          contractOffer: remainingOffers.length === 1 ? remainingOffers[0] : undefined,
+          contractOffers: remainingOffers.length > 1 ? remainingOffers : undefined,
+          freeAgent: state.freeAgent
+            ? {
+                ...state.freeAgent,
+                declinedOfferKeys: declined
+                  ? Array.from(new Set([...state.freeAgent.declinedOfferKeys, getOfferKey(declined)]))
+                  : state.freeAgent.declinedOfferKeys,
+              }
+            : state.freeAgent,
+          lastEvent: declined ? `${declined.club} offer declined.` : "Offer declined.",
+        };
+      }
+
+      if (isExpiredMarket) {
+        return enterFreeAgentMarketState(
+          {
+            ...state,
+            contractOffer: undefined,
+            contractOffers: undefined,
+          },
+          declined ? [declined] : [],
+        );
+      }
+
+      return {
+        ...state,
+        contractOffer: undefined,
+        contractOffers: undefined,
+        lastEvent: "Contract offer declined. The club may return with terms later.",
+      };
+    });
+    setActiveScreen(game.contract.weeksRemaining <= 0 || game.freeAgent ? "free-agent" : isSeasonComplete(game.season) ? "season-review" : "player");
+  }
+
+  function simulateFreeAgentWeek() {
+    let nextScreen: ScreenKey = "free-agent";
+    setGame((state) => {
+      const nextState = advanceFreeAgentMarketState(applyTrainingWeek(state));
+      if (nextState.contractOffer || nextState.contractOffers?.length) {
+        nextScreen = "contract-offer";
+      }
+      return nextState;
+    });
+    setActiveScreen(nextScreen);
   }
 
   function closeTransferWindow() {
@@ -623,6 +702,9 @@ function App() {
           {activeScreen === "summary" && game.lastMatch && (
             <PostMatchSummaryScreen attributes={game.attributes} summary={game.lastMatch} />
           )}
+          {activeScreen === "training-reveal" && game.lastTraining && (
+            <TrainingRevealScreen summary={game.lastTraining} />
+          )}
           {activeScreen === "training-summary" && game.lastTraining && (
             <TrainingSummaryScreen
               attributes={game.attributes}
@@ -639,6 +721,7 @@ function App() {
               onDecline={declineContractOffer}
             />
           )}
+          {activeScreen === "free-agent" && <FreeAgentMarketScreen game={game} />}
           {activeScreen === "transfer-window" && game.transferWindow && (
             <TransferWindowScreen
               game={game}
@@ -657,6 +740,7 @@ function App() {
             advanceLabel={advanceLabel}
             disabled={
               (activeScreen === "match" && (!game.activeMatch?.isComplete || Boolean(game.activeMatch.currentResult))) ||
+              activeScreen === "contract-offer" ||
               requiresTransferDecision ||
               (activeScreen === "retirement" && !getLegacyEstimate(game).eligible)
             }

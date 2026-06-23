@@ -8,7 +8,7 @@ import type {
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-summary" | "week-summary" | "contract-offer" | "transfer-window" | "season-review" | "retirement";
+export type ScreenKey = NavKey | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
@@ -262,6 +262,11 @@ export type TransferWindowState = {
   offers: ContractOffer[];
 };
 
+export type FreeAgentState = {
+  weeks: number;
+  declinedOfferKeys: string[];
+};
+
 export type SponsorObjective = {
   type: "appearance" | "goal" | "assist" | "rating";
   target: number;
@@ -361,10 +366,11 @@ export type GameState = {
   contractOffer?: ContractOffer;
   contractOffers?: ContractOffer[];
   transferWindow?: TransferWindowState;
+  freeAgent?: FreeAgentState;
 };
 
 export type SavePayload = {
-  version: 12;
+  version: 13;
   game: GameState;
 };
 

@@ -103,7 +103,7 @@
 - Added a first contract market club pool with same-tier/lower-status bias and limited upward reach for strong OVR, form, prestige and agent leverage.
 - Accepted external offers now update the player's visible contract club and persist the offer tier for later contract cycles.
 - Added a dedicated `Club offer` screen showing current terms against the proposed weekly wage, role promise, length, signing bonus and match bonuses.
-- Main button now progresses through contract offers with `Accept Offer`; declining is a secondary in-screen action.
+- Later updated: offer cards now contain both Accept and Decline actions, while the main button treats active offers as a required decision.
 - Player contract card now shows contract status such as `Review soon`, `Expiring`, `Expired` or `Offer ready`.
 - Weekly economy and match payouts continue to use the active contract after accepting an offer.
 - Season balance lab now mirrors contract offers, accepts meaningful upgrades and tracks `Contract offers`, so support-price tuning includes wage growth.
@@ -1503,3 +1503,86 @@ Command: `npm run balance:season -- --seasons=20 --career-seasons=15 --generatio
 - V1 should make Gen 2+ clearly feel better prepared without skipping the early climb.
 - A modest Gen 1 retirement should buy a small number of meaningful breakthroughs.
 - A strong Gen 1 retirement should create visible advantages, but still need in-run cash support, transfers and facilities.
+
+## 2026-06-23 - Contract Length And Striker Output Pass
+
+### Implemented
+
+- Left training XP logic untouched pending a separate training redesign.
+- Kept the starter trial contract short, but changed later contract offers to use real season-length terms:
+  - Impact Sub/Bench deals: 1 season.
+  - Rotation Starter deals: around 1.5 seasons.
+  - Starter deals: 2 seasons.
+- Mirrored contract-length logic in the season balance lab.
+- Tuned forward match output so striker highlights lean more toward real goal moments:
+  - Stronger forward preference for shot, first-time finish, run-behind, aerial and late-pressure moments.
+  - Higher conversion rates for successful goal/assist actions by chance quality.
+  - Slightly higher forward highlight volume per 90.
+  - Auto-sim choices now prefer goal actions a bit more for striker moments.
+
+### Current Lab Read
+
+Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generations=1`
+
+- No-upgrade S1: 1.14 goals avg, p50 1, p90 3.
+- Balanced S1: 1.00 goals avg, p50 1, p90 2.
+- Development S1: 1.26 goals avg, p50 1, p90 3.
+- Match lab improved finisher: 0.51 goals/match, high trust: 0.36 goals/match.
+
+### Notes
+
+- This is a clear improvement from median 0-goal S1 output, but still conservative in auto-sim.
+- Manual players who choose attacking options should feel more dangerous than the lab's auto-choice baseline.
+- If live testing still feels too dry, the next step should be a first-half/second-half season output lab instead of another blind conversion buff.
+
+## 2026-06-23 - Training Fitness Impact Fix
+
+### Implemented
+
+- Fixed recovery ceiling behavior so it limits upward recovery instead of pulling current fitness down.
+- Training preview no longer turns Light/Balanced/Hard into inflated negative fitness impacts just because the player is already above the current recovery ceiling.
+- Synced the same recovery-ceiling fix into the season balance lab.
+- Build passes after the change.
+
+### Current Read
+
+- The intensity baseline is still Light recover, Balanced moderate load and Hard heavy load.
+- The broader lab still warns that end-season fitness can run too low, so recovery balance remains a separate tuning target.
+
+## 2026-06-23 - Training XP Reveal V1
+
+### Implemented
+
+- Added a new `Training Result` reveal screen between `Start Training` and `Development Summary`.
+- The weekly XP roll is still deterministic and resolved by the training system, but the UI now reveals it with:
+  - Animated XP count-up.
+  - Filling XP meter.
+  - Roll-tier label based on where the outcome lands inside the possible XP range.
+  - Stronger glow/shine effects for high rolls.
+- Main progress button now moves from `Start Training` -> `Development Summary` -> `Continue Career`, keeping the bottom button as the primary progression control.
+
+### Verification
+
+- Build passes.
+- Mobile browser smoke test confirmed:
+  - Fresh career can enter Training.
+  - Starting training opens `Training Result`.
+  - Main button advances to `Development Summary`.
+
+## 2026-06-23 - Free Agent Contract Flow V1
+
+### Implemented
+
+- Contract offers now show explicit Accept and Decline actions inside the offer card instead of relying on the bottom progress button for acceptance.
+- The bottom progress button now treats active contract offers as `Decision Required` on the offer screen and routes back to `Contract` if the player navigates away.
+- Declining an expired/external market offer now sends the player into a real Free Agent state instead of silently leaving them in the old club flow.
+- Free Agent weeks are simulated one at a time with the main `Sim Week` button.
+- Free Agent solo training uses the normal training system but only gives 55% of normal XP because the player is outside club facilities.
+- New market offers during Free Agent weeks are short 4-week trial terms, matching the early-career trial fantasy.
+- Save version bumped to 13 because `freeAgent` is now persisted.
+
+### Design Intent
+
+- Letting a contract expire should be a valid but risky strategy.
+- Declining offers should create time pressure and lower training efficiency, not a hidden automatic stay.
+- Trial offers should get the player back into club football quickly without feeling like long-term security.

@@ -82,7 +82,7 @@ const ovrWeights = {
 };
 
 const focusCycle = ["Finishing", "Off Ball", "Composure", "First Touch", "Acceleration", "Work Rate"];
-const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "hold_up", "aerial_duel", "late_pressure"];
+const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure"];
 const forwardPerformanceWeights = { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 };
 const leagueTiers = [
   { id: "grassroots-dev", label: "Grassroots", averageOvr: 15, teamRange: [10, 22], wageRange: [25, 90], facilityLevel: 1, prestigeMultiplier: 0.45 },
@@ -209,6 +209,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
 
   for (let careerSeason = 0; careerSeason < careerSeasons; careerSeason += 1) {
     const seasonFixtures = createWorldSeasonFixtures(state.tier, careerSeason, runIndex);
+    state.seasonLength = seasonFixtures.length;
     const seasonStartOvr = calculateOvr(flattenAttributes(state.attributes));
     const seasonStats = createRunStats();
     stats.scheduledMatches += seasonFixtures.length;
@@ -265,7 +266,7 @@ function simulateCareer(runIndex, scenario, generation = 1) {
       const projectedFitness = clamp(state.fitness + match.fitnessDelta + weeklyRecoveryBonus, 0, 100);
       const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
       const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
-      state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
+      state.fitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
       state.morale = clamp(state.morale + (match.minutes > 0 ? (match.rating >= 7 ? 3 : -2) : 0), 0, 100);
       const prestigeGain = getMatchPrestigeDelta(match, state.tier, context, match.minutes > 0);
       state.prestige += prestigeGain;
@@ -582,7 +583,7 @@ function applyTraining(state, focuses, seed) {
   const projectedFitness = clamp(state.fitness + fitnessDelta, 0, 100);
   const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   const recoveryCeiling = getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
-  state.fitness = applyRecoveryCeiling(applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
+  state.fitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   state.trust = clamp(state.trust + 1, 0, 100);
   return { xp: sumXp(xpGain), levelUps, quality: qualityProfile.quality };
 }
@@ -1134,7 +1135,7 @@ function getPlayerMomentCount(role, involvementScore, minutes, matchSeed) {
     return 0;
   }
 
-  const roleRatesPer90 = { Bench: 0, "Impact Sub": 2.4, "Rotation Starter": 3.0, Starter: 3.35 };
+  const roleRatesPer90 = { Bench: 0, "Impact Sub": 3.1, "Rotation Starter": 3.65, Starter: 4.0 };
   const involvementModifier = clamp((involvementScore - 50) / 46, -0.45, 0.45);
   const expectedMoments = Math.max(0, (minutes / 90) * roleRatesPer90[role] * (1 + involvementModifier));
   const baseMoments = Math.floor(expectedMoments);
@@ -1829,7 +1830,7 @@ function buildLabTransferCandidate(state, tier, slot, seed, formSignal, selectio
     tier,
     interest,
     weeklyWage,
-    weeks: rolePromise === "Starter" ? 12 : 8,
+    weeks: getLabContractLengthWeeks(state, rolePromise),
     rolePromise,
     appearanceBonus: roundToNearest(8 + weeklyWage * 0.08, 5),
     goalBonus: roundToNearest(14 + weeklyWage * 0.14, 5),
@@ -1905,7 +1906,7 @@ function getClubContractOffer(state, match, fixture) {
     return undefined;
   }
 
-  const weeks = rolePromise === "Starter" ? 12 : rolePromise === "Rotation Starter" ? 10 : 8;
+  const weeks = getLabContractLengthWeeks(state, rolePromise);
   const pressureModifier = rolePromise === "Starter" ? 8 : rolePromise === "Rotation Starter" ? 5 : rolePromise === "Impact Sub" ? 2 : 0;
 
   return {
@@ -1939,6 +1940,17 @@ function contractFromOffer(offer) {
     assistBonus: offer.assistBonus,
     pressureModifier: offer.pressureModifier,
   };
+}
+
+function getLabContractLengthWeeks(state, rolePromise) {
+  const seasonLength = Math.max(12, state.seasonLength ?? 30);
+  if (rolePromise === "Starter") {
+    return seasonLength * 2;
+  }
+  if (rolePromise === "Rotation Starter") {
+    return Math.round(seasonLength * 1.5);
+  }
+  return seasonLength;
 }
 
 function getTierIndex(tier) {
@@ -2132,7 +2144,15 @@ function applyRecoveryFloor(currentFitness, projectedFitness, floor) {
   return clamp(Math.min(Math.max(currentFitness, projectedFitness), projectedFitness + pull), 0, 100);
 }
 
-function applyRecoveryCeiling(projectedFitness, ceiling) {
+function applyRecoveryCeiling(currentFitness, projectedFitness, ceiling) {
+  if (projectedFitness <= currentFitness) {
+    return projectedFitness;
+  }
+
+  if (currentFitness >= ceiling) {
+    return currentFitness;
+  }
+
   if (projectedFitness <= ceiling) {
     return projectedFitness;
   }

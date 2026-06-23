@@ -58,7 +58,7 @@ const ovrWeights = {
   "Work Rate": 0.55,
 };
 
-const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "hold_up", "aerial_duel", "late_pressure"];
+const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure"];
 const forwardPerformanceWeights = { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 };
 
 const scenarios = [
@@ -295,7 +295,7 @@ function getSelectionReport(state, fixture, importance = "Normal") {
 }
 
 function getPlayerMomentCount(role, involvementScore) {
-  const roleBase = { Bench: 0, "Impact Sub": 1, "Rotation Starter": 2, Starter: 2 };
+  const roleBase = { Bench: 0, "Impact Sub": 1, "Rotation Starter": 2, Starter: 3 };
   const bonus = involvementScore > 68 ? 1 : involvementScore > 54 && role !== "Bench" ? 1 : 0;
   return clamp(roleBase[role] + bonus, role === "Bench" ? 0 : 1, role === "Starter" ? 4 : 3);
 }

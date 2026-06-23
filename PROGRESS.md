@@ -1624,6 +1624,29 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 
 ### Noted (not fixed here)
 
-- `data/dynastyUpgrades.ts` has a **duplicated `familyNetwork` id** — worth de-duping.
-- The lab models a `sponsorshipAppeal` / `agentNegotiation` career track whose upgrade ids
-  don't exist in `data/dynastyUpgrades.ts` (lab/data drift).
+- ~~`data/dynastyUpgrades.ts` has a duplicated `familyNetwork` id~~ — **fixed** below
+  (2026-06-23 cleanup).
+- ~~The lab models a `sponsorshipAppeal` / `agentNegotiation` career track whose upgrade
+  ids don't exist (lab/data drift)~~ — **incorrect, retracted.** `agentNegotiation` and
+  `sponsorshipAppeal` are real, wired-up **support** upgrades (`data/support.ts`,
+  `SupportUpgradeId`), used in contracts/match/season/training. No drift — they were just
+  not dynasty upgrades.
+
+## 2026-06-23 - Dynasty Upgrade Id Cleanup
+
+### Implemented
+
+- Renamed the dynasty **upgrade** id `familyNetwork` → `networkReach` so it no longer
+  collides with the **track** id `familyNetwork`. The two live in separate maps (no runtime
+  bug), but the shared string broke the sibling convention (other tracks' upgrades are
+  domain-prefixed: `academy*`, `bloodline*`) and overlapped `DynastyUpgradeId` /
+  `DynastyTrackId`. Now the upgrade ids and track ids are fully disjoint and the track id
+  still matches its display name.
+- Updated the type union, the upgrade definition, the track's `upgradeIds`,
+  `initialDynastyUpgrades`, and the `getDynastyNetworkBonus` lookup. `SAVE_VERSION` → 15
+  (the `dynasty.upgrades` key changed).
+
+### Verification
+
+- Build green; the only remaining `familyNetwork` references are the three intended track
+  references (type, track definition, track-breakthrough lookup).

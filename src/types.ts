@@ -32,7 +32,7 @@ export type DynastyUpgradeId =
   | "academyGeneralStart"
   | "bloodlineXpFloor"
   | "bloodlineXpCeiling"
-  | "familyNetwork";
+  | "networkReach";
 export type DynastyTrackId = "homeAcademy" | "bloodlineTraining" | "familyNetwork";
 export type FitnessAvailability = "Sharp" | "Ready" | "Tired" | "Risky" | "Not match fit";
 export type LeagueTierId = "grassroots-dev" | "local-semi-pro" | "regional-pro" | "national-pro" | "top-flight" | "elite";
@@ -374,7 +374,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 14;
+  version: 15;
   game: GameState;
 };
 

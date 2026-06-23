@@ -9,8 +9,10 @@ import {
 } from "../src/engine/matchEngineCore.js";
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 
-const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 300);
-const careerSeasons = Number(process.argv.find((arg) => arg.startsWith("--career-seasons="))?.split("=")[1] ?? 1);
+const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 120);
+// Default to a full career (age 16 -> retirement at 30 = 14 seasons) so the data reflects
+// the whole arc — climbing tiers, not a single grassroots season. Override with --career-seasons.
+const careerSeasons = Number(process.argv.find((arg) => arg.startsWith("--career-seasons="))?.split("=")[1] ?? 14);
 const generationCount = Number(process.argv.find((arg) => arg.startsWith("--generations="))?.split("=")[1] ?? 1);
 const labCountry = process.argv.find((arg) => arg.startsWith("--country="))?.split("=")[1] ?? "denmark";
 const leagueAverageOvr = 15;
@@ -181,6 +183,10 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     cash: 420,
     prestige: 12 + Math.round(inheritedPrestige),
     tier: leagueTiers[0],
+    // The player starts at the WEAKEST club in the bottom division (game: createCareerForCountry
+    // picks the lowest-strength tier-6 club). The club's match results — driven by the player's
+    // growing quality — determine promotion, so a star drags a weak club up the pyramid.
+    clubStrength: leagueTiers[0].teamRange[0],
     supportUpgrades: createInitialSupportUpgrades(),
     attributes: createGenerationAttributes(generation),
     contract: { ...initialContract },
@@ -188,6 +194,7 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     seasonGoals: 0,
     seasonAssists: 0,
     clubName: getInitialLabClubName(labCountry),
+    transferredThisSeason: false,
   };
   const startOvr = calculateOvr(flattenAttributes(state.attributes));
   const stats = {
@@ -222,11 +229,14 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     transferOffers: 0,
     transfers: 0,
     tierMoves: 0,
+    promotions: 0,
+    relegations: 0,
   };
   const seasonReports = [];
   let absoluteWeekIndex = 0;
 
   for (let careerSeason = 0; careerSeason < careerSeasons; careerSeason += 1) {
+    state.transferredThisSeason = false;
     const seasonFixtures = createWorldSeasonFixtures(state.tier, careerSeason, runIndex);
     state.seasonLength = seasonFixtures.length;
     const seasonStartOvr = calculateOvr(flattenAttributes(state.attributes));
@@ -264,6 +274,16 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
         state.ratings = [...state.ratings.slice(-4), match.rating];
         state.seasonGoals += match.playerGoals;
         state.seasonAssists += match.playerAssists;
+      }
+
+      // The club contests every fixture (player featured or not) — accumulate its result
+      // for the season standings that decide promotion/relegation.
+      if (match.teamGoals > match.opponentGoals) {
+        seasonStats.clubWins += 1;
+      } else if (match.teamGoals === match.opponentGoals) {
+        seasonStats.clubDraws += 1;
+      } else {
+        seasonStats.clubLosses += 1;
       }
 
       const matchLevelUps = addAttributeXp(state.attributes, match.xp);
@@ -377,12 +397,23 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
       seasonStats.firstSponsorUnlockWeek = seasonFixtures.length;
     }
     seasonReports.push(createSeasonReport(careerSeason + 1, state, seasonStats, seasonStartOvr));
+    // Promotion / relegation moves the player WITH their club into next season's tier.
+    // Skipped if they already transferred this season — that move already set the tier.
+    if (careerSeason < careerSeasons - 1 && !state.transferredThisSeason) {
+      const movement = resolveTierMovement(state, seasonStats, seasonFixtures.length, `run-${runIndex}-${scenario.id}-s${careerSeason}`);
+      if (movement.direction === "promoted") {
+        stats.promotions += 1;
+      } else if (movement.direction === "relegated") {
+        stats.relegations += 1;
+      }
+    }
     state.seasonGoals = 0;
     state.seasonAssists = 0;
   }
 
   const endOvr = calculateOvr(flattenAttributes(state.attributes));
   const potentialOvr = calculateOvr(flattenPotentialAttributes(state.attributes));
+  const highestTierId = getHighestTierId([state.tier.id, ...seasonReports.map((season) => season.tierId)]);
   const legacyPoints = calculateLegacyPoints({
     peakOvr: Math.max(endOvr, ...seasonReports.map((season) => season.endOvr)),
     apps: stats.apps,
@@ -390,8 +421,10 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     assists: stats.assists,
     averageRating: average(stats.ratings, 6.4),
     prestige: state.prestige,
-    highestTierId: getHighestTierId([state.tier.id, ...seasonReports.map((season) => season.tierId)]),
+    highestTierId,
   });
+  const highestTierIndex = tierOrder.indexOf(highestTierId);
+  const highestTierLabel = leagueTiers[highestTierIndex]?.label ?? highestTierId;
   return {
     startOvr,
     endOvr,
@@ -435,6 +468,10 @@ function simulateCareer(runIndex, scenario, generation = 1, inheritedPrestige = 
     transferOffers: stats.transferOffers,
     transfers: stats.transfers,
     tierMoves: stats.tierMoves,
+    promotions: stats.promotions,
+    relegations: stats.relegations,
+    highestTierIndex,
+    highestTierLabel,
     endCash: state.cash,
     supportPurchases: stats.supportPurchases,
     supportLevels: Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0),
@@ -479,6 +516,9 @@ function createRunStats() {
     transferOffers: 0,
     transfers: 0,
     tierMoves: 0,
+    clubWins: 0,
+    clubDraws: 0,
+    clubLosses: 0,
   };
 }
 
@@ -540,6 +580,7 @@ function createSeasonReport(season, state, stats, startOvr) {
     transferOffers: stats.transferOffers,
     transfers: stats.transfers,
     tierMoves: stats.tierMoves,
+    clubPpg: stats.scheduledMatches ? (stats.clubWins * 3 + stats.clubDraws) / stats.scheduledMatches : 0,
     supportPurchases: stats.supportPurchases,
     supportLevels: Object.values(state.supportUpgrades).reduce((sum, level) => sum + level, 0),
     supportTrackLevels: Object.fromEntries(supportTrackDefinitions.map((track) => [track.id, getSupportTrackTotal(state, track)])),
@@ -647,7 +688,14 @@ function buildContext(state, fixture, matchSeed) {
     serviceLevel: fixture.serviceLevel,
     seed: fixture.id,
   });
-  const tierTeamStrength = state.tier.averageOvr;
+  // Team strength = the club's own baseline plus how much the player lifts it. A strong
+  // player on a weak club drags results upward (the engine of climbing the pyramid); a weak
+  // player can't carry a club above its level. Mirrors the game, where the club takes the
+  // player's real match results into the world standings.
+  const playerOvr = calculateOvr(flattenAttributes(state.attributes));
+  const clubStrength = state.clubStrength ?? state.tier.averageOvr;
+  const playerLift = clamp((playerOvr - clubStrength) * 0.45, -5, 18);
+  const tierTeamStrength = clubStrength + playerLift;
   const formAdjustedTeamStrength = tierTeamStrength + Math.round((getFormScore(state.ratings) - 50) / 18);
   const opponentStrength = fixture.opponentStrength;
   const importance = Math.abs(formAdjustedTeamStrength - opponentStrength) <= 3 ? "Normal" : "Low";
@@ -744,9 +792,14 @@ function simulateMatch(state, context, matchSeed) {
   const playerRating = playerResults.length ? average(playerResults.map((result) => result.rating), 6.4) : 6.4;
   const simRatingDelta = sum(simEvents.map((event) => event.ratingDelta));
   const xp = mergeXp(playerResults.map((result) => result.xp));
+  // The club's full-time result, driven by team strength (which now includes the player's
+  // lift). Used for prestige resultBonus AND for the club's league standing -> promotion.
+  const fullTime = getSimScoreAtMinute(simEvents, 90);
 
   return {
     minutes,
+    teamGoals: fullTime.teamGoals,
+    opponentGoals: fullTime.opponentGoals,
     playerGoals,
     playerAssists,
     chancesCreated,
@@ -1304,6 +1357,9 @@ function summarizeSeasons(items) {
     transferOffers: stat(items.map((item) => item.transferOffers)),
     transfers: stat(items.map((item) => item.transfers)),
     tierMoves: stat(items.map((item) => item.tierMoves)),
+    promotions: stat(items.map((item) => item.promotions)),
+    relegations: stat(items.map((item) => item.relegations)),
+    highestTierIndex: stat(items.map((item) => item.highestTierIndex)),
     endCash: stat(items.map((item) => item.endCash)),
     supportPurchases: stat(items.map((item) => item.supportPurchases)),
     supportLevels: stat(items.map((item) => item.supportLevels)),
@@ -1355,6 +1411,7 @@ function summarizeSeasonCurve(items) {
       cashEarned: stat(seasonItems.map((item) => item.cashEarned)),
       cashSpent: stat(seasonItems.map((item) => item.cashSpent)),
       netCash: stat(seasonItems.map((item) => item.netCash)),
+      clubPpg: stat(seasonItems.map((item) => item.clubPpg)),
       prestigeGained: stat(seasonItems.map((item) => item.prestigeGained)),
       sponsorEarned: stat(seasonItems.map((item) => item.sponsorEarned)),
       sponsorDeals: stat(seasonItems.map((item) => item.sponsorDeals)),
@@ -1424,6 +1481,13 @@ function printSeasonReport(report, scenario, generation) {
   printStat("Transfer offers", report.transferOffers);
   printStat("Accepted transfers", report.transfers);
   printStat("Net tier moves", report.tierMoves);
+  printStat("Promotions", report.promotions);
+  printStat("Relegations", report.relegations);
+  console.log(
+    `Highest tier reached: p50 ${leagueTiers[Math.round(report.highestTierIndex.p50)]?.label ?? "?"} | ` +
+      `avg idx ${report.highestTierIndex.avg.toFixed(1)} | ` +
+      `p90 ${leagueTiers[Math.round(report.highestTierIndex.p90)]?.label ?? "?"}`,
+  );
   printStat("End cash", report.endCash);
   printStat("Support purchases", report.supportPurchases);
   printStat("Support levels", report.supportLevels);
@@ -1488,7 +1552,7 @@ function getLegacyTierMultiplier(tierId) {
 
 function printCareerCurve(report) {
   console.log("Career curve avg:");
-  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | Cash net | Prestige | Support");
+  console.log("S | Tier | Matches | OVR | Target | +/- | + | XP T/M | LU T/M | Quality | GP/Starts | G/A/CC | G90/A90/CC90 | Fit | ClubPPG | Cash net | Prestige | Support");
   report.seasonCurve.forEach((season) => {
     const target = getTargetOvrForCareerSeason(season.season);
     console.log(
@@ -1507,6 +1571,7 @@ function printCareerCurve(report) {
         `${format(season.goals.avg)}/${format(season.assists.avg)}/${format(season.chancesCreated.avg)}`,
         `${format(season.goalsPer90.avg)}/${format(season.assistsPer90.avg)}/${format(season.chancesCreatedPer90.avg)}`,
         format(season.endFitness.avg),
+        season.clubPpg.avg.toFixed(2),
         formatMoney(season.netCash.avg),
         `${format(season.endPrestige.avg)} ${season.prestigeTier}`,
         format(season.supportLevels.avg),
@@ -1897,6 +1962,9 @@ function acceptLabContractOffer(state, offer) {
   state.contract = contractFromOffer(offer);
   if (transferred) {
     state.tier = nextTier;
+    state.transferredThisSeason = true;
+    // Joining an established club at the new level (not a weakest-club promotion).
+    state.clubStrength = nextTier.averageOvr;
     state.clubName = offer.clubName;
     state.trust = clamp(Math.round(state.trust * 0.58 + getRoleThreshold(offer.rolePromise) * 0.2), 18, 76);
     state.morale = clamp(state.morale + 4, 0, 100);
@@ -1980,6 +2048,41 @@ function getLabContractLengthWeeks(state, rolePromise) {
 
 function getTierIndex(tier) {
   return tierOrder.indexOf(tier.id);
+}
+
+// Promotion / relegation at season end, mirroring the game's per-division rules. The club's
+// points come from the player's real season results (the club takes the player's match
+// outcomes); rival clubs are modelled deterministically across the tier's strength range.
+function resolveTierMovement(state, seasonStats, seasonLength, seed) {
+  const tierIndex = getTierIndex(state.tier);
+  const isTop = tierIndex === leagueTiers.length - 1;
+  const isBottom = tierIndex === 0;
+  const games = seasonStats.clubWins + seasonStats.clubDraws + seasonStats.clubLosses;
+  if (games <= 0) {
+    return { direction: "stayed" };
+  }
+  // Decide on the club's points-per-game form against absolute, realistic football thresholds:
+  // genuine promotion form (~1.7+ ppg) goes up, relegation form (~1.0- ppg) goes down, the broad
+  // mid-table stays. A small seeded swing stands in for the luck of where rivals land that year.
+  const clubPpg = (seasonStats.clubWins * 3 + seasonStats.clubDraws) / games;
+  const swing = (seededNoise(`${seed}-table`) - 0.5) * 0.2; // ~ +/- 0.1 ppg
+  const formPpg = clubPpg + swing;
+
+  if (!isTop && formPpg >= 1.7) {
+    const nextTier = leagueTiers[tierIndex + 1];
+    state.tier = nextTier;
+    // A promoted small club arrives near the bottom of the new tier; the player keeps lifting it.
+    state.clubStrength = nextTier.teamRange[0] + 2;
+    return { direction: "promoted" };
+  }
+  if (!isBottom && formPpg <= 1.0) {
+    const nextTier = leagueTiers[tierIndex - 1];
+    state.tier = nextTier;
+    // A relegated club is strong for the lower tier.
+    state.clubStrength = clamp(nextTier.teamRange[1] - 4, nextTier.teamRange[0], nextTier.teamRange[1]);
+    return { direction: "relegated" };
+  }
+  return { direction: "stayed" };
 }
 
 function getInitialLabClubName(countryId) {

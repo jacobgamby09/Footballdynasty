@@ -5,7 +5,7 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-23 (through Stage 3 — Family Trust Fund). Branch `main`. `SAVE_VERSION` 18._
+_Last updated: 2026-06-23 (through tier-gated Elite perks). Branch `main`. `SAVE_VERSION` 19._
 
 ---
 
@@ -62,7 +62,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to the country picker. That is the intended,
-   accepted behaviour during development. Currently **`SAVE_VERSION = 18`**.
+   accepted behaviour during development. Currently **`SAVE_VERSION = 19`**.
 
 ---
 
@@ -234,8 +234,18 @@ for the full blow-by-blow.)
   Distinct from Legacy Points (talent) — this is MATERIAL inheritance. Safe for the curve:
   cash buys speed/longevity, not the ceiling. UI: Trust Fund card in Home → Dynasty.
 
-New `SupportUpgradeId`s: `longevity`, `potential`. New `SupportTrackId`s:
-`longevity`, `talent`. New `DynastyState` fields: `reputation`, `estate`.
+- **Tier-gated Elite perks** (mid-late pacing fix): the lab showed upgrade value is heavily
+  front-loaded — OVR growth ends ~age 22, but ~$180k/season keeps pouring into the bottomless
+  XP sink for ~zero OVR. New **Elite** support track with three **prestige-gated, NON-OVR**
+  upgrades (`requiresPrestige` gate): `consistency` (rating floor, 1.5k), `eliteConditioning`
+  (fitness ceiling, 7.5k), `marquee` (prestige/sponsor income, 20k). Effects wired at call
+  sites in `match.ts`/`season.ts` — **none touch attribute values or potential**, so OVR
+  cannot run away (verified: gated build still peaks ~62/72). The rule for any future gated
+  upgrade: gate anything EXCEPT ceiling (potential/XP) raisers.
+
+New `SupportUpgradeId`s: `longevity`, `potential`, `consistency`, `eliteConditioning`,
+`marquee`. New `SupportTrackId`s: `longevity`, `talent`, `elite`. New `SupportUpgradeDefinition`
+field `requiresPrestige`. New `DynastyState` fields: `reputation`, `estate`.
 
 ---
 

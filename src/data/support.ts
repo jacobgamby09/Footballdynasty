@@ -108,6 +108,33 @@ export const supportUpgradeDefinitions: SupportUpgradeDefinition[] = [
     baseCost: 12000,
     effect: "Each level raises the ceiling (potential) of your key attributes by 1 — a small, capped lift to how high you can grow this career. A real mid-career investment.",
   },
+  {
+    id: "consistency",
+    name: "Consistency coaching",
+    category: "Elite",
+    maxLevel: 10,
+    baseCost: 9000,
+    requiresPrestige: 1_500,
+    effect: "Raises your match-rating floor — your bad games hurt less. Does not change OVR.",
+  },
+  {
+    id: "eliteConditioning",
+    name: "Elite conditioning",
+    category: "Elite",
+    maxLevel: 10,
+    baseCost: 14000,
+    requiresPrestige: 7_500,
+    effect: "Raises your fitness ceiling so you stay fresher for longer. Does not change OVR.",
+  },
+  {
+    id: "marquee",
+    name: "Marquee status",
+    category: "Elite",
+    maxLevel: 10,
+    baseCost: 22000,
+    requiresPrestige: 20_000,
+    effect: "Boosts prestige gain and sponsor income — your name carries commercial weight. Does not change OVR.",
+  },
 ];
 
 export const supportTrackDefinitions: SupportTrackDefinition[] = [
@@ -156,6 +183,15 @@ export const supportTrackDefinitions: SupportTrackDefinition[] = [
     breakthroughs: ["Refined craft", "Hidden gear", "Ceiling raised", "Untapped talent"],
     effect: "Raises the potential of your key attributes — a small, capped lift to your ceiling this career.",
   },
+  {
+    id: "elite",
+    name: "Elite perks",
+    category: "Status-gated",
+    upgradeIds: ["consistency", "eliteConditioning", "marquee"],
+    breakpoints: [4, 10, 18, 26, 30],
+    breakthroughs: ["Reliable", "Conditioned", "Marketable", "Established", "Icon"],
+    effect: "Status-gated perks that polish a developed player — consistency, conditioning and commercial pull. None raise OVR.",
+  },
 ];
 
 export const supportUpgradeMap = Object.fromEntries(supportUpgradeDefinitions.map((upgrade) => [upgrade.id, upgrade])) as Record<
@@ -177,4 +213,7 @@ export const initialSupportUpgrades: Record<SupportUpgradeId, number> = {
   sponsorshipAppeal: 0,
   longevity: 0,
   potential: 0,
+  consistency: 0,
+  eliteConditioning: 0,
+  marquee: 0,
 };

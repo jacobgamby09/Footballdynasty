@@ -7,7 +7,7 @@ import { calculateOvr, getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
 import { getSelectionReport } from "./selection";
-import { getAgentSigningBonusLeverage, getAgentWageLeverage, getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
+import { getAgentSigningBonusLeverage, getAgentWageLeverage, getMarqueeBonus, getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import { findLeagueByClubShortCode, findLeagueByTier, getWorldLeagueTable, rolloverWorldSeason } from "./world";
 import type { ClubState, Contract, ContractOffer, DynastySeason, GameState, LeagueTableRow } from "../types";
 
@@ -232,12 +232,14 @@ export function getSeasonReview(game: GameState) {
   const tableBonus = Math.max(0, 9 - (clubRow?.position ?? 8)) * 15;
   const cashReward = 180 + game.seasonStats.apps * 25 + outputBonus + ratingBonus + tableBonus;
   const tablePosition = clubRow?.position ?? table.length;
-  const prestigeReward = getSeasonPrestigeReward({
-    game,
-    averageRating,
-    tablePosition,
-    goalDifference,
-  });
+  const prestigeReward = Math.round(
+    getSeasonPrestigeReward({
+      game,
+      averageRating,
+      tablePosition,
+      goalDifference,
+    }) * (1 + getMarqueeBonus(game)),
+  );
   const verdict = getSeasonVerdict(game, clubRow?.position ?? table.length, averageRating);
 
   return {

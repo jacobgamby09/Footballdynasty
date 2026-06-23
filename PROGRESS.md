@@ -1967,3 +1967,38 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   remaining core-fantasy gap is the **Gen-2 offer-driven start** (inherited name + contract
   offers instead of the country picker); the trust fund's "club connections" idea (3b) is the
   natural bridge into it.
+
+## 2026-06-23 - Tier-gated "Elite" upgrades (mid-late pacing fix)
+
+### Why
+
+- Lab investigation showed the upgrade economy is heavily front-loaded: meaningful OVR growth
+  ends ~age 22, but the player keeps spending ~$180-230k/season for ~15 more seasons on the
+  bottomless XP sink for ~zero OVR. Fix: give mid-late cash fresh, meaningful purchases — but
+  WITHOUT raising OVR past the 60/70 guidance.
+
+### Implemented
+
+- New `requiresPrestige` gate on support upgrades (`isSupportUpgradeUnlocked` /
+  `getSupportUpgradeLockReason` show "X prestige" when locked).
+- New **Elite** support track, three prestige-gated, NON-OVR upgrades:
+  - `consistency` (Regional Name, 1.5k): raises the match-rating floor (bad games hurt less).
+  - `eliteConditioning` (National Profile, 7.5k): lifts the fitness ceiling (stay fresher).
+  - `marquee` (Star Player, 20k): +prestige gain & sponsor income.
+- Effects applied at call sites in `match.ts`/`season.ts` (rating floor, fitness ceiling,
+  prestige×/sponsor) — none touch attribute values or potential. `SAVE_VERSION` -> 19.
+
+### Why OVR can't run away (the key guardrail)
+
+- OVR is a function of attribute values, capped by potential (the re-anchored soft cap). The
+  ONLY OVR-ceiling lever is `potential` (capped at +4). These three perks touch rating /
+  fitness / economy only, so they cannot move OVR — guaranteed by construction.
+
+### Verification
+
+- Build green; no console errors.
+- Lab (balanced + elite perks): peak effective OVR Gen-1 62, Gen-2 72, Gen-3 80 — unchanged
+  from the no-elite baseline (64 / 71.6 / 78.8) within noise. OVR stays on the 60/70 curve.
+- In-browser: all 6 tracks render; at 12 prestige the 3 perks show LOCKED with thresholds
+  (1.5k / 7.5k / 20k); at 25k prestige Consistency buys (cash -9k, level 0->1) and Finishing
+  value 11 / potential 61 are unchanged — attributes/OVR untouched.

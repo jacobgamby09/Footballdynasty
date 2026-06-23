@@ -60,11 +60,17 @@ export function buySupportUpgradeState(state: GameState, upgradeId: SupportUpgra
 }
 
 export function isSupportUpgradeUnlocked(state: Pick<GameState, "supportUpgrades" | "prestige">, upgrade: SupportUpgradeDefinition) {
+  if (upgrade.requiresPrestige && state.prestige < upgrade.requiresPrestige) {
+    return false;
+  }
   const requirements = upgrade.requires ?? {};
   return Object.entries(requirements).every(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId as SupportUpgradeId) >= (requiredLevel ?? 0));
 }
 
 export function getSupportUpgradeLockReason(state: Pick<GameState, "supportUpgrades" | "prestige">, upgrade: SupportUpgradeDefinition) {
+  if (upgrade.requiresPrestige && state.prestige < upgrade.requiresPrestige) {
+    return `${upgrade.requiresPrestige.toLocaleString()} prestige`;
+  }
   const requirements = upgrade.requires ?? {};
   const missing = Object.entries(requirements).find(([requiredId, requiredLevel]) => getSupportLevel(state, requiredId as SupportUpgradeId) < (requiredLevel ?? 0));
   if (!missing) {
@@ -218,6 +224,25 @@ export function getAgingProfile(state: Pick<GameState, "supportUpgrades">) {
     declineResist: getLongevityDeclineResist(state),
     hardRetirementAge: HARD_RETIREMENT_AGE + peakBonus,
   };
+}
+
+// --- Elite perks (Stage: tier-gated, NON-OVR upgrades) -------------------------------------
+// All three polish a developed player without touching attribute values/potential, so they can
+// never push OVR past the generational guidance — they only affect rating floor, fitness
+// ceiling and economy.
+export function getConsistencyRatingFloor(state: Pick<GameState, "supportUpgrades">) {
+  // Raises the match-rating floor (bad games hurt less): up to +0.8 at level 10.
+  return getSupportLevel(state, "consistency") * 0.08;
+}
+
+export function getEliteConditioningCeilingBonus(state: Pick<GameState, "supportUpgrades">) {
+  // Lifts the fitness ceiling: up to +10 at level 10 (stay fresher for longer).
+  return getSupportLevel(state, "eliteConditioning");
+}
+
+export function getMarqueeBonus(state: Pick<GameState, "supportUpgrades">) {
+  // Multiplier on prestige gain and sponsor income: up to +50% at level 10.
+  return getSupportLevel(state, "marquee") * 0.05;
 }
 
 export function getRecoveryFitnessFloor(baselineLevel: number, breakthroughs = 0) {

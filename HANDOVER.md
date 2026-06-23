@@ -18,7 +18,7 @@ long-term goal of a multi-generation dynasty.
 
 - **Stack:** React 19 + Vite 8 (rolldown-vite) + TypeScript. State persists to
   `localStorage`. No backend.
-- **Entry:** `src/App.tsx` (~760 lines — the shell + week handlers + screen
+- **Entry:** `src/App.tsx` (~775 lines — the shell + week handlers + screen
   routing). Everything else is modularized under `src/`.
 
 ### Doc map (read these, don't re-derive)
@@ -97,10 +97,12 @@ Key files: `data/world.ts` (`seedWorld`, `COUNTRIES`, name pools),
 
 ## 4. Build history
 
-Two waves so far. **Wave 1 (Stages E–G)** was the world/identity work, each
+Three waves so far. **Wave 1 (Stages E–G)** was the world/identity work, each
 shipped on a `feature/world-v2-stage-X` branch and merged `--no-ff`. **Wave 2
-(economy + dynasty layer)** landed afterwards as direct commits on `main`
-(`c3dc692` → `0d5cda5`). Build stays green throughout.
+(economy + dynasty layer)** landed as direct commits on `main` (`c3dc692` →
+`0d5cda5`). **Wave 3 (balance lab + aging + long-term cash upgrades + Stage 3
+trust fund + tier-gated Elite perks)** followed as `feature/*` branches merged
+`--no-ff`. Build stays green throughout; the full blow-by-blow is in `PROGRESS.md`.
 
 ### Stage E — Gen-1 country selection (`56844e8`)
 - New-game flow now opens a **`CountrySelectScreen`** (7 countries). Picking one
@@ -287,7 +289,7 @@ origin). Co-author trailer: `Co-Authored-By: Claude Opus 4.8
 
 ## 6. Open work / next steps
 
-**Resolved since the last handover** (don't re-investigate): sponsor reachability
+**Already done (don't re-investigate)**: sponsor reachability
 (full ladder + light starter + dynasty compounding), the longer-season balance
 pass (lab upgrade + fitness floor + OVR re-anchor + aging), the late-career cash
 sink (longevity + potential), AND **Stage 3 (Family Trust Fund)** — surplus cash

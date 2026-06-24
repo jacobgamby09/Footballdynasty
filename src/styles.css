@@ -2419,6 +2419,43 @@ button {
   background: rgba(241, 138, 54, 0.1);
 }
 
+/* Odds band (Step 1: visible risk/reward). Overrides the first-child default. */
+.choice-tags em.choice-odds {
+  font-weight: 900;
+}
+.choice-tags em.odds-strong {
+  color: #7ee08a;
+  background: rgba(126, 224, 138, 0.14);
+}
+.choice-tags em.odds-good {
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.12);
+}
+.choice-tags em.odds-even {
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.12);
+}
+.choice-tags em.odds-weak {
+  color: var(--orange);
+  background: rgba(241, 138, 54, 0.12);
+}
+.choice-tags em.odds-long {
+  color: #f0736a;
+  background: rgba(240, 115, 106, 0.13);
+}
+.choice-tags em.choice-manager.manager-like {
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.1);
+}
+.choice-tags em.choice-manager.manager-wary {
+  color: var(--orange);
+  background: rgba(241, 138, 54, 0.1);
+}
+.choice-tags em.choice-manager.manager-neutral {
+  color: var(--muted, #9aa);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .result-card {
   display: grid;
   gap: 12px;

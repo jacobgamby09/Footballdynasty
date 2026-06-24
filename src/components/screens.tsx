@@ -23,7 +23,7 @@ import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRo
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ChoiceOdds, ChoiceOddsBand, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
@@ -566,10 +566,31 @@ export function PreMatchScreen({ match, onOpenClub }: { match: MatchState; onOpe
 }
 
 
+function getChoiceOddsTone(band: ChoiceOddsBand) {
+  return band === "Strong"
+    ? "strong"
+    : band === "Favoured"
+      ? "good"
+      : band === "Even"
+        ? "even"
+        : band === "Against the odds"
+          ? "weak"
+          : "long";
+}
+
+function getManagerLeanLabel(manager: MatchChoice["manager"]) {
+  return manager === "Likes" ? "Coach likes" : manager === "Risky" ? "Coach wary" : "Coach neutral";
+}
+
+function getManagerLeanTone(manager: MatchChoice["manager"]) {
+  return manager === "Likes" ? "like" : manager === "Risky" ? "wary" : "neutral";
+}
+
 export function MatchMomentScreen({
   attributes,
   match,
   matchSpeed,
+  getChoiceOdds,
   onChoose,
   onContinue,
   onSetMatchSpeed,
@@ -581,6 +602,7 @@ export function MatchMomentScreen({
   attributes: Attribute[];
   match: MatchState;
   matchSpeed: MatchSpeed;
+  getChoiceOdds: (moment: MatchMoment, choice: MatchChoice) => ChoiceOdds;
   onChoose: (choice: MatchChoice) => void;
   onContinue: () => void;
   onSetMatchSpeed: (speed: MatchSpeed) => void;
@@ -744,21 +766,25 @@ export function MatchMomentScreen({
 
       {isPlayerMoment && !match.currentResult && (
         <div className="card choice-preview">
-          {event.choices.map((choice) => (
-            <button className="match-choice" key={choice.id} type="button" onClick={() => onChoose(choice)}>
-              <span>
-                <strong>{choice.label}</strong>
-                <small>
-                  Uses: {choice.uses.join(" + ")} - Avg {getChoiceAttributeAverage(attributes, choice)}
-                </small>
-              </span>
-              <span className="choice-tags">
-                <em>{choice.risk} risk</em>
-                <em>{choice.reward}</em>
-                <em>{choice.manager}</em>
-              </span>
-            </button>
-          ))}
+          {event.choices.map((choice) => {
+            const odds = getChoiceOdds(event, choice);
+            return (
+              <button className="match-choice" key={choice.id} type="button" onClick={() => onChoose(choice)}>
+                <span>
+                  <strong>{choice.label}</strong>
+                  <small>
+                    Uses: {choice.uses.join(" + ")} - Avg {getChoiceAttributeAverage(attributes, choice)}
+                  </small>
+                </span>
+                <span className="choice-tags">
+                  <em className={`choice-odds odds-${getChoiceOddsTone(odds.band)}`}>{odds.band}</em>
+                  <em>{choice.risk} risk</em>
+                  <em>{choice.reward}</em>
+                  <em className={`choice-manager manager-${getManagerLeanTone(choice.manager)}`}>{getManagerLeanLabel(choice.manager)}</em>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 

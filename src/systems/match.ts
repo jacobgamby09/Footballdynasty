@@ -1,6 +1,6 @@
 import { createPositionMatchPool } from "../engine/forwardMoments";
 import { canQueueDirectorFollowUp, createMatchDirectorPlan } from "../engine/matchDirector";
-import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
+import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateChoiceOdds, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
@@ -17,7 +17,7 @@ import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
 import { generateWeeklyFeed } from "./feed";
 import type { AttributeKey, PositionModule } from "../positionRoles";
-import type { Attribute, ChanceQuality, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
+import type { Attribute, ChanceQuality, ChoiceOdds, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
 export function getPreMatchEntryPlan(match: MatchState) {
   if (match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
@@ -1120,6 +1120,29 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
   };
 }
 
+
+// Pre-choice odds for the UI. Builds the SAME inputs as createMatchResult's resolution call so
+// the displayed band is honest (qualitative, never a %). Keep in sync with createMatchResult.
+export function getChoiceOdds(state: GameState, moment: MatchMoment, choice: MatchChoice): ChoiceOdds {
+  const leagueTier = getClubLeagueTier(state.club);
+  const aging = getAgingProfile(state);
+  const attributeValues = getLeagueAdjustedAttributeValueMap(
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), aging.peakAge, aging.declineResist),
+    leagueTier,
+  );
+  const opponentProfile = state.activeMatch
+    ? getLeagueAdjustedOpponentProfile(state.activeMatch.opponentProfile, leagueTier)
+    : undefined;
+  return estimateChoiceOdds({
+    moment,
+    choice,
+    attributeValues,
+    fitness: state.activeMatch ? getLiveMatchReadiness(state.activeMatch) : state.fitness,
+    trust: state.trust,
+    playerRole: state.activeMatch?.playerRole,
+    opponentProfile,
+  });
+}
 
 export function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;

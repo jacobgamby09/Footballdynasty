@@ -136,6 +136,19 @@ export function resolvePlayerChoice(input: {
   decisiveOutcome: boolean;
 };
 
+export function estimateChoiceOdds(input: {
+  moment: EngineMoment;
+  choice: EngineChoice;
+  attributeValues: Record<string, number>;
+  fitness: number;
+  trust: number;
+  playerRole?: EngineMatchRole;
+  opponentProfile?: OpponentProfile;
+}): {
+  band: "Strong" | "Favoured" | "Even" | "Against the odds" | "Long shot";
+  delta: number;
+};
+
 export function seededNoise(seed: string): number;
 
 export function createSeededRandom(seed: string): () => number;

@@ -2154,6 +2154,32 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   from pre-match into the live match (verified via Playwright). Build + match/season/feed labs +
   smoke all green.
 
-### Remaining (sequence 1 -> 3 -> 2 -> 4; only Step 4 left)
+### Step 4 - Personal match objectives / storylines (SAVE_VERSION 22 -> 23)
 
-- Step 4 (personal match objectives/storylines, ties into The Feed) — `SAVE_VERSION`++.
+- New `MatchObjective` / `MatchObjectiveResult` types; `MatchState.objective` + `LastMatchSummary.objective`.
+- `src/systems/matchObjective.ts`: `generateMatchObjective(state, context)` picks at most one objective,
+  deterministic (seeded by fixture id + season), by priority milestone (one short of a career
+  goal/assist landmark) > rivalry (High-importance match, rating 7.0+) > form (>=3 apps, 0 goals ->
+  end the drought) > contract (routine "score to trigger your bonus", ~50% seeded so not every match
+  has one). `evaluateMatchObjective` checks goal/assist/rating targets, gated on the player appearing.
+- `createMatch` attaches the objective; `finishMatchState` evaluates it and folds the reward
+  (cash/prestige/trust ONLY) into cashDelta/prestigeDelta/trustAfter, stores the result on
+  `lastMatch.objective`, and appends a line to `careerImpact`. Rewards never touch attributes or
+  potential, so OVR is unaffected by construction.
+- Feed tie-in (`feed.ts`): a completed objective becomes a `buildPlayerCandidates` story routed to
+  the milestone/contract/player category by source.
+- UI: objective card on `PreMatchScreen` (label, detail, reward, source tag) and a complete/missed
+  result card on `PostMatchSummaryScreen`; styles in `styles.css`.
+- `SAVE_VERSION` 22 -> 23.
+- Verification: a transpile-and-require probe confirmed all four sources fire under their conditions
+  with correct targets/rewards and that evaluation respects target thresholds + appearance gating.
+  In-browser (Italy career): pre-match card "Repay the faith" / "+3 prestige · +1 trust"; played to
+  full time -> post-match "Missed" card + "Objective missed: Repay the faith." in careerImpact; save
+  v23; 0 console errors. Smoke (exercises the real createMatch/finishMatchState/feed) green; match +
+  season labs unchanged (season OVR byte-identical - objectives never touch OVR).
+
+### Match agency: all 4 steps shipped
+
+Sequence 1 (visible risk/reward) -> 3 (manager comply/defy) -> 2 (mentality dial) -> 4 (objectives)
+all complete. Deferred polish: old-club rivalry objectives (needs `formerClubs` tracking), a live
+in-match objective-progress widget, and Step 3b (transient mid-match manager ask).

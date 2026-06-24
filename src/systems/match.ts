@@ -10,6 +10,7 @@ import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilit
 import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, isSeasonComplete } from "./seasonState";
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { getMatchPrestigeDelta } from "./prestige";
+import { evaluateMatchObjective, generateMatchObjective, getObjectiveResultLine } from "./matchObjective";
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
 import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getConsistencyRatingFloor, getEliteConditioningCeilingBonus, getMarqueeBonus, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
@@ -17,7 +18,7 @@ import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
 import { generateWeeklyFeed } from "./feed";
 import type { AttributeKey, PositionModule } from "../positionRoles";
-import type { Attribute, ChanceQuality, ChoiceOdds, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
+import type { Attribute, ChanceQuality, ChoiceOdds, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchObjectiveResult, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
 export function getPreMatchEntryPlan(match: MatchState) {
   if (match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
@@ -67,8 +68,11 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const recoveryCeiling = Math.min(99, getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs) + getEliteConditioningCeilingBonus(state));
   const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
-  const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);
+  // Personal match objective (Step 4): evaluate the stake and bank its modest, non-OVR reward.
+  const objectiveResult = match?.objective ? evaluateMatchObjective(match.objective, totals, playerAppeared) : undefined;
+  const objectiveReward = objectiveResult?.completed ? objectiveResult.objective.reward : undefined;
+  const trustAfter = clamp(state.trust + totals.trustDelta + (objectiveReward?.trust ?? 0), 0, 100);
   // Consistency coaching raises the rating floor — bad games hurt less (non-OVR).
   if (playerAppeared) {
     totals.rating = Math.max(totals.rating, 5.4 + getConsistencyRatingFloor(state));
@@ -81,9 +85,9 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     getSponsorPayout(state.sponsor, totals, playerAppeared),
     getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")) + marqueeBonus,
   );
-  const cashDelta = contractEarnings.total + sponsorPayout.total;
+  const cashDelta = contractEarnings.total + sponsorPayout.total + (objectiveReward?.cash ?? 0);
   const prestigeDelta =
-    match
+    (match
       ? Math.round(
           getMatchPrestigeDelta({
             totals,
@@ -92,7 +96,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
             playerAppeared,
           }) * (1 + marqueeBonus),
         )
-      : 0;
+      : 0) + (objectiveReward?.prestige ?? 0);
   const pressureDelta =
     totals.goals * 2 +
     (state.sponsor?.pressureModifier ?? 0);
@@ -132,6 +136,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
         selectionBefore: selectionBefore.score,
         selectionAfter: selectionAfter.score,
         pointsToNextRole: selectionAfter.pointsToNextRole,
+        objectiveResult,
       })
     : state.lastMatch;
   const fixtureResult = match
@@ -303,6 +308,7 @@ export function buildLastMatchSummary({
   selectionBefore,
   selectionAfter,
   pointsToNextRole,
+  objectiveResult,
 }: {
   match: MatchState;
   results: MatchResult[];
@@ -324,6 +330,7 @@ export function buildLastMatchSummary({
   selectionBefore: number;
   selectionAfter: number;
   pointsToNextRole: number;
+  objectiveResult?: MatchObjectiveResult;
 }): LastMatchSummary {
   return {
     ...totals,
@@ -356,7 +363,11 @@ export function buildLastMatchSummary({
     selectionBefore,
     selectionAfter,
     pointsToNextRole,
-    careerImpact: getCareerImpactLines(totals, roleBefore, roleAfter, selectionBefore, selectionAfter, pointsToNextRole),
+    objective: objectiveResult,
+    careerImpact: [
+      ...getCareerImpactLines(totals, roleBefore, roleAfter, selectionBefore, selectionAfter, pointsToNextRole),
+      ...(objectiveResult ? [getObjectiveResultLine(objectiveResult)] : []),
+    ],
   };
 }
 
@@ -1117,6 +1128,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     liveMinute: 0,
     results: [],
     director: directorPlan.state,
+    objective: generateMatchObjective(state, context),
     isComplete: false,
   };
 }

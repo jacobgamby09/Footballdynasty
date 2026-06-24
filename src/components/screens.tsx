@@ -23,7 +23,7 @@ import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRo
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ChoiceOdds, ChoiceOddsBand, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ChoiceOdds, ChoiceOddsBand, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
@@ -543,6 +543,19 @@ function MentalityDial({
   );
 }
 
+function getObjectiveSourceLabel(source: MatchObjective["source"]): string {
+  return source === "milestone" ? "Milestone" : source === "rivalry" ? "Big match" : source === "form" ? "Form" : "Contract";
+}
+
+function formatObjectiveReward(reward: MatchObjective["reward"]): string {
+  const bits = [
+    reward.cash ? `+$${reward.cash}` : "",
+    reward.prestige ? `+${reward.prestige} prestige` : "",
+    reward.trust ? `+${reward.trust} trust` : "",
+  ].filter(Boolean);
+  return bits.length ? bits.join(" · ") : "Pride";
+}
+
 export function PreMatchScreen({
   match,
   mentality,
@@ -593,6 +606,18 @@ export function PreMatchScreen({
         <h2>{match.tacticalFocus}</h2>
         <p>{match.managerInstruction}</p>
       </div>
+
+      {match.objective && (
+        <div className="card pre-match-objective-card">
+          <div className="objective-head">
+            <span className="metric-label">Personal objective</span>
+            <em className={`objective-tag objective-${match.objective.source}`}>{getObjectiveSourceLabel(match.objective.source)}</em>
+          </div>
+          <h2>{match.objective.label}</h2>
+          <p>{match.objective.detail}</p>
+          <span className="objective-reward">Reward: {formatObjectiveReward(match.objective.reward)}</span>
+        </div>
+      )}
 
       <div className="card pre-match-mentality-card">
         <span className="metric-label">Your approach</span>
@@ -1001,6 +1026,23 @@ export function PostMatchSummaryScreen({ attributes, summary, onOpenClub }: { at
           <InfoTile label="Chances" value={`${summary.chancesCreated}`} tone={summary.chancesCreated > 0 ? "good" : undefined} />
         </div>
       </div>
+
+      {summary.objective && (
+        <div className={`card summary-objective-card ${summary.objective.completed ? "is-complete" : "is-missed"}`}>
+          <div className="objective-head">
+            <span className="metric-label">Personal objective</span>
+            <em className={`objective-tag ${summary.objective.completed ? "objective-complete" : "objective-missed"}`}>
+              {summary.objective.completed ? "Completed" : "Missed"}
+            </em>
+          </div>
+          <h2>{summary.objective.objective.label}</h2>
+          <p>
+            {summary.objective.completed
+              ? `Reward banked: ${formatObjectiveReward(summary.objective.objective.reward)}.`
+              : summary.objective.objective.detail}
+          </p>
+        </div>
+      )}
 
       {performanceReasons.length > 0 && (
         <div className="card">

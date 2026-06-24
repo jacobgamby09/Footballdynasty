@@ -125,7 +125,23 @@ trust math in the lab.
 
 ---
 
-## Step 4 — Personal match objectives / storylines  *(biggest; ties into The Feed; SAVE bump)*
+## Step 4 — Personal match objectives / storylines  ✅ DONE  *(ties into The Feed; SAVE bump 22→23)*
+
+> **Shipped:** `MatchObjective` / `MatchObjectiveResult` types; `src/systems/matchObjective.ts`
+> with `generateMatchObjective` (deterministic, priority milestone > rivalry > form > contract;
+> contract is a ~50% seeded fallback so not every match has one) + `evaluateMatchObjective` +
+> `getObjectiveResultLine`. Attached on `createMatch`, evaluated in `finishMatchState` — reward
+> (cash/prestige/trust ONLY, never attributes/potential) folded into cashDelta/prestigeDelta/
+> trustAfter, result stored on `lastMatch.objective` + appended to `careerImpact`. Feed tie-in: a
+> completed objective becomes a `buildPlayerCandidates` story (milestone/contract/player category).
+> UI: objective card on `PreMatchScreen`, result card (complete/missed) on the post-match summary.
+> `SAVE_VERSION` 23. Verified: probe confirms all 4 sources fire under their conditions with correct
+> targets/rewards + evaluation thresholds; in-browser the card renders pre-match ("Repay the faith",
+> "+3 prestige · +1 trust") and post-match ("Missed", careerImpact line), save v23, 0 console
+> errors; smoke (real createMatch/finishMatchState/feed) green; season-lab OVR byte-identical
+> (objectives never touch OVR). **Deferred:** old-club rivalry (needs `formerClubs` tracking — derby/
+> High-importance covers rivalry for now); live in-match progress widget (surfaced pre + post only).
+
 
 **Player feel:** most matches carry a personal stake — a clause to trigger, a milestone to hit,
 a point to prove — and the outcome shows up in the weekly Feed.

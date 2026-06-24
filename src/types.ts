@@ -472,7 +472,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 22;
+  version: 23;
   game: GameState;
 };
 
@@ -537,6 +537,29 @@ export type SelectionFactor = {
   tone: "good" | "neutral" | "warn";
 };
 
+// A personal stake attached to a single match (Step 4): a clause to trigger, a milestone to hit,
+// a derby to rise to, or a drought to end. Generated deterministically at match setup, evaluated
+// against the player's totals in finishMatchState. Rewards are modest and non-OVR (cash/prestige/
+// trust only) so they never touch attributes or the OVR curve.
+export type MatchObjectiveType = "goal" | "assist" | "rating";
+export type MatchObjectiveSource = "contract" | "milestone" | "rivalry" | "form";
+
+export type MatchObjective = {
+  id: string;
+  type: MatchObjectiveType;
+  target: number;
+  label: string;
+  detail: string;
+  reward: { cash?: number; prestige?: number; trust?: number };
+  source: MatchObjectiveSource;
+};
+
+export type MatchObjectiveResult = {
+  objective: MatchObjective;
+  completed: boolean;
+  progress: number;
+};
+
 export type MatchState = {
   matchSeed: string;
   fixtureId: string;
@@ -572,6 +595,7 @@ export type MatchState = {
   results: MatchResult[];
   currentResult?: MatchResult;
   director?: MatchDirectorState;
+  objective?: MatchObjective;
   isComplete?: boolean;
 };
 
@@ -681,6 +705,7 @@ export type LastMatchSummary = MatchTotals & {
   selectionAfter: number;
   pointsToNextRole: number;
   careerImpact: string[];
+  objective?: MatchObjectiveResult;
 };
 
 export type GenerationProfile = {

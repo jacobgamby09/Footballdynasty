@@ -2546,6 +2546,60 @@ button {
   color: var(--muted);
 }
 
+.pre-match-objective-card,
+.summary-objective-card {
+  display: grid;
+  gap: 6px;
+}
+.objective-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.objective-tag {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-style: normal;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+.objective-tag.objective-milestone {
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.14);
+}
+.objective-tag.objective-rivalry {
+  color: var(--orange);
+  background: rgba(241, 138, 54, 0.14);
+}
+.objective-tag.objective-form {
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.14);
+}
+.objective-tag.objective-complete {
+  color: #7ee08a;
+  background: rgba(126, 224, 138, 0.16);
+}
+.objective-tag.objective-missed {
+  color: #f0736a;
+  background: rgba(240, 115, 106, 0.14);
+}
+.objective-reward {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.summary-objective-card.is-complete {
+  border-color: rgba(126, 224, 138, 0.4);
+}
+.summary-objective-card.is-missed {
+  border-color: rgba(240, 115, 106, 0.32);
+}
+
 .result-card {
   display: grid;
   gap: 12px;

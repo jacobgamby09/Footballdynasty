@@ -2207,3 +2207,28 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   repeats, 6 categories (lab assertion updated 2-3 -> 1-5). In-browser (Italy career): full flow
   summary -> "Week Summary" -> "The Feed" -> news-feed (2 story cards) -> "End Week" -> home, teaser
   gone, 0 console errors. Build + smoke green.
+
+## 2026-06-24 - Per-career variety (starting club + match moments)
+
+- Problem: every fresh career started at the exact same club (the literal weakest in the bottom
+  division, e.g. Fredericia Colts in DK) and played near-identical opening moments, because the
+  world seed, starting-club pick, attributes and match seed were all fully deterministic with no
+  per-career entropy.
+- Fix: a new persisted `careerSeed` on `GameState`, set once at creation. `App.tsx` `makeCareerSeed()`
+  draws one-time entropy via `Math.random` ONLY at the create/retire UI action and stores it in the
+  save; the engine and balance labs never call it (they read the stored seed or omit it for a fixed
+  deterministic fallback), so replay + lab reproducibility are preserved.
+- `createCareerForCountry` now: derives `careerSeed` (provided one, else identity-based fallback
+  `firstName-lastName-country-generation`), picks the starting club from the **weakest 3-4** clubs in
+  the bottom division (seeded) instead of always the single weakest, and stores `careerSeed`.
+- `createMatchSeed` includes `state.careerSeed`, so even two careers that land on the same club get
+  different match-moment selection. Both career entry points (onboarding + heir/Gen-2+ in
+  `retireCareer`) pass a fresh seed.
+- `SAVE_VERSION` 23 -> 24.
+- Balance note: the season lab reimplements the weakest-club start, so its OVR targets are unchanged
+  (verified byte-identical 57.20/67.39/67.11/63.83). The bottom-3-4 clubs are all grassroots-dev, so
+  club strength barely moves and the OVR curve is unaffected (OVR is potential-bound, not club-bound).
+- Verified: probe shows distinct seeds -> distinct clubs (Kolding/Roskilde/Northbridge) and distinct
+  match seeds, same-club careers still differ in match seed, and the no-seed fallback is stable.
+  In-browser a fresh DK career started at Kolding Town with a random `careerSeed`, save v24, 0 console
+  errors. Build + smoke + season + feed labs green.

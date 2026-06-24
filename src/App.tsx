@@ -24,6 +24,13 @@ import { ClubProfileScreen, ClubScreen, ContractOfferScreen, CountrySelectScreen
 
 const heirFirstNames = ["Noah", "Lucas", "Mikkel", "Oscar", "Elias", "Victor", "Oliver", "Felix"];
 
+// One-time entropy for a fresh career, captured at the moment of creation and then persisted in the
+// save. Math.random is deliberate and confined to this UI action — the engine and balance labs never
+// call it; they read the stored seed (or omit it for a fixed deterministic one), so replay is stable.
+function makeCareerSeed() {
+  return `c-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function App() {
   const [careerStarted, setCareerStarted] = useState<boolean>(() => hasSavedGame());
   const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => (hasSavedGame() ? "player" : "dynasty-create"));
@@ -662,6 +669,7 @@ function App() {
       return;
     }
 
+    const heirCareerSeed = makeCareerSeed();
     setGame((state) => {
       const latestEstimate = getLegacyEstimate(state);
       const country = getCountryForClub(state.world, state.club.clubId, state.club.shortCode);
@@ -684,6 +692,7 @@ function App() {
         dynasty: nextDynasty,
         dynastyHistory: getLegacySeasons(state),
         firstName: nextFirstName,
+        careerSeed: heirCareerSeed,
       });
 
       return {
@@ -747,7 +756,7 @@ function App() {
   }
 
   function startCareerInCountry(countryId: CountryId) {
-    setGame(createCareerForCountry(countryId, { setup: newCareerSetup }));
+    setGame(createCareerForCountry(countryId, { setup: newCareerSetup, careerSeed: makeCareerSeed() }));
     setCareerStarted(true);
     setActiveScreen("player");
     setSaveStatus("saved");

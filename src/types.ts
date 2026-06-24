@@ -450,6 +450,10 @@ export type GameState = {
   trainingCompletedWeek: number;
   intensity: Intensity;
   matchMentality: MatchMentality;
+  // Per-career entropy, set once at creation and persisted. Gives each fresh career a different
+  // starting club (among the weakest few) and different match-moment selection, while keeping
+  // replay and the balance labs deterministic (they read the stored seed / omit it for a fixed one).
+  careerSeed: string;
   attributes: Attribute[];
   seasonStats: SeasonStats;
   season: SeasonState;
@@ -472,7 +476,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 23;
+  version: 24;
   game: GameState;
 };
 

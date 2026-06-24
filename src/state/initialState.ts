@@ -8,6 +8,7 @@ import { createGenerationAttributes } from "../systems/generation";
 import { createSeasonFixturesFromWorld } from "../systems/club";
 import { getDynastyNetworkBonus } from "../systems/dynastyUpgrades";
 import { getEstateHeirCash } from "../systems/estate";
+import { seededNoise } from "../engine/matchEngineCore";
 
 export const initialContract: Contract = {
   club: initialClub.name,
@@ -29,7 +30,7 @@ export const initialContract: Contract = {
 // offer-driven (the son inherits a name) as part of the dynasty loop.
 export function createCareerForCountry(
   countryId: CountryId,
-  options: { dynasty?: DynastyState; dynastyHistory?: DynastySeason[]; setup?: NewCareerSetup; firstName?: string } = {},
+  options: { dynasty?: DynastyState; dynastyHistory?: DynastySeason[]; setup?: NewCareerSetup; firstName?: string; careerSeed?: string } = {},
 ): GameState {
   const setup = options.setup ?? {
     firstName: options.firstName ?? "Jonas",
@@ -43,12 +44,17 @@ export function createCareerForCountry(
     nationality: setup.nationality,
   };
   const positionModule = positionModules[setup.positionGroup];
+  // Per-career seed: provided one (random at creation) gives a fresh start each career; otherwise a
+  // deterministic identity-based fallback keeps the load-default and the balance labs reproducible.
+  const careerSeed = options.careerSeed ?? `${setup.firstName}-${setup.lastName}-${countryId}-${dynasty.generation}`;
   const world = seedWorld();
   const bottomLeague = Object.values(world.leagues)
     .filter((league) => league.countryId === countryId)
     .sort((a, b) => b.level - a.level)[0];
+  // Start "from the bottom" but with variety: pick among the weakest few clubs, seeded by the career.
   const clubsInBottom = bottomLeague.clubIds.map((id) => world.clubs[id]);
-  const startClub = clubsInBottom.reduce((min, c) => (c.strength < min.strength ? c : min), clubsInBottom[0]);
+  const weakestClubs = [...clubsInBottom].sort((a, b) => a.strength - b.strength).slice(0, Math.min(4, clubsInBottom.length));
+  const startClub = weakestClubs[Math.floor(seededNoise(`${careerSeed}-start-club`) * weakestClubs.length)] ?? weakestClubs[0];
   const club: ClubState = {
     clubId: startClub.id,
     name: startClub.name,
@@ -87,6 +93,7 @@ export function createCareerForCountry(
     trainingCompletedWeek: 0,
     intensity: "Balanced",
     matchMentality: "balanced",
+    careerSeed,
     attributes: createGenerationAttributes(dynasty.generation, positionModule, dynasty),
     seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },
     season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixturesFromWorld(club, world), results: [] },

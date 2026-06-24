@@ -1734,6 +1734,7 @@ export function getChoiceAttributeAverage(attributes: Attribute[], choice: Match
 export function createMatchSeed(state: GameState, context: UpcomingMatch) {
   return [
     "match",
+    state.careerSeed ?? "",
     context.id,
     state.club.clubId ?? state.club.shortCode,
     state.world?.seasonNumber ?? state.season.season,

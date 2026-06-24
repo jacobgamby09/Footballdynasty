@@ -2093,3 +2093,42 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - Added a chronological Home feed with clickable club references and a leading Weekly Summary teaser.
 - Added `balance:feed`; a 90-week lab produced 2.19 stories per week, six categories and zero same-season headline repeats.
 - Raised `SAVE_VERSION` to 21. Development saves from earlier versions intentionally reset.
+
+## 2026-06-24 - Match Agency (plan in MATCH_AGENCY_PLAN.md)
+
+### Step 1 - Visible risk/reward per choice (commit 60d4b09)
+
+- Added pure helper `estimateChoiceOdds(input)` in `matchEngineCore.js` (+ `.d.ts`). It mirrors
+  `resolvePlayerChoice`'s deterministic `resultScore` EXACTLY but drops the seeded `variance`, then
+  buckets `delta = score - threshold` into a band: `>=9` Strong, `>=2` Favoured, `>-2` Even,
+  `>-9` Against the odds, else Long shot. Lives in the same file as `resolvePlayerChoice` so it
+  reuses the identical helper math (honesty guarantee).
+- `systems/match.ts` `getChoiceOdds(state, moment, choice)` builds inputs IDENTICAL to
+  `createMatchResult`'s resolution call (league+age-adjusted attrs, live readiness, trust, role,
+  league-adjusted opponent) and returns `estimateChoiceOdds(...)`.
+- `MatchMomentScreen` renders an honest odds chip + a readable coach-lean chip per choice
+  ("Coach likes" / "Coach wary" / "Coach neutral"). `types.ts`: `ChoiceOddsBand` / `ChoiceOdds`.
+- No resolution change, no new state, no `SAVE_VERSION` change. Verified in-browser: strong
+  grassroots player = all Strong (correct); top-flight + High-risk = "Against the odds" while
+  Medium = "Favoured". 0 console errors.
+
+### Step 3 - Manager comply / defy
+
+- Sharpened `trustDelta` in `resolvePlayerChoice` with a unified `managerTrustShift`: `Risky`
+  (defy) gives +2 on decisive / +1 on success / **-3 on fail (the doghouse)**; `Likes` (obey)
+  gives +1 on success; `Neutral` is unchanged from prior behaviour. Applied additively across all
+  three outcome branches (goal/assist/other); the old inline `manager === "Risky" ? -1 : 1` on the
+  goal branch was folded into the shift.
+- Added `explanationTags` beats surfaced in the result popup: "Backed your instinct" (defy +
+  decisive), "Coach unhappy" (defy + fail), "Followed the plan" (obey + success). Reuses the
+  Step-1 coach-lean chip pre-choice.
+- No new persisted state -> no `SAVE_VERSION` change. Labs import `resolvePlayerChoice` directly,
+  so no mirror needed. Verified by direct assertion: defy-win +6, obey-win +5, neutral-win +4;
+  defy-fail -2 ("Coach unhappy") vs obey/neutral-fail +1. Build + match lab + season lab + smoke
+  all green; OVR/peak unchanged (trust-only change).
+- 3b (transient mid-match manager ask) deferred — not shipped.
+
+### Remaining (sequence 1 -> 3 -> 2 -> 4)
+
+- Step 2 (mentality dial: push/balanced/hold) — engine + director hook, `SAVE_VERSION`++.
+- Step 4 (personal match objectives/storylines, ties into The Feed) — `SAVE_VERSION`++.

@@ -37,7 +37,7 @@ attribute values or potential, so the 60/70 OVR guidance is safe by construction
 
 ---
 
-## Step 1 — Visible risk/reward per choice  *(do first; ~UI + one pure helper, no SAVE bump)*
+## Step 1 — Visible risk/reward per choice  ✅ DONE (commit 60d4b09)  *(~UI + one pure helper, no SAVE bump)*
 
 **Player feel:** every moment is a readable gamble — you see your odds, the payoff, the fatigue
 cost and what the coach prefers, then choose.
@@ -84,7 +84,14 @@ lab green. Mirror the resolution/director math in `match-balance-lab.mjs`.
 
 ---
 
-## Step 3 — Manager comply / defy  *(resolution + UI; uses existing `choice.manager`)*
+## Step 3 — Manager comply / defy  ✅ DONE  *(resolution + UI; uses existing `choice.manager`)*
+
+> **Shipped:** unified `managerTrustShift` in `resolvePlayerChoice` — `Risky` (defy): +2 decisive
+> / +1 success / **−3 fail (doghouse)**; `Likes` (obey): +1 on success; `Neutral`: 0. Tags
+> "Backed your instinct" / "Coach unhappy" / "Followed the plan" feed the result popup. Verified
+> by direct assertion (defy-win +6 vs defy-fail −2 vs obey +1) and both labs green. No SAVE bump
+> (trust already persisted). 3b (mid-match manager ask) deferred — not shipped.
+
 
 **Player feel:** the coach has a preference each moment; obeying builds trust, defying-and-
 succeeding is glory, defying-and-failing is the doghouse.

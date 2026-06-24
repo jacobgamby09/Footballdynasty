@@ -198,6 +198,26 @@ export function resolvePlayerChoice(input) {
   const fatigueCost = input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4;
   const explanationTags = buildResultExplanationTags(input.moment, input.choice, success, opponentModifier, chanceContext.quality, input.fitness);
 
+  // Manager comply/defy: obeying ("Likes") nudges trust up on success; defying ("Risky") is
+  // high-variance — extra trust when it comes off, a real hit (the doghouse) when it fails.
+  const managerTrustShift =
+    input.choice.manager === "Risky"
+      ? decisiveOutcome
+        ? 2
+        : success
+          ? 1
+          : -3
+      : input.choice.manager === "Likes" && success
+        ? 1
+        : 0;
+  if (input.choice.manager === "Risky" && decisiveOutcome) {
+    explanationTags.push("Backed your instinct");
+  } else if (input.choice.manager === "Risky" && !success) {
+    explanationTags.push("Coach unhappy");
+  } else if (input.choice.manager === "Likes" && success) {
+    explanationTags.push("Followed the plan");
+  }
+
   if (input.choice.outcome === "goal") {
     return {
       success,
@@ -205,7 +225,7 @@ export function resolvePlayerChoice(input) {
       chanceQuality: chanceContext.quality,
       explanationTags,
       rating: Number((decisiveOutcome ? 7.6 + (input.choice.risk === "High" ? 0.2 : 0) + ratingVariance : success ? 6.8 + ratingVariance : 6.4 + ratingVariance).toFixed(1)),
-      trustDelta: decisiveOutcome ? 4 : success ? 2 : input.choice.manager === "Risky" ? -1 : 1,
+      trustDelta: (decisiveOutcome ? 4 : success ? 2 : 1) + managerTrustShift,
       fitnessDelta: fatigueCost,
       goals: decisiveOutcome ? 1 : 0,
       assists: 0,
@@ -221,7 +241,7 @@ export function resolvePlayerChoice(input) {
       chanceQuality: chanceContext.quality,
       explanationTags,
       rating: Number((assistConverted ? 7.3 + ratingVariance : chancesCreated ? 6.9 + ratingVariance : success ? 6.75 + ratingVariance : 6.6 + ratingVariance).toFixed(1)),
-      trustDelta: assistConverted ? 5 : chancesCreated ? 4 : success ? 3 : 2,
+      trustDelta: (assistConverted ? 5 : chancesCreated ? 4 : success ? 3 : 2) + managerTrustShift,
       fitnessDelta: fatigueCost,
       goals: 0,
       assists: assistConverted ? 1 : 0,
@@ -236,7 +256,7 @@ export function resolvePlayerChoice(input) {
     chanceQuality: chanceContext.quality,
     explanationTags,
     rating: Number((outcomeTier === "Great" ? 7.0 + ratingVariance : success ? 6.7 + ratingVariance : 6.5 + ratingVariance).toFixed(1)),
-    trustDelta: outcomeTier === "Great" ? 5 : success ? 3 : 2,
+    trustDelta: (outcomeTier === "Great" ? 5 : success ? 3 : 2) + managerTrustShift,
     fitnessDelta: fatigueCost,
     goals: 0,
     assists: 0,

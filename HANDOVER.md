@@ -5,15 +5,83 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-24 (through Feed V1 and club discovery). Branch `main`.
-`SAVE_VERSION` 21. Today's work is present in the working tree and is not yet
-committed._
+_Last updated: 2026-06-24 (through match agency, The Feed screen, per-career
+variety). Branch `main`, all work committed + pushed (`273e4d2` is HEAD).
+`SAVE_VERSION` **24**._
 
-**Current onboarding note:** new games now start with Create Dynasty before
-country selection. It captures first name, family/dynasty last name, nationality
-and the current playable position (Striker only). Any older Gen-2 note about a
-hardcoded "Jonas Vale" name is stale; the remaining Gen-2 gap is offer-driven
-heir start logic.
+**Current onboarding note:** new games start with Create Dynasty before country
+selection (first name, family/dynasty last name, nationality, position — Striker
+only). The starting club is now **varied** (one of the weakest 3-4 clubs in the
+chosen country's bottom division, seeded per career), not always the single
+weakest. The remaining Gen-2 gap is offer-driven heir start logic.
+
+> **⚠ Read "Latest session" (section 0) first** — it covers everything done most
+> recently and flags the one deliberate exception to the no-`Math.random` rule.
+
+---
+
+## 0. Latest session — match agency + The Feed screen + per-career variety
+
+All on `main`, committed and pushed (`60d4b09` → `273e4d2`). Per-step detail with
+"Shipped" notes lives in `MATCH_AGENCY_PLAN.md`; dated entries in `PROGRESS.md`.
+`SAVE_VERSION` moved 21 → 24 across this work.
+
+**A. Match-agency arc — 4 steps (sequence 1 → 3 → 2 → 4):**
+- **Step 1 · visible risk/reward** (`60d4b09`): `estimateChoiceOdds(input)` in
+  `engine/matchEngineCore.js` (mirrors `resolvePlayerChoice`'s deterministic
+  `resultScore` minus the seeded variance) + `getChoiceOdds` in `systems/match.ts`
+  build the SAME inputs as resolution → an honest odds chip + a coach-lean chip on
+  each choice in `MatchMomentScreen`. No new state.
+- **Step 3 · manager comply/defy** (`325d321`): a unified `managerTrustShift` in
+  `resolvePlayerChoice` — defy (`Risky`) +2 decisive / −3 fail (doghouse), obey
+  (`Likes`) +1; explanation beats ("Backed your instinct" / "Coach unhappy").
+- **Step 2 · mentality dial** (`2214d36`, SAVE→22): `matchMentality:
+  "push"|"balanced"|"hold"` on `GameState`. Director hook
+  (`matchDirector.js` `mentalityCategoryWeights`) shifts the moment mix; resolution
+  hook (`getMentalityResolutionModifier`/`getMentalityFatigueModifier`, mirrored
+  into `estimateChoiceOdds`) + `chooseAutoSimChoice` bias. UI = `MentalityDial`
+  (full on pre-match, compact live). Balanced is a strict no-op.
+- **Step 4 · personal objective = sponsor's matchday target** (`3322be3`, reworked
+  by `f077777`, SAVE→23): originally fabricated objectives, but per user that felt
+  forced, so it now SURFACES the existing sponsor objective and only when a sponsor
+  is active. `systems/matchObjective.ts → getSponsorMatchObjective(sponsor)` maps
+  `sponsor.objective` → a view-model (`reward.cash` mirrors `sponsor.objectiveBonus`
+  for DISPLAY only). `finishMatchState` reads completion from
+  `sponsorPayout.objectiveCompleted` — **the sponsor system already pays the bonus,
+  so there is NO second payout.** Cards on pre-match + post-match summary.
+
+**B. The Feed is its own screen** (`fc38cd8`): weekly flow is now **Match → Match
+summary → Week Summary → News feed ("End Week") → Home**. New `NewsFeedScreen`
+(+ `"news-feed"` `ScreenKey`); `closeWeekSummary` → `news-feed`, new `closeNewsFeed`
+carries the contract/season/free-agent branching. `generateWeeklyFeed` now yields
+**1-5 stories by "meat"** (cap 3→5; the player's own club may headline up to 3
+beats, others capped at 2; guaranteed minimum 2→1). Single teaser removed from
+`WeekSummaryScreen`; full archive still under Home → Feed. `balance:feed` assertion
+updated to range [1,5].
+
+**C. Per-career variety** (`36f8ec3`, SAVE→24): new persisted `careerSeed` on
+`GameState`. Starting club is picked from the **weakest 3-4** (seeded), and
+`careerSeed` is folded into `createMatchSeed`, so two fresh careers differ in both
+club and match moments. **This is the source of the one sanctioned `Math.random`**
+(`makeCareerSeed` in `App.tsx`; see constraint #1). Labs reimplement the weakest-club
+start, so season-lab OVR is byte-identical (curve is potential-bound, not club-bound).
+
+**D. Odds-band rename** (`273e4d2`): worst band `"Long shot"` → `"Slim chance"`
+(read as a long-range shot). String only, in `types.ts` / `matchEngineCore.d.ts` /
+`matchEngineCore.js`; the `odds-long` tone CSS class is unchanged.
+
+**Verified this session:** `npm run build` green; `balance:match` (incl. a mentality
+sweep), `balance:season` (OVR 57/67 unchanged), `balance:feed` (range [1,5]) and
+`node scripts/play-session-regression-smoke.mjs` all green; multiple in-browser
+Playwright passes (0 console errors).
+
+**Deferred / next levers (not started):**
+- Old-club rivalry objectives — needs a `formerClubs: ClubId[]` tracked on
+  transfer/retirement; derby (High-importance) is the only contextual stake for now.
+- A live in-match objective-progress widget (currently surfaced pre + post only).
+- Step 3b — a transient mid-match manager "ask" (re-tags choices for a window).
+- Possible **within-career** match-moment repetition (the user noticed openings can
+  feel samey across a single career) — a Director-variety lever, not yet tuned.
 
 ---
 
@@ -48,12 +116,23 @@ These are load-bearing. Violating them silently breaks the sim-lab or
 save-resume, often without an obvious error.
 
 1. **No `Math.random()`, `Date.now()`, or argless `new Date()` anywhere in
-   `src/`.** Everything must be deterministic. Seed from stable inputs (club
-   short code, season number, week index, opponent id…) via an FNV-style hash.
-   Examples already in the code: `hash01` in `systems/world.ts`, `fixtureHash`
-   in `systems/club.ts`, `seededNoise` in `engine/matchEngineCore.js`.
+   `src/` — with ONE sanctioned exception (see below).** Everything must be
+   deterministic. Seed from stable inputs (club short code, season number, week
+   index, opponent id…) via an FNV-style hash. Examples already in the code:
+   `hash01` in `systems/world.ts`, `fixtureHash` in `systems/club.ts`,
+   `seededNoise` in `engine/matchEngineCore.js`.
    _Why:_ the balance labs replay seasons and saves resume mid-run; real
    randomness makes both non-reproducible.
+
+   **The one allowed `Math.random`:** `makeCareerSeed()` in `App.tsx` mints a
+   `careerSeed` ONCE, at the moment the player creates a career or an heir
+   starts, and it is persisted in the save. It gives each fresh career a
+   different start (club + match moments). This is safe because (a) it runs only
+   in that UI action, never in the engine, and (b) the engine and the balance
+   labs NEVER call it — they read the stored `careerSeed` back, or omit it and
+   fall back to a deterministic identity-based seed. So replay and lab
+   reproducibility are fully preserved. **Do not "fix" this into a hash, and do
+   not add any other `Math.random`/`Date.now`.**
 
 2. **Keep the import graph acyclic.** Layering DAG:
    `types ← data ← utils ← state/systems ← components ← App`.
@@ -70,7 +149,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to onboarding. That is the intended, accepted
-   behaviour during development. Currently **`SAVE_VERSION = 21`**. The loader
+   behaviour during development. Currently **`SAVE_VERSION = 24`**. The loader
    intentionally accepts only the exact current version.
 
 ---
@@ -405,9 +484,10 @@ This is the practical starting point for Claude. Everything below is currently
   dominance. Two fallback stories guarantee useful output.
 - `GameState.worldFeed` stores up to 120 stories. Headlines and bodies use
   structured text parts so club references remain clickable.
-- UI consists of a fifth `Feed` Home subtab, chronological week groups, compact
-  editorial rows and one leading teaser in Weekly Summary.
-- Save shape is version 21. Old development saves intentionally reset.
+- UI: a `Feed` Home subtab (chronological week groups) AND a dedicated weekly
+  `NewsFeedScreen` in the post-match flow (see section 0B). `generateWeeklyFeed`
+  now produces 1-5 stories by "meat", not a fixed 2-3.
+- Save shape is version 24. Old development saves intentionally reset.
 - Main files: `src/systems/feed.ts`, `src/components/screens.tsx`,
   `src/state/initialState.ts`, `src/state/save.ts`, `src/types.ts`,
   `scripts/feed-balance-lab.mjs`.

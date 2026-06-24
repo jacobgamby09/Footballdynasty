@@ -149,7 +149,7 @@ export function estimateChoiceOdds(input: {
   opponentProfile?: OpponentProfile;
   mentality?: EngineMentality;
 }): {
-  band: "Strong" | "Favoured" | "Even" | "Against the odds" | "Long shot";
+  band: "Strong" | "Favoured" | "Even" | "Against the odds" | "Slim chance";
   delta: number;
 };
 

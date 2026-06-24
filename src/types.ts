@@ -636,7 +636,7 @@ export type MatchChoice = {
   outcome: "goal" | "assist" | "trust" | "defense";
 };
 
-export type ChoiceOddsBand = "Strong" | "Favoured" | "Even" | "Against the odds" | "Long shot";
+export type ChoiceOddsBand = "Strong" | "Favoured" | "Even" | "Against the odds" | "Slim chance";
 export type ChoiceOdds = { band: ChoiceOddsBand; delta: number };
 
 export type ChanceQuality = "Clear chance" | "Good chance" | "Half chance" | "Difficult chance";

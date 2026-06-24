@@ -183,7 +183,7 @@ export function estimateChoiceOdds(input) {
   const delta = deterministicScore - threshold;
   // variance is seeded ±9, so these boundaries reflect real likelihood without exposing a number.
   const band =
-    delta >= 9 ? "Strong" : delta >= 2 ? "Favoured" : delta > -2 ? "Even" : delta > -9 ? "Against the odds" : "Long shot";
+    delta >= 9 ? "Strong" : delta >= 2 ? "Favoured" : delta > -2 ? "Even" : delta > -9 ? "Against the odds" : "Slim chance";
   return { band, delta: Math.round(delta) };
 }
 

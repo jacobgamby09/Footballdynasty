@@ -5,6 +5,7 @@ import type {
   OpponentProfile,
   ServiceLevel,
 } from "./matchEngine";
+import type { MatchDirectorState, MatchPhase } from "./engine/matchDirector";
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
@@ -501,6 +502,7 @@ export type MatchState = {
   liveMinute: number;
   results: MatchResult[];
   currentResult?: MatchResult;
+  director?: MatchDirectorState;
   isComplete?: boolean;
 };
 
@@ -522,6 +524,9 @@ export type MatchMoment = {
   choices: MatchChoice[];
   result?: MatchResult;
   chainDepth?: number;
+  chainRoutes?: string[];
+  directorPhase?: MatchPhase;
+  narrativeTags?: string[];
 };
 
 export type MatchChoice = {

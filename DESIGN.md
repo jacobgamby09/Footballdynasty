@@ -551,6 +551,16 @@ Avoid vague copy such as `improves performance` as the only payoff. Every suppor
 
 When Training unlocks more focus slots, the support card should state it directly as a current bonus, for example `2 focus slots`. Slot 2 and slot 3 efficiency should be readable as percentages, because those upgrades are intentionally granular.
 
+On the Training confirmation screen, selected focuses must be presented in ordered slot cards (`Slot 1`, `Slot 2`, `Slot 3`) with their actual XP efficiency. Green attribute selection alone is not enough, because the player must understand which selected stat receives primary XP and which receives reduced secondary XP.
+
+During a player highlight, the match progress label may show the current Match Director phase (`Chasing goal`, `Team pressure`, `Late siege`) instead of the generic `Player moment`. This is short contextual language, not an extra explanatory panel, and should help the player read why the situation is happening.
+
+The live match surface should use one compact momentum strip with a centered neutral point. Do not show a fake possession or win-probability percentage. Pair the strip with a short state label such as `Team pressure`, `Opponent building` or `Even spell`.
+
+Timeline rows use a stable three-column layout: event icon, minute and commentary. Goals/positive team events use lime or gold; opponent danger uses orange; neutral tempo and substitutions remain muted.
+
+Live player stats use a compact 3x2 metric grid on mobile. Keep labels short and use tabular numbers so updates do not shift the layout.
+
 ## Prestige And Sponsor UI
 
 Prestige should be presented as career status, not as spendable cash.

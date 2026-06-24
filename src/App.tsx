@@ -17,6 +17,7 @@ import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
+import { declineTransferWindowOffer } from "./systems/transferWindow";
 import { BottomNav } from "./components/shared";
 import { ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
 
@@ -528,6 +529,20 @@ function App() {
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
 
+  function declineTransferOffer(offer: ContractOffer) {
+    setGame((state) => {
+      if (!state.transferWindow) {
+        return state;
+      }
+
+      return {
+        ...state,
+        transferWindow: declineTransferWindowOffer(state.transferWindow, offer),
+        lastEvent: `${offer.club} offer declined. Other options remain open.`,
+      };
+    });
+  }
+
   function declineContractOffer(offer?: ContractOffer) {
     setGame((state) => {
       const availableOffers = state.contractOffers ?? (state.contractOffer ? [state.contractOffer] : []);
@@ -591,7 +606,10 @@ function App() {
     setGame((state) => ({
       ...state,
       transferWindow: undefined,
-      lastEvent: state.transferWindow?.kind === "end-season" ? "Season decisions closed. Review the season before moving on." : "Transfer window closed. Focus returns to the pitch.",
+      lastEvent:
+        state.transferWindow?.kind === "end-season"
+          ? `You chose to stay at ${state.club.name}. Review the season before moving on.`
+          : `You chose to stay at ${state.club.name}. Focus returns to the pitch.`,
     }));
     setActiveScreen(isSeasonComplete(game.season) ? "season-review" : "player");
   }
@@ -759,7 +777,8 @@ function App() {
               game={game}
               window={game.transferWindow}
               onAccept={acceptTransferOffer}
-              onClose={closeTransferWindow}
+              onDecline={declineTransferOffer}
+              onStay={closeTransferWindow}
             />
           )}
           {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}

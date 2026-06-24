@@ -335,3 +335,10 @@ mirror any game-formula change into the lab.
   `season.fixtures.length` dynamically.
 - Name-pool uniqueness relies on `clubCount ≤ pool.cities.length` per division
   and the `(cityIndex + band)` suffix offset — keep city pools ≥ ~36 entries.
+# Current implementation note (2026-06-24)
+
+- Match Director V1 now owns player-highlight selection and timing above the deterministic team simulation.
+- Start with `src/engine/matchDirector.js`, then `src/systems/match.ts`.
+- Match balance output now includes director variation metrics; preserve those metrics when changing moment selection.
+- Forward Moment Library V2 adds 31 metadata-driven situations in `src/engine/forwardMomentLibrary.js`; forward + shared now totals 50 situations with nine chain routes.
+- Live Match Presentation V2 adds deterministic commentary variants, momentum, typed timeline events and derived live player stats without changing match outcomes.

@@ -20,6 +20,16 @@ export type EngineMoment<TChoice extends EngineChoice = EngineChoice> = {
   id: string;
   category: string;
   choices: TChoice[];
+  director?: {
+    phases?: string[];
+    scoreStates?: string[];
+    minuteRange?: [number, number];
+    rarity?: "common" | "uncommon" | "rare";
+    cooldown?: number;
+    family?: string;
+    conversionModifier?: number;
+  };
+  chainRoutes?: string[];
 };
 
 export type TeamMatchModel = {
@@ -82,6 +92,18 @@ export function selectPlayerHighlights<TMoment extends EngineMoment>(input: {
   attributeValues: Record<string, number>;
   preferredCategories?: string[];
 }): TMoment[];
+
+export function getMomentGenerationScore(input: {
+  moment: EngineMoment;
+  attributeValues: Record<string, number>;
+  role: EngineMatchRole;
+  serviceLevel: ServiceLevel;
+  opponentProfile: OpponentProfile;
+  matchSeed: string;
+  targetMinute: number;
+  scoreAtMinute: { teamGoals: number; opponentGoals: number };
+  preferredCategories?: string[];
+}): number;
 
 export function chooseAutoSimChoice<TChoice extends EngineChoice>(input: {
   moment: EngineMoment<TChoice>;

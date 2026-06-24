@@ -153,10 +153,17 @@ export function resolvePlayerChoice(input) {
   const threshold = input.choice.risk === "High" ? 55 : input.choice.risk === "Medium" ? 50 : 45;
   const outcomeTier = getOutcomeTier(resultScore, threshold);
   const success = outcomeTier !== "Poor";
-  const decisiveOutcome = isDecisiveOutcome(outcomeTier, chanceContext.quality, input.choice.outcome, input.resultSeed);
+  const conversionModifier = input.moment.director?.conversionModifier ?? 1;
+  const decisiveOutcome = isDecisiveOutcome(
+    outcomeTier,
+    chanceContext.quality,
+    input.choice.outcome,
+    input.resultSeed,
+    conversionModifier,
+  );
   const chancesCreated = input.choice.outcome === "assist" && success ? 1 : 0;
   const assistConverted = input.choice.outcome === "assist" && decisiveOutcome
-    ? isAssistConverted(outcomeTier, chanceContext.quality, input.opponentProfile, input.resultSeed)
+    ? isAssistConverted(outcomeTier, chanceContext.quality, input.opponentProfile, input.resultSeed, conversionModifier)
     : false;
   const fatigueCost = input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4;
   const explanationTags = buildResultExplanationTags(input.moment, input.choice, success, opponentModifier, chanceContext.quality, input.fitness);
@@ -332,7 +339,7 @@ const highlightConfig = {
   },
 };
 
-function getMomentGenerationScore(input) {
+export function getMomentGenerationScore(input) {
   const config = highlightConfig[input.moment.category];
   const attributeAverage = config ? averageAttributes(input.attributeValues, config.primaryAttributes) : 50;
   const serviceFit = config?.preferredService?.includes(input.serviceLevel) ? 0.25 : 0;
@@ -513,7 +520,7 @@ function getOutcomeTier(resultScore, threshold) {
   return "Poor";
 }
 
-function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") {
+function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result", conversionModifier = 1) {
   if (outcome !== "goal" && outcome !== "assist") {
     return false;
   }
@@ -571,11 +578,11 @@ function isDecisiveOutcome(tier, chanceQuality, outcome, resultSeed = "result") 
     },
   };
   const rates = outcome === "assist" ? assistChanceRates : goalRates;
-  const rate = rates[tier]?.[chanceQuality] ?? 0;
+  const rate = (rates[tier]?.[chanceQuality] ?? 0) * conversionModifier;
   return seededNoise(`${resultSeed}-decisive`) < rate;
 }
 
-function isAssistConverted(tier, chanceQuality, opponentProfile = {}, resultSeed = "result") {
+function isAssistConverted(tier, chanceQuality, opponentProfile = {}, resultSeed = "result", conversionModifier = 1) {
   const keeper = opponentProfile.keeper ?? 50;
   const defense = opponentProfile.defense ?? 50;
   const resistance = (keeper * 0.65 + defense * 0.35 - 50) * 0.005;
@@ -586,7 +593,7 @@ function isAssistConverted(tier, chanceQuality, opponentProfile = {}, resultSeed
     "Half chance": 0.09,
     "Difficult chance": 0.025,
   }[chanceQuality] ?? 0.2;
-  const conversionRate = clamp(qualityBase + tierBonus - resistance, 0.02, 0.52);
+  const conversionRate = clamp((qualityBase + tierBonus - resistance) * conversionModifier, 0.02, 0.52);
   return seededNoise(`${resultSeed}-teammate-finish`) < conversionRate;
 }
 
@@ -627,22 +634,52 @@ function createSimEvent(type, input, random, index) {
   const teamShort = input.teamShort || "Your side";
 
   if (type === "team_goal") {
-    return { ...base, title: `${teamShort} goal`, detail: `${teamShort} turn pressure into a goal.` };
+    return pickEventCopy(base, [
+      [`${teamShort} goal`, `${teamShort} turn a sustained spell into the opening.`],
+      [`${teamShort} strike`, `${teamShort} break through after moving the defense side to side.`],
+      [`Goal for ${teamShort}`, `${teamShort} attack the second ball and find the finish.`],
+    ], random);
   }
   if (type === "opponent_goal") {
-    return { ...base, title: `${input.opponentShort} goal`, detail: `${input.opponentShort} find the finish after a dangerous spell.` };
+    return pickEventCopy(base, [
+      [`${input.opponentShort} goal`, `${input.opponentShort} find the finish after a dangerous spell.`],
+      [`${input.opponentShort} strike`, `${input.opponentShort} exploit the space before the shape can recover.`],
+      [`Goal for ${input.opponentShort}`, `${input.opponentShort} punish a loose phase around the box.`],
+    ], random);
   }
   if (type === "team_chance") {
-    return { ...base, title: `${teamShort} chance`, detail: `${teamShort} create a look at goal, but the finish flashes wide.` };
+    return pickEventCopy(base, [
+      [`${teamShort} chance`, `${teamShort} work an opening, but the finish flashes wide.`],
+      [`${teamShort} threaten`, `${teamShort} break the line before the keeper gathers the final effort.`],
+      [`Pressure from ${teamShort}`, `${teamShort} force the defense deep, but the last touch is blocked.`],
+    ], random);
   }
   if (type === "opponent_chance") {
-    return { ...base, title: `${input.opponentShort} chance`, detail: `${input.opponentShort} threaten, but ${teamShort} survive.` };
+    return pickEventCopy(base, [
+      [`${input.opponentShort} chance`, `${input.opponentShort} threaten, but ${teamShort} survive.`],
+      [`Warning for ${teamShort}`, `${input.opponentShort} reach the box before the chance is smothered.`],
+      [`${input.opponentShort} press`, `${input.opponentShort} create a shooting lane, but the effort misses.`],
+    ], random);
   }
   if (type === "substitution") {
-    return { ...base, title: "Fresh legs around you", detail: `${teamShort} change shape. ${input.managerInstruction}` };
+    return pickEventCopy(base, [
+      ["Fresh legs", `${teamShort} change shape. ${input.managerInstruction}`],
+      ["Tactical change", `${teamShort} adjust the press and introduce fresh movement.`],
+      ["Shape adjusted", `${teamShort} shuffle the front line as the match enters a new phase.`],
+    ], random);
   }
 
-  return { ...base, title: "Quiet spell", detail: "The match settles into midfield duels with little service into the box." };
+  return pickEventCopy(base, [
+    ["Midfield battle", "Both sides trade possession without opening a clean lane forward."],
+    ["Tempo settles", "The match compresses around midfield as both teams protect their shape."],
+    ["Patient spell", `${teamShort} circulate the ball while ${input.opponentShort} hold their line.`],
+    ["Second-ball phase", "Loose clearances and midfield duels interrupt the rhythm of the match."],
+  ], random);
+}
+
+function pickEventCopy(base, variants, random) {
+  const [title, detail] = variants[Math.min(variants.length - 1, Math.floor(random() * variants.length))];
+  return { ...base, title, detail };
 }
 
 function samplePoisson(lambda, random) {

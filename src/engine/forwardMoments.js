@@ -1,3 +1,5 @@
+import { createForwardExpansionPool } from "./forwardMomentLibrary.js";
+
 export function createForwardMatchPool(input) {
   const opponentShort = input.opponentShort;
   const managerInstruction = input.managerInstruction;
@@ -563,6 +565,7 @@ export function createForwardMatchPool(input) {
         },
       ],
     },
+    ...createForwardExpansionPool(input),
   ];
 }
 

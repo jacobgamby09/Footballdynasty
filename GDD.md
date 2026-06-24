@@ -373,6 +373,36 @@ Et moment består af:
 
 Moment-biblioteket skal vaere bredt nok til, at en saeson ikke foeles loest efter faa kampe. Hver position boer derfor have baade egne moments og faelles moments, og generatoren skal kunne blande dem ud fra position, rolle, score state, service, fitness og modstanderprofil.
 
+### Match Director
+
+Match Director is the orchestration layer between the team simulation and player moments. The team simulation remains the source of truth for goals, score state and the surrounding football match. The Director decides which player situations are shown, when they occur and how they form a readable match story.
+
+- Re-evaluate the match phase at every planned player highlight: cagey opening, team pressure, opponent pressure, end to end, protecting a lead, chasing a goal, late siege or game management.
+- Weight moments by phase, score, minute, role, service, opponent profile, player attributes and positional preferences.
+- Track recent categories and moment families so repeated situations receive strong cooldown penalties.
+- Spread unrelated highlights naturally across the player's actual minutes and avoid collisions with simulated goals.
+- Preserve determinism: identical match state and seed must produce the same phase history, moments and timing.
+- Chains remain conditional rewards. They must respect the Director's chain budget, player exit minute and nearby simulated goal events.
+- Match balance labs should report phase distribution, category distribution, unique moment IDs, adjacent repetition and tight-spacing rates.
+
+### Forward Moment Library V2
+
+- The forward pool should contain at least 50 selectable situations across position-specific and shared moments.
+- Situation families must cover finishing, rebounds, box movement, runs behind, one-versus-one attacks, counters, hold-up combinations, pressing and set pieces.
+- New moments use explicit Director metadata: allowed phases, score states, minute range, rarity, cooldown and family.
+- More moment variety must not become a hidden scoring buff. New libraries should use conversion normalization where their choice mix creates more direct goal actions than the established pool.
+- Chain-capable moments declare a route such as `dribble_break`, `rebound_finish`, `press_turnover`, `hold_up_return`, `aerial_second_ball` or `run_to_finish`.
+- Result presentation should distinguish saves, blocks, shots off target, shots off the frame and missed teammate finishes while preserving the underlying deterministic result.
+
+### Live Match Presentation V2
+
+- Live commentary should react to the latest meaningful event, score state and late-match context rather than repeating one generic match-in-progress line.
+- Momentum is a readable directional signal, not a win-probability percentage. It should say which side is building or applying pressure based on recent simulated chances and goals.
+- The timeline prioritizes meaningful goals, chances, substitutions and player actions. Tempo filler may appear only when too few meaningful events exist.
+- Timeline events use compact icons and team/opponent tones for fast scanning.
+- Live player statistics include rating, successful actions, total actions, shots, shots on target, key passes and current fitness.
+- Goal and assist involvement keeps the strongest visual reward. Follow-up chains receive a smaller pulse so the player understands the same attack is continuing.
+
 Eksempel:
 
 Situation: Du modtager bolden i feltet med en forsvarer tæt på.
@@ -1056,8 +1086,9 @@ Transfer Window V1:
 - Deals/Home should show ongoing market visibility: club fit, next transfer window and current interest read.
 - Current-club extensions and external offers can appear in the same window, but must be visually separated so the player understands the tradeoff.
 - Accepting an external offer immediately changes the active club, contract, wage, role promise, facilities context and future fixtures.
-- When a transfer window contains concrete offers, the player must explicitly accept one or decline them before the career can advance. The main progress button should not skip active offers.
-- Declining a transfer window should close that window and return to the career loop; the same offer should not instantly reappear until another trigger/window.
+- When a transfer window contains concrete offers, the player must explicitly accept one or choose to stay at the current club before the career can advance. The main progress button should not skip active offers.
+- Each transfer or extension offer is a separate decision. Declining one offer removes only that offer and leaves the rest of the market open.
+- `Stay at club` is the explicit action that closes the full transfer window and returns to the career loop. Closed offers should not instantly reappear until another trigger/window.
 
 Klubinteresse bør afhænge af:
 

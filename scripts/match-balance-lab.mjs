@@ -3,10 +3,10 @@ import {
   createTeamMatchModel,
   chooseAutoSimChoice,
   resolvePlayerChoice,
-  selectPlayerHighlights,
   seededNoise,
 } from "../src/engine/matchEngineCore.js";
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
+import { createMatchDirectorPlan } from "../src/engine/matchDirector.js";
 
 const runs = Number(process.argv.find((arg) => arg.startsWith("--runs="))?.split("=")[1] ?? 500);
 const leagueAverageOvr = 15;
@@ -157,7 +157,7 @@ function simulateMatch(state, context, matchSeed) {
     fitness: state.fitness,
     momentPools: ["forward", "shared"],
   });
-  const selectedMoments = selectPlayerHighlights({
+  const directorPlan = createMatchDirectorPlan({
     moments,
     count: playerMomentCount,
     matchSeed,
@@ -170,6 +170,7 @@ function simulateMatch(state, context, matchSeed) {
     attributeValues: adjustedAttributes,
     preferredCategories: forwardPreferredCategories,
   });
+  const selectedMoments = directorPlan.moments;
   const playerResults = selectedMoments.map((moment, index) => {
     const choice = chooseAutoSimChoice({
       moment,
@@ -201,9 +202,16 @@ function simulateMatch(state, context, matchSeed) {
     simGoals: simScore.team + simScore.opponent,
     playerGoals,
     playerAssists,
-    playerMomentCount,
+    playerMomentCount: selectedMoments.length,
     playerSuccesses: playerResults.filter((result) => result.success).length,
     outcomeTiers: playerResults.map((result) => result.outcomeTier),
+    highlightIds: selectedMoments.map((moment) => moment.id),
+    highlightCategories: selectedMoments.map((moment) => moment.category),
+    highlightPhases: selectedMoments.map((moment) => moment.directorPhase),
+    highlightMinutes: selectedMoments.map((moment) => moment.minute),
+    highlightSituations: selectedMoments.map((moment) => moment.situation),
+    highlightFamilies: selectedMoments.map((moment) => moment.director?.family ?? moment.id),
+    chainRoutes: selectedMoments.flatMap((moment) => moment.chainRoutes ?? []),
     teamXg: teamMatchModel.teamXg,
     opponentXg: teamMatchModel.opponentXg,
     rating: Number((playerRating + simEvents.reduce((sum, event) => sum + event.ratingDelta, 0)).toFixed(2)),
@@ -357,6 +365,17 @@ function createAggregate() {
     playerMoments: 0,
     playerSuccesses: 0,
     outcomeTiers: new Map(),
+    highlightIds: new Map(),
+    highlightCategories: new Map(),
+    highlightPhases: new Map(),
+    highlightSituations: new Map(),
+    highlightFamilies: new Map(),
+    chainRoutes: new Map(),
+    chainCapableMoments: 0,
+    adjacentCategoryRepeats: 0,
+    adjacentCategoryPairs: 0,
+    tightSpacingPairs: 0,
+    spacingPairs: 0,
     teamXg: 0,
     opponentXg: 0,
     ratings: [],
@@ -375,6 +394,29 @@ function recordAggregate(aggregate, result) {
   aggregate.teamXg += result.teamXg;
   aggregate.opponentXg += result.opponentXg;
   result.outcomeTiers.forEach((tier) => increment(aggregate.outcomeTiers, tier));
+  result.highlightIds.forEach((id) => increment(aggregate.highlightIds, id));
+  result.highlightCategories.forEach((category, index) => {
+    increment(aggregate.highlightCategories, category);
+    if (index > 0) {
+      aggregate.adjacentCategoryPairs += 1;
+      if (result.highlightCategories[index - 1] === category) {
+        aggregate.adjacentCategoryRepeats += 1;
+      }
+    }
+  });
+  result.highlightPhases.forEach((phase) => increment(aggregate.highlightPhases, phase));
+  result.highlightSituations.forEach((situation) => increment(aggregate.highlightSituations, situation));
+  result.highlightFamilies.forEach((family) => increment(aggregate.highlightFamilies, family));
+  result.chainRoutes.forEach((route) => increment(aggregate.chainRoutes, route));
+  aggregate.chainCapableMoments += result.chainRoutes.length;
+  result.highlightMinutes.forEach((minute, index) => {
+    if (index > 0) {
+      aggregate.spacingPairs += 1;
+      if (minute - result.highlightMinutes[index - 1] < 6) {
+        aggregate.tightSpacingPairs += 1;
+      }
+    }
+  });
   aggregate.ratings.push(result.rating);
   increment(aggregate.scorelines, result.scoreline);
   increment(aggregate.roles, result.role);
@@ -399,8 +441,19 @@ function summarizeAggregate(aggregate) {
     playerAssistRate: aggregate.playerAssists / aggregate.matches,
     poorRate,
     greatRate,
+    adjacentCategoryRepeatRate: aggregate.adjacentCategoryPairs ? aggregate.adjacentCategoryRepeats / aggregate.adjacentCategoryPairs : 0,
+    tightSpacingRate: aggregate.spacingPairs ? aggregate.tightSpacingPairs / aggregate.spacingPairs : 0,
+    uniqueMomentIds: aggregate.highlightIds.size,
+    uniqueSituationTexts: aggregate.highlightSituations.size,
+    uniqueMomentFamilies: aggregate.highlightFamilies.size,
+    chainRouteCoverage: aggregate.chainRoutes.size,
+    chainCapableRate: aggregate.playerMoments ? aggregate.chainCapableMoments / aggregate.playerMoments : 0,
+    topSituationShare: aggregate.playerMoments ? (topEntries(aggregate.highlightSituations, 1)[0]?.[1] ?? 0) / aggregate.playerMoments : 0,
     avgRating: ratingAverage,
     tierSplit: topEntries(aggregate.outcomeTiers, 4),
+    categorySplit: topEntries(aggregate.highlightCategories, 10),
+    phaseSplit: topEntries(aggregate.highlightPhases, 8),
+    chainRouteSplit: topEntries(aggregate.chainRoutes, 10),
     topScorelines: topEntries(aggregate.scorelines, 8),
     roleSplit: topEntries(aggregate.roles, 4),
   };
@@ -412,6 +465,10 @@ function printScenario(report) {
   console.log(`Avg xG: Team ${format(report.teamXgPerMatch)} | Opp ${format(report.opponentXgPerMatch)}`);
   console.log(`Player highlights: ${format(report.playerMomentsPerMatch)}/match | Success: ${percent(report.playerSuccessRate)} | Goals: ${format(report.playerGoalRate)}/match | Assists: ${format(report.playerAssistRate)}/match`);
   console.log(`Outcome tiers: ${formatEntries(report.tierSplit)}`);
+  console.log(`Director: ${report.uniqueMomentIds} IDs / ${report.uniqueSituationTexts} texts / ${report.uniqueMomentFamilies} families | Adjacent repeats: ${percent(report.adjacentCategoryRepeatRate)} | Tight spacing: ${percent(report.tightSpacingRate)}`);
+  console.log(`Chains: ${percent(report.chainCapableRate)} capable | ${report.chainRouteCoverage} routes | ${formatEntries(report.chainRouteSplit)}`);
+  console.log(`Categories: ${formatEntries(report.categorySplit)}`);
+  console.log(`Phases: ${formatEntries(report.phaseSplit)}`);
   console.log(`Avg rating: ${format(report.avgRating)} | Roles: ${formatEntries(report.roleSplit)}`);
   console.log(`Scorelines: ${formatEntries(report.topScorelines)}`);
 
@@ -423,6 +480,13 @@ function printScenario(report) {
   if (report.poorRate > 0.35) warnings.push("too many poor outcomes may feel punishing");
   if (report.greatRate > 0.35) warnings.push("too many great outcomes may feel too heroic");
   if (report.greatRate < 0.08) warnings.push("great outcomes may be too rare");
+  if (report.adjacentCategoryRepeatRate > 0.18) warnings.push("adjacent highlight categories repeat too often");
+  if (report.tightSpacingRate > 0.12) warnings.push("unrelated highlights are clustered too tightly");
+  if (report.uniqueMomentIds < 10) warnings.push("moment ID variety is too low");
+  if (report.uniqueSituationTexts < 25) warnings.push("situation-text variety is too low");
+  if (report.uniqueMomentFamilies < 20) warnings.push("moment-family variety is too low");
+  if (report.chainRouteCoverage < 6) warnings.push("chain-route coverage is too low");
+  if (report.topSituationShare > 0.12) warnings.push("one situation appears too frequently");
   console.log(warnings.length ? `Warnings: ${warnings.join("; ")}` : "Warnings: none");
 }
 

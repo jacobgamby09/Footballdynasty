@@ -23,6 +23,16 @@ export type ForwardMatchMoment = {
   situation: string;
   context: string;
   choices: ForwardMomentChoice[];
+  director?: {
+    phases?: string[];
+    scoreStates?: Array<"level" | "leading" | "trailing">;
+    minuteRange?: [number, number];
+    rarity?: "common" | "uncommon" | "rare";
+    cooldown?: number;
+    family?: string;
+    conversionModifier?: number;
+  };
+  chainRoutes?: string[];
 };
 
 export function createForwardMatchPool(input: {

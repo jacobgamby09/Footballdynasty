@@ -1,5 +1,6 @@
 import { createPositionMatchPool } from "../engine/forwardMoments";
-import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, getSimScoreAtMinute, resolvePlayerChoice, seededNoise, selectPlayerHighlights } from "../engine/matchEngineCore";
+import { canQueueDirectorFollowUp, createMatchDirectorPlan } from "../engine/matchDirector";
+import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
@@ -55,7 +56,10 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     1 +
     environment.recoveryBonus +
     getWeeklySupportRecoveryBonus(effectiveRecoveryBaselineLevel);
-  const baseFitnessDelta = match ? getMatchFitnessDelta(match, results) + weeklyRecoveryBonus : rawTotals.fitnessDelta + weeklyRecoveryBonus;
+  const matchdayRecoveryBonus = match ? getMatchdayRecoveryBonus(match) : 0;
+  const baseFitnessDelta = match
+    ? getMatchFitnessDelta(match, results) + weeklyRecoveryBonus + matchdayRecoveryBonus
+    : rawTotals.fitnessDelta + weeklyRecoveryBonus;
   const projectedFitness = clamp(state.fitness + baseFitnessDelta, 0, 100);
   const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   // Elite conditioning lifts the fitness ceiling (stay fresher for longer) — non-OVR.
@@ -243,6 +247,18 @@ export function getMatchFitnessDelta(match: MatchState, results: MatchResult[]) 
   const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
 
   return clamp(minuteLoad + scaledActionLoad, -12, 0);
+}
+
+export function getMatchdayRecoveryBonus(match: MatchState) {
+  if (getPlayerMinutesPlayed(match) > 0) {
+    return 0;
+  }
+
+  if (match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
+    return 14;
+  }
+
+  return 10;
 }
 
 
@@ -638,17 +654,25 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
   let playerResultIndex = 0;
   const processed = match.events.slice(0, match.currentEventIndex).flatMap((event) => {
     if (event.type !== "player_moment") {
-      const goalText =
-        event.teamGoalDelta > 0
-          ? ` Goal for ${match.teamShortName}.`
-          : event.opponentGoalDelta > 0
-            ? ` Goal for ${match.opponent}.`
-            : "";
       return [
         {
           id: event.id,
           minute: event.minute,
-          text: `${event.title}.${goalText}`,
+          text: `${event.title}. ${event.detail}`,
+          kind:
+            event.teamGoalDelta > 0 || event.opponentGoalDelta > 0
+              ? "goal"
+              : event.type === "team_chance" || event.type === "opponent_chance"
+                ? "chance"
+                : event.type === "substitution"
+                  ? "substitution"
+                  : "tempo",
+          tone:
+            event.teamGoalDelta > 0 || event.type === "team_chance"
+              ? "team"
+              : event.opponentGoalDelta > 0 || event.type === "opponent_chance"
+                ? "opponent"
+                : "neutral",
         },
       ];
     }
@@ -667,7 +691,9 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
       {
         id: `${event.id}-result`,
         minute: event.minute,
-        text: output,
+        text: result.title ? `${result.title}. ${output}` : output,
+        kind: result.goals > 0 || result.assists > 0 ? "goal_involvement" : "player",
+        tone: result.goals > 0 || result.assists > 0 ? "gold" : result.success ? "team" : "neutral",
       },
     ];
   });
@@ -678,6 +704,8 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
           id: "player-sub-on",
           minute: match.entryMinute,
           text: "You are sent on from the bench.",
+          kind: "substitution",
+          tone: "team",
         }
       : undefined,
     match.exitMinute && match.liveMinute >= match.exitMinute
@@ -685,11 +713,92 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
           id: "player-sub-off",
           minute: match.exitMinute,
           text: "You are subbed off.",
+          kind: "substitution",
+          tone: "neutral",
         }
       : undefined,
-  ].filter((item): item is { id: string; minute: number; text: string } => !!item);
+  ].filter((item): item is { id: string; minute: number; text: string; kind: string; tone: string } => !!item);
 
-  return [...processed, ...playerStatusEvents].sort((a, b) => a.minute - b.minute).slice(-4);
+  const combined = [...processed, ...playerStatusEvents].sort((a, b) => a.minute - b.minute);
+  const meaningful = combined.filter((item) => item.kind !== "tempo");
+  return (meaningful.length >= 3 ? meaningful : combined).slice(-5);
+}
+
+export function getLiveMomentum(match: MatchState, processedEventIndex: number) {
+  const windowStart = Math.max(0, match.liveMinute - 16);
+  const relevant = match.events
+    .slice(0, processedEventIndex + 1)
+    .filter((event): event is SimMatchEvent => event.type !== "player_moment" && event.minute >= windowStart);
+  const rawMomentum = relevant.reduce((sum, event) => {
+    if (event.teamGoalDelta > 0) return sum + 3;
+    if (event.opponentGoalDelta > 0) return sum - 3;
+    if (event.type === "team_chance") return sum + 1.4;
+    if (event.type === "opponent_chance") return sum - 1.4;
+    return sum;
+  }, 0);
+  const value = clamp(Math.round(rawMomentum * 12), -44, 44);
+  const absolute = Math.abs(value);
+
+  if (absolute < 10) {
+    return { value, label: "Even spell", detail: "Neither side controls the current phase.", tone: "even" as const };
+  }
+  if (value > 0) {
+    return {
+      value,
+      label: absolute >= 30 ? `${match.teamShortName} pressure` : `${match.teamShortName} building`,
+      detail: absolute >= 30 ? "The opponent are being pushed deeper." : "Your side are finding more territory.",
+      tone: "team" as const,
+    };
+  }
+  return {
+    value,
+    label: absolute >= 30 ? `${match.opponent} pressure` : `${match.opponent} building`,
+    detail: absolute >= 30 ? "Your side are being forced toward their own box." : "The opponent are gaining territory.",
+    tone: "opponent" as const,
+  };
+}
+
+export function getLiveCommentary(match: MatchState, results: MatchResult[], processedEventIndex: number) {
+  const latestSimEvent = [...match.events.slice(0, processedEventIndex + 1)]
+    .reverse()
+    .find((event): event is SimMatchEvent => event.type !== "player_moment");
+  const score = getTimelineScore(match, results, processedEventIndex);
+  const goalDiff = score.teamGoals - score.opponentGoals;
+  const late = match.liveMinute >= 75;
+
+  if (latestSimEvent && match.liveMinute - latestSimEvent.minute <= 7) {
+    return { title: latestSimEvent.title, detail: latestSimEvent.detail };
+  }
+  if (late && goalDiff < 0) {
+    return { title: `${match.teamShortName} chase the game`, detail: "The shape is more aggressive and every forward action carries urgency." };
+  }
+  if (late && goalDiff > 0) {
+    return { title: `${match.teamShortName} manage the lead`, detail: "Possession and field position matter more than forcing the next attack." };
+  }
+  if (goalDiff < 0) {
+    return { title: "Looking for a response", detail: `${match.teamShortName} need cleaner service into the final third.` };
+  }
+  if (goalDiff > 0) {
+    return { title: "Protecting the advantage", detail: `${match.teamShortName} balance counterattacks with keeping their shape.` };
+  }
+  return { title: "Match in the balance", detail: "Both sides are searching for the next spell of pressure." };
+}
+
+export function getLivePlayerStats(results: MatchResult[], rating: number) {
+  const shots = results.filter((result) => result.choiceOutcome === "goal").length;
+  const shotsOnTarget = results.filter(
+    (result) =>
+      result.choiceOutcome === "goal" &&
+      (result.goals > 0 || result.success || ["Saved", "Off the frame"].includes(result.title)),
+  ).length;
+  return {
+    rating,
+    actions: results.length,
+    successfulActions: results.filter((result) => result.success).length,
+    shots,
+    shotsOnTarget,
+    keyPasses: results.reduce((sum, result) => sum + result.chancesCreated, 0),
+  };
 }
 
 
@@ -799,15 +908,27 @@ export function getAppearanceWindow(
   }
 
   if (role === "Rotation Starter") {
+    const lowFitnessExit =
+      context.fitnessAvailability === "Risky"
+        ? Math.round((state.fitness - 40) * 0.35)
+        : 0;
     const fatigueExit =
-      context.fitnessAvailability === "Risky" ? -10 : context.fitnessAvailability === "Tired" ? -5 : 0;
+      context.fitnessAvailability === "Risky" ? -16 : context.fitnessAvailability === "Tired" ? -8 : 0;
     const exitAdjustment = fatigueExit + (teamGoalDiff >= 2 ? -5 : teamGoalDiff < 0 ? 6 : 0);
-    return { entryMinute: 0, exitMinute: clamp(window.end + variation + exitAdjustment, 55, 86) };
+    return { entryMinute: 0, exitMinute: clamp(window.end + variation + exitAdjustment + lowFitnessExit, 46, 86) };
   }
 
   if (role === "Starter" && ["Risky", "Tired"].includes(context.fitnessAvailability)) {
-    const exitBase = context.fitnessAvailability === "Risky" ? 70 : 80;
-    return { entryMinute: 0, exitMinute: clamp(exitBase + variation, 50, 88) };
+    const lowFitnessExit =
+      context.fitnessAvailability === "Risky"
+        ? Math.round((state.fitness - 40) * 0.35)
+        : 0;
+    const exitBase = context.fitnessAvailability === "Risky" ? 60 : 72;
+    const matchStateExit = teamGoalDiff >= 2 ? -6 : teamGoalDiff < 0 ? 4 : 0;
+    return {
+      entryMinute: 0,
+      exitMinute: clamp(exitBase + variation + lowFitnessExit + matchStateExit, 46, 84),
+    };
   }
 
   return { entryMinute: 0 };
@@ -861,7 +982,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     contextualOvr * 0.2 +
     positionModule.matchTendencies.involvementBias[context.playerRole] * 10;
   const playerMomentCount = context.isInSquad ? getPlayerMomentCount(context.playerRole, involvementScore, appearanceMinutes, matchSeed) : 0;
-  const selectedMoments = selectPlayerHighlights({
+  const directorPlan = createMatchDirectorPlan({
     moments: matchPool,
     matchSeed,
     count: playerMomentCount,
@@ -874,17 +995,10 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     attributeValues: matchAttributeValues,
     preferredCategories: positionModule.matchTendencies.preferredForwardCategories,
   });
-  const playerEvents: PlayerMatchEvent[] = playerMomentCount <= 0 || selectedMoments.length === 0 ? [] : Array.from({ length: playerMomentCount }, (_, index) => {
-    const moment = selectedMoments[index % selectedMoments.length];
-    const spread = playerMomentCount === 1 ? 0.5 : index / (playerMomentCount - 1);
-    const roleMinute = Math.round(playerWindowStart + (playerWindowEnd - playerWindowStart) * spread);
-    const minuteNoise = Math.round(seededNoise(`${matchSeed}-player-minute-${index}`) * 8) - 4;
-    return {
-      ...moment,
-      type: "player_moment" as const,
-      minute: clamp(Math.round((moment.minute + roleMinute) / 2) + index * 2 + minuteNoise, playerWindowStart, playerWindowEnd),
-    };
-  });
+  const playerEvents: PlayerMatchEvent[] = directorPlan.moments.map((moment) => ({
+    ...moment,
+    type: "player_moment" as const,
+  }));
   const events = [...simEvents, ...playerEvents].sort((a, b) => a.minute - b.minute);
 
   return {
@@ -920,6 +1034,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     currentEventIndex: 0,
     liveMinute: 0,
     results: [],
+    director: directorPlan.state,
     isComplete: false,
   };
 }
@@ -955,6 +1070,7 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const xp = buildChoiceXp(choice, supportAdjustedResult.outcomeTier, positionModule, moment);
   const positionLabel = positionModule.displayName.toLowerCase();
   const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
+  const outcomeCopy = getMatchOutcomeCopy(moment, choice, supportAdjustedResult, resultSeed, positionLabel);
   const choiceMeta = {
     choiceId: choice.id,
     choiceLabel: choice.label,
@@ -963,12 +1079,8 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
 
   if (choice.outcome === "goal") {
     return {
-      title: supportAdjustedResult.decisiveOutcome ? "Clinical action" : supportAdjustedResult.success ? `Useful ${positionLabel} action` : "Chance slips away",
-      detail: supportAdjustedResult.decisiveOutcome
-        ? `${moment.minute}': ${choice.label} works. You turn the moment into a goal and your match rating jumps.`
-        : supportAdjustedResult.success
-          ? `${moment.minute}': ${choice.label} is the right idea and keeps the attack alive, but it does not become a clear finish.`
-          : `${moment.minute}': ${choice.label} is the right idea, but the execution is not clean enough this time.`,
+      title: outcomeCopy.title,
+      detail: outcomeCopy.detail,
       ...supportAdjustedResult,
       ...choiceMeta,
       performanceReasons,
@@ -978,14 +1090,8 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
 
   if (choice.outcome === "assist") {
     return {
-      title: supportAdjustedResult.assists > 0 ? "Assist" : supportAdjustedResult.chancesCreated > 0 ? "Chance created" : supportAdjustedResult.success ? "Attack connected" : "Move breaks down",
-      detail: supportAdjustedResult.assists > 0
-        ? `${moment.minute}': ${choice.label} opens the defense and gives a teammate the clean finish.`
-        : supportAdjustedResult.chancesCreated > 0
-          ? `${moment.minute}': ${choice.label} opens the defense, but the finish does not come.`
-        : supportAdjustedResult.success
-          ? `${moment.minute}': ${choice.label} helps the move, but the final chance never fully opens.`
-          : `${moment.minute}': ${choice.label} nearly unlocks them, but the final connection is missing.`,
+      title: outcomeCopy.title,
+      detail: outcomeCopy.detail,
       ...supportAdjustedResult,
       ...choiceMeta,
       performanceReasons,
@@ -1031,6 +1137,18 @@ export function createFollowUpMoment(match: MatchState, moment: PlayerMatchEvent
   if (!template) {
     return undefined;
   }
+  const director = match.director;
+  if (
+    director &&
+    !canQueueDirectorFollowUp({
+      match,
+      moment,
+      highlightBudget: director.highlightBudget,
+      maxChains: director.maxChains,
+    })
+  ) {
+    return undefined;
+  }
 
   const followUpMinute = clamp(moment.minute + 1, moment.minute, Math.min(match.exitMinute ?? 90, 90));
   return {
@@ -1040,6 +1158,8 @@ export function createFollowUpMoment(match: MatchState, moment: PlayerMatchEvent
     minute: followUpMinute,
     opponent: moment.opponent,
     chainDepth: (moment.chainDepth ?? 0) + 1,
+    directorPhase: moment.directorPhase,
+    narrativeTags: [...(moment.narrativeTags ?? []), "follow_up"],
   };
 }
 
@@ -1047,6 +1167,11 @@ export function createFollowUpMoment(match: MatchState, moment: PlayerMatchEvent
 export function getFollowUpTemplate(moment: MatchMoment, result: MatchResult): Omit<PlayerMatchEvent, "id" | "type" | "minute" | "opponent"> | undefined {
   if (result.choiceOutcome === "defense") {
     return undefined;
+  }
+
+  const routedTemplate = getRoutedFollowUpTemplate(moment.chainRoutes?.[0]);
+  if (routedTemplate) {
+    return routedTemplate;
   }
 
   if (moment.category === "counter" || result.choiceId.includes("drive") || result.choiceId.includes("carry")) {
@@ -1115,6 +1240,157 @@ export function getFollowUpTemplate(moment: MatchMoment, result: MatchResult): O
   }
 
   return undefined;
+}
+
+function getRoutedFollowUpTemplate(route?: string): Omit<PlayerMatchEvent, "id" | "type" | "minute" | "opponent"> | undefined {
+  if (route === "dribble_break") {
+    return {
+      category: "shot",
+      situation: "The first defender is beaten and the cover steps across",
+      context: "Your dribble opened the box. You can finish, release the runner or protect the advantage.",
+      choices: [
+        { id: "chain-dribble-finish", label: "Finish across goal", uses: ["Finishing", "Composure"], risk: "Medium", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-dribble-square", label: "Square to runner", uses: ["Vision", "Passing"], risk: "Low", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-dribble-protect", label: "Protect the ball", uses: ["Strength", "First Touch"], risk: "Low", reward: "Keep pressure", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "rebound_finish") {
+    return {
+      category: "late_pressure",
+      situation: "The first contact ricochets back into danger",
+      context: "Nobody has control of the second ball. One quick decision can finish the scramble.",
+      choices: [
+        { id: "chain-rebound-hit", label: "Hit rebound", uses: ["Finishing", "Acceleration"], risk: "High", reward: "Scramble goal", manager: "Neutral", outcome: "goal" },
+        { id: "chain-rebound-set", label: "Set teammate", uses: ["First Touch", "Vision"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-rebound-pin", label: "Pin defender", uses: ["Strength", "Work Rate"], risk: "Low", reward: "Sustain attack", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "cross_decision" || route === "finish_or_square") {
+    return {
+      category: "first_time_finish",
+      situation: "The move reaches the final ball inside the box",
+      context: "The defense is retreating toward goal. The finish and the square pass are both briefly available.",
+      choices: [
+        { id: "chain-cross-finish", label: "Take the finish", uses: ["Finishing", "Composure"], risk: "Medium", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-cross-square", label: "Square across goal", uses: ["Vision", "Passing"], risk: "Low", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-cross-delay", label: "Delay for support", uses: ["First Touch", "Strength"], risk: "Low", reward: "Retain attack", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "press_turnover") {
+    return {
+      category: "late_pressure",
+      situation: "The press wins possession with the defense unbalanced",
+      context: "The turnover has created a short window before the centerbacks recover their positions.",
+      choices: [
+        { id: "chain-press-shoot", label: "Shoot early", uses: ["Finishing", "Composure"], risk: "High", reward: "Sudden goal", manager: "Neutral", outcome: "goal" },
+        { id: "chain-press-slip", label: "Slip teammate", uses: ["Vision", "Passing"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-press-lock", label: "Lock in pressure", uses: ["Work Rate", "Positioning"], risk: "Low", reward: "Manager trust", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "hold_up_return") {
+    return {
+      category: "link_up",
+      situation: "The return pass arrives as you spin away from the marker",
+      context: "Your first action brought a teammate into play. Now the defense must react to your second movement.",
+      choices: [
+        { id: "chain-return-shoot", label: "Spin and shoot", uses: ["First Touch", "Finishing"], risk: "High", reward: "Goal chance", manager: "Risky", outcome: "goal" },
+        { id: "chain-return-runner", label: "Release third man", uses: ["Vision", "Passing"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-return-set", label: "Settle the move", uses: ["Composure", "Passing"], risk: "Low", reward: "Keep control", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "aerial_second_ball") {
+    return {
+      category: "late_pressure",
+      situation: "The aerial duel drops a second ball near the goal",
+      context: "The first contact did not finish the move. The loose ball now favors whoever reacts first.",
+      choices: [
+        { id: "chain-aerial-volley", label: "Volley second ball", uses: ["Finishing", "Composure"], risk: "High", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-aerial-nudge", label: "Nudge to teammate", uses: ["First Touch", "Vision"], risk: "Medium", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+        { id: "chain-aerial-compete", label: "Keep it alive", uses: ["Strength", "Work Rate"], risk: "Low", reward: "Sustain pressure", manager: "Likes", outcome: "trust" },
+      ],
+    };
+  }
+  if (route === "run_to_finish" || route === "clearance_counter") {
+    return {
+      category: "shot",
+      situation: "The run carries you into the final decision",
+      context: "You have gained separation, but the angle and the recovering defender still matter.",
+      choices: [
+        { id: "chain-run-place", label: "Place finish", uses: ["Finishing", "Composure"], risk: "Medium", reward: "Goal chance", manager: "Neutral", outcome: "goal" },
+        { id: "chain-run-round", label: "Take another touch", uses: ["First Touch", "Acceleration"], risk: "High", reward: "Beat keeper", manager: "Risky", outcome: "goal" },
+        { id: "chain-run-square", label: "Square pass", uses: ["Vision", "Passing"], risk: "Low", reward: "Assist chance", manager: "Likes", outcome: "assist" },
+      ],
+    };
+  }
+  return undefined;
+}
+
+function getMatchOutcomeCopy(
+  moment: MatchMoment,
+  choice: MatchChoice,
+  result: ReturnType<typeof resolvePlayerChoice>,
+  resultSeed: string,
+  positionLabel: string,
+) {
+  if (choice.outcome === "goal") {
+    if (result.decisiveOutcome) {
+      return {
+        title: "Goal",
+        detail: `${moment.minute}': ${choice.label} works perfectly. The move ends in the net.`,
+      };
+    }
+    const goodMisses = [
+      ["Saved", `${moment.minute}': ${choice.label} finds the target, but the keeper gets behind it.`],
+      ["Blocked", `${moment.minute}': ${choice.label} beats the first pressure, but a defender blocks the finish.`],
+      ["Off the frame", `${moment.minute}': ${choice.label} has the keeper beaten, but the ball clips the frame of the goal.`],
+    ];
+    const poorMisses = [
+      ["Chance missed", `${moment.minute}': ${choice.label} sends the chance wide under pressure.`],
+      ["Heavy contact", `${moment.minute}': ${choice.label} is rushed and the finish flies over.`],
+      ["Angle closed", `${moment.minute}': ${choice.label} cannot beat the recovering defender and the chance disappears.`],
+    ];
+    return pickOutcomeCopy(result.success ? goodMisses : poorMisses, `${resultSeed}-goal-copy`);
+  }
+  if (choice.outcome === "assist") {
+    if (result.assists > 0) {
+      return {
+        title: "Assist",
+        detail: `${moment.minute}': ${choice.label} opens the defense and the teammate finishes the chance.`,
+      };
+    }
+    if (result.chancesCreated > 0) {
+      const chanceEnds = [
+        ["Chance created", `${moment.minute}': ${choice.label} creates the opening, but the teammate fires wide.`],
+        ["Keeper denies it", `${moment.minute}': ${choice.label} releases the runner, but the keeper saves the finish.`],
+        ["Last-ditch block", `${moment.minute}': ${choice.label} creates the chance before a defender makes the final block.`],
+      ];
+      return pickOutcomeCopy(chanceEnds, `${resultSeed}-assist-copy`);
+    }
+    return {
+      title: result.success ? "Attack connected" : "Move breaks down",
+      detail: result.success
+        ? `${moment.minute}': ${choice.label} helps the move, but the final lane closes before a shot arrives.`
+        : `${moment.minute}': ${choice.label} nearly unlocks them, but the connection is not clean enough.`,
+    };
+  }
+  return {
+    title: result.outcomeTier === "Great" ? "Manager will remember that" : result.success ? "Useful shift" : "Useful but imperfect",
+    detail: result.outcomeTier === "Great"
+      ? `${moment.minute}': ${choice.label} is exactly the kind of ${positionLabel} work that earns minutes.`
+      : result.success
+        ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
+        : `${moment.minute}': ${choice.label} helps the shape, though the action lacks sharpness.`,
+  };
+}
+
+function pickOutcomeCopy(options: string[][], seed: string) {
+  const index = Math.min(options.length - 1, Math.floor(seededNoise(seed) * options.length));
+  return { title: options[index][0], detail: options[index][1] };
 }
 
 

@@ -4,7 +4,7 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveMatchReadiness, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -14,7 +14,7 @@ import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, 
 import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
 import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
-import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingProjection } from "../systems/training";
+import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingFocusWeight, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
@@ -22,7 +22,7 @@ import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTabl
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game }: { game: GameState }) {
@@ -140,18 +140,19 @@ export function TransferWindowScreen({
   game,
   window,
   onAccept,
-  onClose,
+  onDecline,
+  onStay,
 }: {
   game: GameState;
   window: TransferWindowState;
   onAccept: (offer: ContractOffer) => void;
-  onClose: () => void;
+  onDecline: (offer: ContractOffer) => void;
+  onStay: () => void;
 }) {
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
   const tier = getClubLeagueTier(game.club);
   const currentOffer = window.currentClubOffer;
   const hasExternalOffers = window.offers.length > 0;
-  const hasDecision = Boolean(currentOffer || hasExternalOffers);
 
   return (
     <section className="simple-screen transfer-window-screen">
@@ -215,9 +216,14 @@ export function TransferWindowScreen({
             <InfoTile label="Pressure" value={formatSigned(currentOffer.pressureModifier)} tone={currentOffer.pressureModifier > game.contract.pressureModifier ? "warn" : undefined} />
           </div>
           <p>{currentOffer.summary}</p>
-          <button className="primary-action" type="button" onClick={() => onAccept(currentOffer)}>
-            Accept Extension
-          </button>
+          <div className="contract-action-row">
+            <button className="secondary-action" type="button" onClick={() => onDecline(currentOffer)}>
+              Decline
+            </button>
+            <button className="primary-action" type="button" onClick={() => onAccept(currentOffer)}>
+              Accept Extension
+            </button>
+          </div>
         </div>
       )}
 
@@ -245,20 +251,13 @@ export function TransferWindowScreen({
           multiple
           offer={offer}
           onAccept={onAccept}
-          onDecline={onClose}
+          onDecline={onDecline}
         />
       ))}
 
-      <button className="secondary-action" type="button" onClick={onClose}>
-        {hasDecision
-          ? currentOffer && hasExternalOffers
-            ? "Decline Offers"
-            : currentOffer
-              ? "Decline Extension"
-              : "Reject Interest"
-          : window.kind === "end-season"
-            ? "Review Season"
-            : "Stay Focused"}
+      <button className="secondary-action transfer-stay-action" type="button" onClick={onStay}>
+        <ShieldCheck size={17} />
+        Stay at club
       </button>
     </section>
   );
@@ -381,6 +380,19 @@ export function TrainingScreen({
         <div className="training-focus-heading">
           <span className="metric-label">Stat focus</span>
           <strong>{getTrainingFocusUnlockLabel(game)}</strong>
+        </div>
+        <div className="training-focus-slots" aria-label="Selected training focus slots">
+          {Array.from({ length: focusCapacity }, (_, index) => {
+            const selected = focuses[index];
+            const efficiency = Math.round(getTrainingFocusWeight(game, index) * 100);
+            return (
+              <div className={`training-focus-slot ${selected ? "is-filled" : ""}`} key={`focus-slot-${index + 1}`}>
+                <span>Slot {index + 1}</span>
+                <strong>{selected ?? "Choose stat"}</strong>
+                <small>{efficiency}% XP</small>
+              </div>
+            );
+          })}
         </div>
         <div className="training-stat-grid">
           {game.attributes.map((attribute) => {
@@ -572,12 +584,19 @@ export function MatchMomentScreen({
   const liveReadiness = getLiveMatchReadiness(match, completedResults);
   const visibleScore = getTimelineScore(match, completedResults, processedEventIndex);
   const recentEvents = getRecentTimelineItems(match, completedResults);
+  const momentum = getLiveMomentum(match, processedEventIndex);
+  const liveCommentary = getLiveCommentary(match, completedResults, processedEventIndex);
+  const livePlayerStats = getLivePlayerStats(completedResults, totals.rating);
   const nextEventMinute = event ? `${event.minute}'` : "FT";
   const pitchStatus = getPitchStatus(match);
   const followUpQueued =
     event?.type === "player_moment" && match.currentResult
       ? Boolean(createFollowUpMoment(match, event, match.currentResult))
       : false;
+  const directorPhase =
+    event?.type === "player_moment" && event.directorPhase
+      ? formatMatchPhase(event.directorPhase)
+      : undefined;
 
   return (
     <section className="simple-screen match-screen">
@@ -593,12 +612,27 @@ export function MatchMomentScreen({
           {isPlayerMoment
             ? event.chainDepth
               ? "Follow-up moment"
-              : "Player moment"
+              : directorPhase ?? "Player moment"
             : match.isComplete
               ? "Full time"
               : `Live - next ${nextEventMinute}`}
         </span>
         <ProgressBar value={(match.liveMinute / 90) * 100} />
+      </div>
+
+      <div className={`match-momentum-strip tone-${momentum.tone}`}>
+        <div className="match-momentum-copy">
+          <span>Momentum</span>
+          <strong>{momentum.label}</strong>
+          <small>{momentum.detail}</small>
+        </div>
+        <div className="match-momentum-track" aria-label={momentum.label}>
+          <span className="match-momentum-center" />
+          <span
+            className="match-momentum-fill"
+            style={{ "--momentum-offset": `${50 + momentum.value}%` } as CSSProperties}
+          />
+        </div>
       </div>
 
       <div className={`match-role-card ${pitchStatus.tone}`}>
@@ -645,7 +679,7 @@ export function MatchMomentScreen({
         <div className="section-heading">
           <div>
             <span className="metric-label">{isPlayerMoment ? "Your moment" : match.isComplete ? "Full time" : "Live match"}</span>
-            <h2>{isPlayerMoment ? event.situation : match.isComplete ? "Final whistle" : "Match in progress"}</h2>
+            <h2>{isPlayerMoment ? event.situation : match.isComplete ? "Final whistle" : liveCommentary.title}</h2>
           </div>
           {isPlayerMoment ? <Target size={19} /> : <Activity size={19} />}
         </div>
@@ -654,7 +688,7 @@ export function MatchMomentScreen({
             ? event.context
             : match.isComplete
               ? "The match is over. Review the final output and return to your player dashboard."
-              : `${match.competition}. ${match.managerInstruction}`}
+              : liveCommentary.detail}
         </p>
       </div>
 
@@ -664,13 +698,17 @@ export function MatchMomentScreen({
           <div className="timeline-list">
             {recentEvents.length > 0 ? (
               recentEvents.map((item) => (
-                <div className="timeline-item" key={item.id}>
+                <div className={`timeline-item tone-${item.tone}`} key={item.id}>
+                  <span className="timeline-event-icon" aria-hidden="true">
+                    {getTimelineEventIcon(item.kind)}
+                  </span>
                   <strong>{item.minute}'</strong>
                   <span>{item.text}</span>
                 </div>
               ))
           ) : (
               <div className="timeline-item">
+                <span className="timeline-event-icon" aria-hidden="true"><Activity size={13} /></span>
                 <strong>0'</strong>
                 <span>Kickoff. {match.teamShortName} settle into shape.</span>
               </div>
@@ -734,14 +772,14 @@ export function MatchMomentScreen({
       )}
 
       <div className="card match-summary-card">
-        <span className="metric-label">Match so far</span>
-        <div className="stat-grid">
-          <InfoTile label="Goals" value={`${totals.goals}`} tone={totals.goals > 0 ? "gold" : undefined} />
-          <InfoTile label="Assists" value={`${totals.assists}`} />
-          <InfoTile label="Chances" value={`${totals.chancesCreated}`} tone={totals.chancesCreated > 0 ? "good" : undefined} />
-          <InfoTile label="Trust" value={`${totals.trustDelta > 0 ? "+" : ""}${totals.trustDelta}`} />
-          <InfoTile label="Fitness" value={`${liveReadiness}`} tone={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : undefined} />
-          <InfoTile label="Rating" value={totals.rating.toFixed(1)} tone="gold" />
+        <span className="metric-label">Live player stats</span>
+        <div className="live-player-stat-grid">
+          <div><span>Rating</span><strong className="gold">{livePlayerStats.rating.toFixed(1)}</strong></div>
+          <div><span>Actions</span><strong>{livePlayerStats.successfulActions}/{livePlayerStats.actions}</strong></div>
+          <div><span>Shots</span><strong>{livePlayerStats.shots}</strong></div>
+          <div><span>On target</span><strong>{livePlayerStats.shotsOnTarget}</strong></div>
+          <div><span>Key passes</span><strong>{livePlayerStats.keyPasses}</strong></div>
+          <div><span>Fitness</span><strong className={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : ""}>{liveReadiness}</strong></div>
         </div>
       </div>
     </section>
@@ -2088,6 +2126,32 @@ export function CreateDynastyScreen({ countries, onCreate }: { countries: Countr
       </button>
     </section>
   );
+}
+
+function formatMatchPhase(phase: NonNullable<PlayerMatchEvent["directorPhase"]>) {
+  return {
+    cagey_opening: "Cagey opening",
+    team_pressure: "Team pressure",
+    opponent_pressure: "Under pressure",
+    end_to_end: "End to end",
+    protecting_lead: "Protecting lead",
+    chasing_goal: "Chasing goal",
+    late_siege: "Late siege",
+    game_management: "Game management",
+  }[phase];
+}
+
+function getTimelineEventIcon(kind: string) {
+  if (kind === "goal" || kind === "goal_involvement") {
+    return <Trophy size={13} />;
+  }
+  if (kind === "chance" || kind === "player") {
+    return <Target size={13} />;
+  }
+  if (kind === "substitution") {
+    return <ArrowRightLeft size={13} />;
+  }
+  return <Activity size={13} />;
 }
 
 export function CountrySelectScreen({ countries, onPick }: { countries: Country[]; onPick: (id: CountryId) => void }) {

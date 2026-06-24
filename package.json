@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "balance:match": "node scripts/match-balance-lab.mjs",
     "balance:season": "node scripts/season-balance-lab.mjs",
+    "smoke:play-session": "node scripts/play-session-regression-smoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

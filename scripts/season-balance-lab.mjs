@@ -4,10 +4,10 @@ import {
   chooseAutoSimChoice,
   getSimScoreAtMinute,
   resolvePlayerChoice,
-  selectPlayerHighlights,
   seededNoise,
 } from "../src/engine/matchEngineCore.js";
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
+import { createMatchDirectorPlan } from "../src/engine/matchDirector.js";
 
 const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 120);
 // Default to a full career (age 16 -> ~37 = 22 seasons) so the data reflects the whole arc:
@@ -765,7 +765,7 @@ function simulateMatch(state, context, matchSeed) {
     fitness: state.fitness,
     momentPools: ["forward", "shared"],
   });
-  const selectedMoments = selectPlayerHighlights({
+  const directorPlan = createMatchDirectorPlan({
     moments,
     count: playerMomentCount,
     matchSeed,
@@ -778,6 +778,7 @@ function simulateMatch(state, context, matchSeed) {
     attributeValues: actionAttributes,
     preferredCategories: forwardPreferredCategories,
   });
+  const selectedMoments = directorPlan.moments;
   const playerResults = selectedMoments.flatMap((moment, index) => {
     const choice = chooseAutoSimChoice({
       moment,

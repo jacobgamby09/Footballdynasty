@@ -2014,3 +2014,59 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - In-browser: all 6 tracks render; at 12 prestige the 3 perks show LOCKED with thresholds
   (1.5k / 7.5k / 20k); at 25k prestige Consistency buys (cash -9k, level 0->1) and Finishing
   value 11 / potential 61 are unchanged — attributes/OVR untouched.
+## 2026-06-24 - Play-session fixes: fitness, transfer choices and focus clarity
+
+### Implemented
+
+- Low-fitness starters are substituted earlier and more reliably. `Risky` starters can now be managed from the late first half onward, while match state can still delay or accelerate the decision.
+- Players who record zero minutes now recover on matchday: unused substitutes receive a clear recovery gain, while players left out of the squad receive a slightly larger gain.
+- Transfer-window offers are independent decisions. Declining one offer no longer removes every other offer.
+- Added an explicit `Stay at club` action that closes the transfer window without pretending every offer was individually declined.
+- Training now lists each active focus slot in order with its actual XP efficiency, making the primary and reduced secondary focuses readable before starting the session.
+## 2026-06-24 - Match Director V1
+
+### Implemented
+
+- Added a pure engine `matchDirector` between team simulation and player-highlight presentation.
+- Player moments are now selected and timed from dynamic match phases, score state, role, attributes, service and opponent profile.
+- Added director memory for recent categories, used moment families, phase history, highlight budget and chain budget.
+- Added strong repetition cooldowns, narrative-continuity weights and spacing protection around other highlights and simulated goals.
+- Existing moment chains now respect the Director's chain allowance, player exit minute and nearby goal events.
+- Live player moments show the readable match phase, such as `Chasing goal` or `Late siege`.
+- Match balance lab now reports unique moment IDs, phase/category distribution, adjacent repetition and tight-spacing rates.
+
+### Verification snapshot
+
+- 500-match scenarios used 19 different moment IDs.
+- Adjacent category repetition stayed between 0-2%.
+- Unrelated highlight pairs under six minutes stayed at 0%.
+- Build and short career lab remained green.
+## 2026-06-24 - Forward Moment Library V2
+
+### Implemented
+
+- Added 31 new forward moments, raising the forward + shared playable pool from 19 to 50 unique situations.
+- New families cover rebounds, cutbacks, volleys, blind-side movement, offside-line runs, 1v1 attacks, counters, hold-up combinations, pressing triggers and attacking/defensive set pieces.
+- Every new moment carries Match Director metadata for phases, score states, minute range, rarity, cooldown and narrative family.
+- Added nine explicit chain routes with bespoke second actions: finish/square, rebound, run-to-finish, cross decision, aerial second ball, hold-up return, dribble break, press turnover and clearance counter.
+- Expanded result feedback with deterministic saves, blocks, shots off the frame, misses and teammate finishing outcomes.
+- Normalized conversion on the new pool so variety does not become an automatic goals buff.
+- Extended the match lab with unique situation text, family coverage and chain-route metrics.
+
+### Verification snapshot
+
+- 2,000-match scenarios used all 50 moment IDs, all 50 situation texts and all 50 narrative families.
+- All nine chain routes appeared in simulation.
+- Roughly 38-42% of selected moments were chain-capable.
+- Adjacent category repetition remained at 0-3%; unrelated tight-spacing remained 0%.
+## 2026-06-24 - Live Match Presentation V2
+
+### Implemented
+
+- Added context-aware live commentary driven by the latest meaningful event, score and match minute.
+- Added a compact momentum strip based on recent team/opponent chances and goals. It communicates pressure without exposing a misleading percentage.
+- Expanded simulated event commentary with multiple deterministic variants for goals, chances, substitutions and quiet phases.
+- Timeline now prioritizes meaningful events and uses icons plus team/opponent/goal-involvement tones.
+- Added live player stats for rating, successful actions, total actions, shots, shots on target, key passes and fitness.
+- Follow-up chains now receive a restrained pulse while goals/assists retain the strongest reward treatment.
+- Added reduced-motion behavior for new transitions.

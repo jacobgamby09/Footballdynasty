@@ -2,7 +2,7 @@ import { getPositionModule } from "../positionRoles";
 import { getAverageRating } from "./formatting";
 import { getClubLeagueTier } from "./ovr";
 import { calculateOvr } from "./ovr";
-import { getClubContractOffer, getTransferMarketOffers } from "./contracts";
+import { getClubContractOffer, getOfferKey, getTransferMarketOffers } from "./contracts";
 import { isSeasonComplete } from "./seasonState";
 import type { ClubFitStatus, ContractOffer, GameState, LastMatchSummary, TransferWindowKind, TransferWindowState } from "../types";
 
@@ -75,6 +75,27 @@ export function getClubFitStatus(game: GameState): ClubFitStatus {
     return "Developing";
   }
   return "Under level";
+}
+
+export function declineTransferWindowOffer(window: TransferWindowState, declined: ContractOffer): TransferWindowState {
+  const declinedKey = getOfferKey(declined);
+  const currentClubOffer =
+    window.currentClubOffer && getOfferKey(window.currentClubOffer) === declinedKey
+      ? undefined
+      : window.currentClubOffer;
+  const offers = window.offers.filter((offer) => getOfferKey(offer) !== declinedKey);
+
+  return {
+    ...window,
+    currentClubOffer,
+    offers,
+    interestLevel:
+      offers.length > 0
+        ? "Offers"
+        : window.interestLevel === "Offers"
+          ? "Interested"
+          : window.interestLevel,
+  };
 }
 
 export function getClubFitSummary(game: GameState, status = getClubFitStatus(game)) {

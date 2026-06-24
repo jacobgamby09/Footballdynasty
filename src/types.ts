@@ -537,12 +537,12 @@ export type SelectionFactor = {
   tone: "good" | "neutral" | "warn";
 };
 
-// A personal stake attached to a single match (Step 4): a clause to trigger, a milestone to hit,
-// a derby to rise to, or a drought to end. Generated deterministically at match setup, evaluated
-// against the player's totals in finishMatchState. Rewards are modest and non-OVR (cash/prestige/
-// trust only) so they never touch attributes or the OVR curve.
-export type MatchObjectiveType = "goal" | "assist" | "rating";
-export type MatchObjectiveSource = "contract" | "milestone" | "rivalry" | "form";
+// A personal stake attached to a single match (Step 4): the player-facing presentation of the
+// current sponsor's matchday objective. Only present while a sponsor deal is active. The bonus is
+// paid by the sponsor system (getSponsorPayout) — this is purely how that stake is surfaced before
+// and after the match, so it never touches attributes or the OVR curve.
+export type MatchObjectiveType = "goal" | "assist" | "rating" | "appearance";
+export type MatchObjectiveSource = "sponsor";
 
 export type MatchObjective = {
   id: string;

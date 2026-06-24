@@ -543,8 +543,8 @@ function MentalityDial({
   );
 }
 
-function getObjectiveSourceLabel(source: MatchObjective["source"]): string {
-  return source === "milestone" ? "Milestone" : source === "rivalry" ? "Big match" : source === "form" ? "Form" : "Contract";
+function getObjectiveSourceLabel(_source: MatchObjective["source"]): string {
+  return "Sponsor";
 }
 
 function formatObjectiveReward(reward: MatchObjective["reward"]): string {

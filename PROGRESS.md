@@ -2154,29 +2154,30 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   from pre-match into the live match (verified via Playwright). Build + match/season/feed labs +
   smoke all green.
 
-### Step 4 - Personal match objectives / storylines (SAVE_VERSION 22 -> 23)
+### Step 4 - Personal match objective = sponsor matchday target (SAVE_VERSION 22 -> 23)
 
-- New `MatchObjective` / `MatchObjectiveResult` types; `MatchState.objective` + `LastMatchSummary.objective`.
-- `src/systems/matchObjective.ts`: `generateMatchObjective(state, context)` picks at most one objective,
-  deterministic (seeded by fixture id + season), by priority milestone (one short of a career
-  goal/assist landmark) > rivalry (High-importance match, rating 7.0+) > form (>=3 apps, 0 goals ->
-  end the drought) > contract (routine "score to trigger your bonus", ~50% seeded so not every match
-  has one). `evaluateMatchObjective` checks goal/assist/rating targets, gated on the player appearing.
-- `createMatch` attaches the objective; `finishMatchState` evaluates it and folds the reward
-  (cash/prestige/trust ONLY) into cashDelta/prestigeDelta/trustAfter, stores the result on
-  `lastMatch.objective`, and appends a line to `careerImpact`. Rewards never touch attributes or
-  potential, so OVR is unaffected by construction.
-- Feed tie-in (`feed.ts`): a completed objective becomes a `buildPlayerCandidates` story routed to
-  the milestone/contract/player category by source.
-- UI: objective card on `PreMatchScreen` (label, detail, reward, source tag) and a complete/missed
-  result card on `PostMatchSummaryScreen`; styles in `styles.css`.
-- `SAVE_VERSION` 22 -> 23.
-- Verification: a transpile-and-require probe confirmed all four sources fire under their conditions
-  with correct targets/rewards and that evaluation respects target thresholds + appearance gating.
-  In-browser (Italy career): pre-match card "Repay the faith" / "+3 prestige · +1 trust"; played to
-  full time -> post-match "Missed" card + "Objective missed: Repay the faith." in careerImpact; save
-  v23; 0 console errors. Smoke (exercises the real createMatch/finishMatchState/feed) green; match +
-  season labs unchanged (season OVR byte-identical - objectives never touch OVR).
+- The personal objective IS the active sponsor's matchday target, surfaced before/after the match.
+  It is present ONLY while a sponsor deal is active (sponsors are earned over time). An earlier build
+  fabricated contract/milestone/rivalry/form objectives, but a routine "score to trigger your goal
+  bonus" felt forced, so it was replaced by reusing the existing sponsor-objective mechanic - one
+  system, no parallel objective generator.
+- `src/systems/matchObjective.ts`: `getSponsorMatchObjective(sponsor)` maps `sponsor.objective`
+  (type/target/label) to a `MatchObjective` view-model whose `reward.cash` mirrors
+  `sponsor.objectiveBonus` for DISPLAY only. `getObjectiveResultLine` formats the careerImpact/feed line.
+- `createMatch` attaches `getSponsorMatchObjective(state.sponsor)` (undefined when no sponsor).
+  `finishMatchState` derives completion from `sponsorPayout.objectiveCompleted` (authoritative) and
+  stores it on `lastMatch.objective` + a `careerImpact` line. The sponsor system already pays the
+  bonus via `sponsorPayout.total`, so there is NO second payout and OVR/cash balance is untouched.
+- Feed (`feed.ts`): a completed sponsor objective becomes a commercial ("contract" category) story.
+- UI: objective card on `PreMatchScreen` + complete/missed card on `PostMatchSummaryScreen`, both
+  gated on `match.objective` existing (i.e. a sponsor is active). `MatchObjectiveType` now also
+  includes "appearance" (sponsors can require an appearance); `MatchObjectiveSource` = "sponsor".
+- `SAVE_VERSION` stays 23 (no persisted-shape change vs the prior Step 4 build).
+- Verification: transpile-and-require probe - no sponsor -> objective undefined; with a sponsor ->
+  mirrors the deal (target 1, "Score 1 goal", reward $260, source sponsor); `createMatch` on a fresh
+  (sponsorless) career attaches `undefined`. In-browser: a no-sponsor Italy career shows NO objective
+  card on pre-match (mentality card still present), 0 console errors. Smoke + build green; season-lab
+  OVR byte-identical.
 
 ### Match agency: all 4 steps shipped
 

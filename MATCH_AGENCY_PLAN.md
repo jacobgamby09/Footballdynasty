@@ -127,20 +127,21 @@ trust math in the lab.
 
 ## Step 4 — Personal match objectives / storylines  ✅ DONE  *(ties into The Feed; SAVE bump 22→23)*
 
-> **Shipped:** `MatchObjective` / `MatchObjectiveResult` types; `src/systems/matchObjective.ts`
-> with `generateMatchObjective` (deterministic, priority milestone > rivalry > form > contract;
-> contract is a ~50% seeded fallback so not every match has one) + `evaluateMatchObjective` +
-> `getObjectiveResultLine`. Attached on `createMatch`, evaluated in `finishMatchState` — reward
-> (cash/prestige/trust ONLY, never attributes/potential) folded into cashDelta/prestigeDelta/
-> trustAfter, result stored on `lastMatch.objective` + appended to `careerImpact`. Feed tie-in: a
-> completed objective becomes a `buildPlayerCandidates` story (milestone/contract/player category).
-> UI: objective card on `PreMatchScreen`, result card (complete/missed) on the post-match summary.
-> `SAVE_VERSION` 23. Verified: probe confirms all 4 sources fire under their conditions with correct
-> targets/rewards + evaluation thresholds; in-browser the card renders pre-match ("Repay the faith",
-> "+3 prestige · +1 trust") and post-match ("Missed", careerImpact line), save v23, 0 console
-> errors; smoke (real createMatch/finishMatchState/feed) green; season-lab OVR byte-identical
-> (objectives never touch OVR). **Deferred:** old-club rivalry (needs `formerClubs` tracking — derby/
-> High-importance covers rivalry for now); live in-match progress widget (surfaced pre + post only).
+> **Shipped (revised):** the personal objective IS the active sponsor's matchday target — present
+> ONLY while a sponsor deal is active. (An earlier build fabricated contract/milestone/rivalry/form
+> objectives; that felt forced when it was "just the goal bonus", so it was replaced by surfacing the
+> existing sponsor objective — one system, no parallel mechanic.) `getSponsorMatchObjective(sponsor)`
+> (`src/systems/matchObjective.ts`) maps `sponsor.objective` → a `MatchObjective` view-model with
+> `reward.cash` mirroring `sponsor.objectiveBonus` for DISPLAY only. Attached on `createMatch`;
+> `finishMatchState` reads completion from `sponsorPayout.objectiveCompleted` (authoritative — the
+> sponsor system already pays the bonus, so there is NO second payout) and stores it on
+> `lastMatch.objective` + a `careerImpact` line. Feed: a completed sponsor objective becomes a
+> commercial ("contract" category) story. UI: objective card on `PreMatchScreen` + complete/missed
+> card on the post-match summary, both gated on a sponsor existing. `SAVE_VERSION` 23 (no shape
+> change). Verified: probe confirms no-sponsor → no objective, with-sponsor → mirrors the deal
+> (target/label/bonus); in-browser a no-sponsor career shows NO objective card (mentality card still
+> there), 0 console errors; smoke + build green; OVR untouched. **Deferred:** live in-match progress
+> widget (surfaced pre + post only).
 
 
 **Player feel:** most matches carry a personal stake — a clause to trigger, a milestone to hit,

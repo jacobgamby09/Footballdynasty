@@ -155,21 +155,17 @@ function buildPlayerCandidates(before: GameState, after: GameState, match?: Last
       playerRelated: true,
     });
   }
-  // Personal match objective (Step 4): a completed stake becomes its own storyline.
+  // Personal match objective (Step 4): a completed sponsor matchday target becomes its own storyline.
   if (match.objective?.completed) {
     const objective = match.objective.objective;
-    const category: FeedCategory =
-      objective.source === "milestone" ? "milestone" : objective.source === "contract" ? "contract" : "player";
-    const importance =
-      objective.source === "milestone" ? 112 : objective.source === "rivalry" ? 88 : objective.source === "form" ? 80 : 74;
     result.push({
-      key: `objective-${objective.id}`,
-      category,
+      key: `objective-${objective.id}-${match.matchNumber}`,
+      category: "contract",
       source: "",
-      tone: objective.source === "milestone" ? "breaking" : "positive",
-      importance,
-      headline: [text(`${objective.label} for ${name}`)],
-      body: [text(`A personal target met against `), club(findClub(after.world, match.opponent) ?? playerClub), text(`. ${objective.detail}`)],
+      tone: "positive",
+      importance: 88,
+      headline: [text(`${name} delivers on the sponsor's terms`)],
+      body: [text(`"${objective.label}" met against `), club(findClub(after.world, match.opponent) ?? playerClub), text(`, banking a $${objective.reward.cash ?? 0} matchday bonus.`)],
       clubIds: [playerClub.id],
       playerRelated: true,
     });

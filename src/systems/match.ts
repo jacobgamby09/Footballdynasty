@@ -10,7 +10,7 @@ import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilit
 import { advanceSeasonFixture, createFixtureResult, getCurrentFixture, getNextFixtureAfterMatch, isSeasonComplete } from "./seasonState";
 import { getPlayerMomentCount, getSelectionReport } from "./selection";
 import { getMatchPrestigeDelta } from "./prestige";
-import { evaluateMatchObjective, generateMatchObjective, getObjectiveResultLine } from "./matchObjective";
+import { getObjectiveResultLine, getSponsorMatchObjective } from "./matchObjective";
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
 import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getConsistencyRatingFloor, getEliteConditioningCeilingBonus, getMarqueeBonus, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
@@ -68,11 +68,8 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const recoveryCeiling = Math.min(99, getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs) + getEliteConditioningCeilingBonus(state));
   const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
+  const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);
-  // Personal match objective (Step 4): evaluate the stake and bank its modest, non-OVR reward.
-  const objectiveResult = match?.objective ? evaluateMatchObjective(match.objective, totals, playerAppeared) : undefined;
-  const objectiveReward = objectiveResult?.completed ? objectiveResult.objective.reward : undefined;
-  const trustAfter = clamp(state.trust + totals.trustDelta + (objectiveReward?.trust ?? 0), 0, 100);
   // Consistency coaching raises the rating floor — bad games hurt less (non-OVR).
   if (playerAppeared) {
     totals.rating = Math.max(totals.rating, 5.4 + getConsistencyRatingFloor(state));
@@ -85,7 +82,12 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     getSponsorPayout(state.sponsor, totals, playerAppeared),
     getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")) + marqueeBonus,
   );
-  const cashDelta = contractEarnings.total + sponsorPayout.total + (objectiveReward?.cash ?? 0);
+  const cashDelta = contractEarnings.total + sponsorPayout.total;
+  // The personal objective mirrors the sponsor's matchday target; the sponsor system pays the bonus
+  // above, so here we only surface the completion (no second payout) for the summary + feed.
+  const objectiveResult = match?.objective
+    ? { objective: match.objective, completed: sponsorPayout.objectiveCompleted, progress: sponsorPayout.objectiveCompleted ? match.objective.target : 0 }
+    : undefined;
   const prestigeDelta =
     (match
       ? Math.round(
@@ -96,7 +98,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
             playerAppeared,
           }) * (1 + marqueeBonus),
         )
-      : 0) + (objectiveReward?.prestige ?? 0);
+      : 0);
   const pressureDelta =
     totals.goals * 2 +
     (state.sponsor?.pressureModifier ?? 0);
@@ -1128,7 +1130,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     liveMinute: 0,
     results: [],
     director: directorPlan.state,
-    objective: generateMatchObjective(state, context),
+    objective: getSponsorMatchObjective(state.sponsor),
     isComplete: false,
   };
 }

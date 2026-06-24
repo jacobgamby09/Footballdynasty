@@ -2568,17 +2568,9 @@ button {
   color: var(--muted);
   background: rgba(255, 255, 255, 0.06);
 }
-.objective-tag.objective-milestone {
+.objective-tag.objective-sponsor {
   color: var(--gold);
   background: rgba(244, 200, 74, 0.14);
-}
-.objective-tag.objective-rivalry {
-  color: var(--orange);
-  background: rgba(241, 138, 54, 0.14);
-}
-.objective-tag.objective-form {
-  color: var(--lime);
-  background: rgba(200, 243, 95, 0.14);
 }
 .objective-tag.objective-complete {
   color: #7ee08a;

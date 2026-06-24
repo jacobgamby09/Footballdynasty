@@ -4,7 +4,7 @@ import { supportUpgradeMap } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeGrowthPressure, getAttributeXpRequirement } from "../systems/attributeXp";
 import { getContractStatusLabel } from "../systems/contracts";
-import { formatFixtureTitle, formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
+import { formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
 import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getOvrBreakdown } from "../systems/ovr";
 import { getPrestigeStatus } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
@@ -16,7 +16,7 @@ import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTr
 import { getCountryForClub } from "../systems/world";
 import { getClubFitStatus, getNextTransferWindowLabel } from "../systems/transferWindow";
 import { clamp } from "../utils";
-import { FixtureStatusBadge, InfoRow, InfoTile, LeagueTableRowView, ProgressBar, ProgressRow } from "./shared";
+import { ClubLink, CountryFlag, FixtureStatusBadge, InfoRow, InfoTile, LeagueTableRowView, ProgressBar, ProgressRow } from "./shared";
 import { Activity, BadgeDollarSign, BarChart3, CalendarDays, ChevronRight, Flame, Gauge, HeartPulse, ShieldCheck, Sparkles, Trophy, UsersRound } from "lucide-react";
 import { useState } from "react";
 import type { AttributeKey, PositionModule } from "../positionRoles";
@@ -92,7 +92,7 @@ export function SelectionBriefingCard({ game }: { game: GameState }) {
 }
 
 
-export function SeasonContextCard({ game }: { game: GameState }) {
+export function SeasonContextCard({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const record = getSeasonRecord(game.season.results);
   const currentFixture = getCurrentFixture(game.season);
   const seasonComplete = isSeasonComplete(game.season);
@@ -116,7 +116,11 @@ export function SeasonContextCard({ game }: { game: GameState }) {
         <InfoTile label="Form" value={getRecentFormText(game.season.results)} />
         <InfoTile
           label={seasonComplete ? "Status" : "Next"}
-          value={seasonComplete ? "Review" : currentFixture.opponentShort}
+          value={seasonComplete ? "Review" : (
+            <ClubLink clubIdentity={currentFixture.opponent} onOpenClub={onOpenClub}>
+              {currentFixture.opponentShort}
+            </ClubLink>
+          )}
           tone={seasonComplete || currentFixture.competition.includes("Cup") ? "gold" : undefined}
         />
       </div>
@@ -125,7 +129,7 @@ export function SeasonContextCard({ game }: { game: GameState }) {
 }
 
 
-export function LastMatchCard({ summary }: { summary: LastMatchSummary }) {
+export function LastMatchCard({ summary, onOpenClub }: { summary: LastMatchSummary; onOpenClub?: (identity: string) => void }) {
   return (
     <section className="card last-match-card">
       <div className="section-heading">
@@ -134,7 +138,7 @@ export function LastMatchCard({ summary }: { summary: LastMatchSummary }) {
           <h2>
             Match {summary.matchNumber}/{summary.seasonLength}
           </h2>
-          <p>{summary.venue} vs {summary.opponent}</p>
+          <p>{summary.venue} vs <ClubLink clubIdentity={summary.opponent} onOpenClub={onOpenClub}>{summary.opponent}</ClubLink></p>
         </div>
         <Trophy size={19} />
       </div>
@@ -389,7 +393,7 @@ export function getReadinessDetails(game: GameState, label: string) {
 }
 
 
-export function NextActionCard({ game }: { game: GameState }) {
+export function NextActionCard({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const seasonComplete = isSeasonComplete(game.season);
   const isFreeAgent = Boolean(game.freeAgent);
   const isMatchDay = !isFreeAgent && hasPlayableFixture(game.season);
@@ -410,7 +414,17 @@ export function NextActionCard({ game }: { game: GameState }) {
               : seasonComplete
               ? "Review season"
               : !needsTraining && isMatchDay && upcomingMatch
-              ? formatFixtureTitle(upcomingMatch.venue, upcomingMatch.opponentShort, game.club.shortName)
+              ? (
+                <>
+                  {upcomingMatch.venue === "Home" ? game.club.shortName : (
+                    <ClubLink clubIdentity={upcomingMatch.opponent} onOpenClub={onOpenClub}>{upcomingMatch.opponentShort}</ClubLink>
+                  )}
+                  {" - "}
+                  {upcomingMatch.venue === "Home" ? (
+                    <ClubLink clubIdentity={upcomingMatch.opponent} onOpenClub={onOpenClub}>{upcomingMatch.opponentShort}</ClubLink>
+                  ) : game.club.shortName}
+                </>
+              )
               : needsTraining
                 ? "Complete weekly training"
                 : "Ready for next week"}
@@ -600,7 +614,7 @@ export function RelationshipsCard({ game }: { game: GameState }) {
 }
 
 
-export function ContractMarketCard({ game }: { game: GameState }) {
+export function ContractMarketCard({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const marketValue = 18 + Math.round((calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights) - 50) * 2.5) + game.seasonStats.goals * 2;
   const contract = game.contract;
   const status = game.freeAgent ? "Free Agent" : getContractStatusLabel(game);
@@ -613,7 +627,7 @@ export function ContractMarketCard({ game }: { game: GameState }) {
     <section className="card contract-card">
       <div className="section-heading">
         <div>
-          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}Contract</span>
+          <span className="metric-label country-label">{country && <CountryFlag country={country} />}Contract</span>
           <h2>{game.freeAgent ? "No club contract" : contract.label}</h2>
         </div>
         <BadgeDollarSign size={19} />
@@ -648,7 +662,7 @@ export function ContractMarketCard({ game }: { game: GameState }) {
         <span>
           {game.contractOffer
             ? game.contractOffer.source === "external-club"
-              ? `${game.contractOffer.club} has made an offer.`
+              ? <><ClubLink clubIdentity={game.contractOffer.clubId ?? game.contractOffer.club} onOpenClub={onOpenClub}>{game.contractOffer.club}</ClubLink> has made an offer.</>
               : "The club has new terms ready for you."
             : game.freeAgent
               ? "You are training away from a club while your agent looks for trial terms."
@@ -687,7 +701,7 @@ export function EquipmentFacilitiesCard() {
 }
 
 
-export function FixturePreviewList({ season }: { season: SeasonState }) {
+export function FixturePreviewList({ season, onOpenClub }: { season: SeasonState; onOpenClub?: (identity: string) => void }) {
   const upcoming = getUpcomingFixtures(season, 5);
 
   return (
@@ -696,7 +710,7 @@ export function FixturePreviewList({ season }: { season: SeasonState }) {
         <div className="fixture-row compact" key={fixture.id}>
           <span className="fixture-index">M{season.fixtureIndex + index + 1}</span>
           <div>
-            <strong>{fixture.opponentShort}</strong>
+            <ClubLink clubIdentity={fixture.opponent} onOpenClub={onOpenClub}>{fixture.opponentShort}</ClubLink>
             <small>
               {fixture.venue} - {fixture.competition}
             </small>
@@ -709,7 +723,7 @@ export function FixturePreviewList({ season }: { season: SeasonState }) {
 }
 
 
-export function LeagueTablePreview({ table, playerClubShort }: { table: LeagueTableRow[]; playerClubShort: string }) {
+export function LeagueTablePreview({ table, playerClubShort, onOpenClub }: { table: LeagueTableRow[]; playerClubShort: string; onOpenClub?: (identity: string) => void }) {
   const playerClubIndex = table.findIndex((row) => row.short === playerClubShort);
   const start = clamp(playerClubIndex - 1, 0, Math.max(0, table.length - 4));
   const rows = table.slice(start, start + 4);
@@ -717,7 +731,7 @@ export function LeagueTablePreview({ table, playerClubShort }: { table: LeagueTa
   return (
     <div className="league-table mini-table">
       {rows.map((row) => (
-        <LeagueTableRowView compact key={row.short} row={row} playerClubShort={playerClubShort} />
+        <LeagueTableRowView compact key={row.short} row={row} playerClubShort={playerClubShort} onOpenClub={onOpenClub} />
       ))}
     </div>
   );
@@ -948,13 +962,13 @@ export function DynastyTrackCard({
 }
 
 
-export function DynastySeasonRow({ season, current = false }: { season: DynastySeason; current?: boolean }) {
+export function DynastySeasonRow({ season, current = false, onOpenClub }: { season: DynastySeason; current?: boolean; onOpenClub?: (identity: string) => void }) {
   return (
     <div className={`dynasty-row ${current ? "is-current" : ""}`}>
       <div className="dynasty-season-main">
         <span>S{season.season}</span>
         <div>
-          <strong>{season.club}</strong>
+          <strong><ClubLink clubIdentity={season.club} onOpenClub={onOpenClub}>{season.club}</ClubLink></strong>
           <small>{current ? "Current season" : `${season.leaguePosition}. place - ${season.record}`}</small>
         </div>
       </div>

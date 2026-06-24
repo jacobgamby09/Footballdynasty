@@ -1,11 +1,13 @@
-# Handover — Football Dynasty (for Codex)
+# Handover — Football Dynasty (for Claude / next agent)
 
 This is a working handover for whoever picks the project up next. It captures
 **what was just done**, the **rules you must not break**, **how to verify**, and
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-23 (through Create Dynasty V1). Branch `main`. `SAVE_VERSION` 20._
+_Last updated: 2026-06-24 (through Feed V1 and club discovery). Branch `main`.
+`SAVE_VERSION` 21. Today's work is present in the working tree and is not yet
+committed._
 
 **Current onboarding note:** new games now start with Create Dynasty before
 country selection. It captures first name, family/dynasty last name, nationality
@@ -68,7 +70,8 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to onboarding. That is the intended, accepted
-   behaviour during development. Currently **`SAVE_VERSION = 20`**.
+   behaviour during development. Currently **`SAVE_VERSION = 21`**. The loader
+   intentionally accepts only the exact current version.
 
 ---
 
@@ -335,6 +338,9 @@ mirror any game-formula change into the lab.
   `season.fixtures.length` dynamically.
 - Name-pool uniqueness relies on `clubCount ≤ pool.cities.length` per division
   and the `(cityIndex + band)` suffix offset — keep city pools ≥ ~36 entries.
+
+---
+
 # Current implementation note (2026-06-24)
 
 - Match Director V1 now owns player-highlight selection and timing above the deterministic team simulation.
@@ -342,3 +348,111 @@ mirror any game-formula change into the lab.
 - Match balance output now includes director variation metrics; preserve those metrics when changing moment selection.
 - Forward Moment Library V2 adds 31 metadata-driven situations in `src/engine/forwardMomentLibrary.js`; forward + shared now totals 50 situations with nine chain routes.
 - Live Match Presentation V2 adds deterministic commentary variants, momentum, typed timeline events and derived live player stats without changing match outcomes.
+
+---
+
+## 7. 2026-06-24 detailed handoff
+
+This is the practical starting point for Claude. Everything below is currently
+**uncommitted** in the shared working tree. Do not discard or recreate it.
+
+### Match-result clarity and live presentation
+
+- The player-highlight result popup is now organized around the action outcome,
+  readable reasons, rating/trust/fitness impact and the attack consequence.
+- Teamplay choices explicitly state whether they created a team chance, opened
+  a chained player decision, retained possession or ended before a shot.
+- The momentum display is a restrained full-width line with one directional
+  marker instead of a pseudo-percentage.
+- Live presentation includes deterministic commentary variants, typed timeline
+  events, momentum and derived player stats. These are presentation layers and
+  must not mutate the deterministic team result.
+- Main files: `src/components/screens.tsx`, `src/styles.css`,
+  `src/systems/match.ts`, `src/types.ts`.
+
+### Browser-stable flags
+
+- OS-dependent flag emoji were replaced by local SVG assets in `public/flags/`.
+- `CountryFlag` in `src/components/shared.tsx` is the shared renderer.
+- Flags are wired into onboarding, player, club, contract and related country
+  surfaces. Keep future flag usage on this component; do not reintroduce emoji.
+
+### Club profiles and universal club links
+
+- `src/systems/clubProfile.ts` derives a deterministic club profile from the
+  persistent world and current competition state.
+- Profiles expose keeper/defence/midfield/attack OVR, average rating, form,
+  facilities, tactical identity, strengths, weaknesses and player career fit.
+- `ClubProfileScreen` is reusable and opened through App-level club selection.
+- Club names are clickable across league tables, fixtures, match headers,
+  summaries, offers, contracts, player context and dynasty history.
+- Fixture/table navigation was separated from individual club links to avoid
+  invalid nested buttons.
+- `clubView` remains App-level state so returning from a profile preserves the
+  fixtures/table subview. `homeView` is also App-level so returning from a club
+  opened in Feed preserves the Feed tab.
+- Main files: `src/systems/clubProfile.ts`, `src/components/shared.tsx`,
+  `src/components/cards.tsx`, `src/components/screens.tsx`, `src/App.tsx`.
+
+### The Feed V1
+
+- `src/systems/feed.ts` is a deterministic candidate/ranking engine called
+  after each resolved world matchweek from `src/systems/match.ts`.
+- It selects 2-3 weekly stories from player performances, first-goal/assist
+  milestones, results, upsets, big wins, form streaks, table movement and
+  transfer interest.
+- Selection controls headline repetition, category density and single-club
+  dominance. Two fallback stories guarantee useful output.
+- `GameState.worldFeed` stores up to 120 stories. Headlines and bodies use
+  structured text parts so club references remain clickable.
+- UI consists of a fifth `Feed` Home subtab, chronological week groups, compact
+  editorial rows and one leading teaser in Weekly Summary.
+- Save shape is version 21. Old development saves intentionally reset.
+- Main files: `src/systems/feed.ts`, `src/components/screens.tsx`,
+  `src/state/initialState.ts`, `src/state/save.ts`, `src/types.ts`,
+  `scripts/feed-balance-lab.mjs`.
+
+### Verification snapshot
+
+The following passed after the latest edits:
+
+```bash
+npm run build
+npm run smoke:play-session
+npm run balance:feed -- --weeks=90
+git diff --check
+```
+
+Feed lab output:
+
+```text
+90 weeks
+197 stories
+2.19 stories/week
+weekly range 2-3
+0 same-season repeated headlines
+categories: table 61, result 58, form 48, player 25, upset 3, milestone 2
+```
+
+Browser smoke reached a real post-match Weekly Summary and confirmed the leading
+teaser, two generated stories, clickable club references and no horizontal
+mobile overflow.
+
+The Codex in-app browser's CDP click/screenshot channel timed out during the
+final return-navigation check, while DOM inspection, build and state tests
+remained healthy. Recheck this exact flow when browser control is available:
+
+`Home -> Feed -> click club -> Back -> Feed remains selected`.
+
+### Continue from here
+
+- The dev server is available at `http://localhost:5173`.
+- The production build only reports Vite's existing `>500 kB` chunk warning.
+- Design notes are updated in `GDD.md`, `DESIGN.md` and `PROGRESS.md`.
+- Before adding more templates, run a several-season Feed freshness audit.
+  Watch table/result/form dominance, repeated clubs in consecutive weeks,
+  sparse upset/milestone output and whether player-related stories crowd out the
+  wider football world.
+- Keep Feed deterministic. Never use runtime randomness or generated prose.
+- Do not change match outcomes to make Feed stories interesting. Feed reports
+  the simulation; it does not steer it.

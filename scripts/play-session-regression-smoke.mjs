@@ -50,15 +50,27 @@ const {
   getLiveMomentum,
   getLivePlayerStats,
   getMatchdayRecoveryBonus,
+  getResultConsequence,
 } = require(path.join(outSrc, "systems", "match.js"));
 const { getUpcomingMatch } = require(path.join(outSrc, "systems", "selection.js"));
 const { createTransferWindowState, declineTransferWindowOffer } = require(path.join(outSrc, "systems", "transferWindow.js"));
 const { createPositionMatchPool } = require(path.join(outSrc, "engine", "forwardMoments.js"));
+const { getClubProfile } = require(path.join(outSrc, "systems", "clubProfile.js"));
 
 const base = createCareerForCountry("denmark");
 const upcoming = getUpcomingMatch(base);
 if (!upcoming) {
   throw new Error("Expected an upcoming fixture.");
+}
+const opponentClub = Object.values(base.world.clubs).find((club) => club.name === upcoming.opponent);
+const opponentClubProfile = opponentClub ? getClubProfile(base, opponentClub.id) : undefined;
+if (
+  !opponentClubProfile ||
+  !opponentClubProfile.style ||
+  !opponentClubProfile.careerFit?.projectedRole ||
+  Object.values(opponentClubProfile.unitOvr).some((value) => !Number.isFinite(value))
+) {
+  throw new Error("Club profile is not derived correctly from the world model.");
 }
 
 const riskyState = { ...base, fitness: 21 };
@@ -194,6 +206,17 @@ const liveStats = getLivePlayerStats([
 if (liveStats.actions !== 2 || liveStats.shots !== 1 || liveStats.shotsOnTarget !== 1 || liveStats.keyPasses !== 1) {
   throw new Error("Live player stats are not derived correctly.");
 }
+const continuedTeamplay = getResultConsequence(
+  { choiceOutcome: "trust", success: true, goals: 0, assists: 0, chancesCreated: 0 },
+  true,
+);
+const completedTeamplay = getResultConsequence(
+  { choiceOutcome: "assist", success: true, goals: 0, assists: 0, chancesCreated: 1 },
+  false,
+);
+if (continuedTeamplay.title !== "A second decision opens" || completedTeamplay.title !== "Chance created") {
+  throw new Error("Teamplay result consequences do not match the underlying attack state.");
+}
 
 console.log(JSON.stringify({
   riskyStarterExitMinute: riskyStarter.exitMinute,
@@ -207,6 +230,13 @@ console.log(JSON.stringify({
   momentum: momentum.label,
   commentary: commentary.title,
   liveStats,
+  teamplayConsequences: [continuedTeamplay.title, completedTeamplay.title],
+  clubProfile: {
+    club: opponentClubProfile.club.name,
+    units: opponentClubProfile.unitOvr,
+    style: opponentClubProfile.style,
+    careerFit: opponentClubProfile.careerFit.label,
+  },
 }, null, 2));
 
 fs.rmSync(outDir, { recursive: true, force: true });

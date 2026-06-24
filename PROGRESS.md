@@ -2070,3 +2070,26 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 - Added live player stats for rating, successful actions, total actions, shots, shots on target, key passes and fitness.
 - Follow-up chains now receive a restrained pulse while goals/assists retain the strongest reward treatment.
 - Added reduced-motion behavior for new transitions.
+### Moment result clarity and momentum polish
+
+- Streamlined the live result popup around action, outcome factors and attack consequence.
+- Teamplay now clearly states whether it created a chance, opened a follow-up decision, retained possession or ended before a shot.
+- Reworked the momentum meter into a cleaner full-width neutral line with one directional marker.
+### Browser-stable country flags
+
+- Replaced OS-dependent flag emoji with local SVG assets for all seven countries.
+- Added one shared flag component across onboarding, player, club and contract surfaces.
+### Club profiles and universal club links
+
+- Added a reusable club profile with unit OVR, average rating, form, facilities, tactical identity, strengths, weaknesses and player career fit.
+- Club profiles are deterministically derived from the persistent world and current league record.
+- Connected club names across league tables, fixtures, match headers, summaries, transfer offers, contracts, player context and dynasty history.
+- Split fixture/table preview navigation from individual club links to avoid nested controls.
+### The Feed V1
+
+- Added deterministic weekly story generation after the world matchweek resolves.
+- Added candidate scoring for player performances, milestones, results, upsets, form streaks, table movement and transfers.
+- Added repetition control, category limits, club-density limits and 2-3 story weekly output.
+- Added a chronological Home feed with clickable club references and a leading Weekly Summary teaser.
+- Added `balance:feed`; a 90-week lab produced 2.19 stories per week, six categories and zero same-season headline repeats.
+- Raised `SAVE_VERSION` to 21. Development saves from earlier versions intentionally reset.

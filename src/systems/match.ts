@@ -15,6 +15,7 @@ import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getConsisten
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
 import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
+import { generateWeeklyFeed } from "./feed";
 import type { AttributeKey, PositionModule } from "../positionRoles";
 import type { Attribute, ChanceQuality, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
@@ -189,7 +190,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     }
   }
 
-  return {
+  const completedState: GameState = {
     ...stateForOffer,
     contractOffer,
     contractOffers,
@@ -197,6 +198,10 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     lastEvent: getMatchSummaryText(results, totals),
     lastMatch,
     activeMatch: undefined,
+  };
+  return {
+    ...completedState,
+    worldFeed: generateWeeklyFeed(state, completedState, lastMatch),
   };
 }
 
@@ -540,6 +545,82 @@ export function getOutcomeTierSummary(tier: OutcomeTier) {
   };
 
   return summaries[tier];
+}
+
+export function getResultConsequence(result: MatchResult, followUpQueued: boolean) {
+  if (result.goals > 0) {
+    return {
+      label: "Attack outcome",
+      title: "Goal scored",
+      detail: "Your decision directly finished the move.",
+      tone: "decisive",
+    };
+  }
+  if (result.assists > 0) {
+    return {
+      label: "Attack outcome",
+      title: "Goal created",
+      detail: "Your final action created the goal for a teammate.",
+      tone: "decisive",
+    };
+  }
+  if (result.chancesCreated > 0) {
+    return {
+      label: "Attack outcome",
+      title: "Chance created",
+      detail: "The move reached a shot, but the team did not convert it.",
+      tone: "positive",
+    };
+  }
+  if (followUpQueued) {
+    return {
+      label: "Attack continues",
+      title: "A second decision opens",
+      detail: "Your action kept the move alive and created another playable moment.",
+      tone: "positive",
+    };
+  }
+  if (result.choiceOutcome === "assist") {
+    return {
+      label: "Attack outcome",
+      title: result.success ? "Team move connected" : "Final lane closed",
+      detail: result.success
+        ? "You linked the attack, but it ended before a teammate could shoot."
+        : "The attempted teamplay did not create a clean final action.",
+      tone: result.success ? "neutral" : "negative",
+    };
+  }
+  if (result.choiceOutcome === "trust") {
+    return {
+      label: "Attack outcome",
+      title: result.success ? "Possession retained" : "Move lost momentum",
+      detail: result.success
+        ? "The team kept control, but this phase did not become a chance."
+        : "The action did not keep enough pressure on the defense.",
+      tone: result.success ? "neutral" : "negative",
+    };
+  }
+  return {
+    label: "Attack outcome",
+    title: result.success ? "Action completed" : "Move breaks down",
+    detail: result.success
+      ? "The decision helped the phase without producing a direct chance."
+      : "The defense recovered before the move could develop.",
+    tone: result.success ? "neutral" : "negative",
+  };
+}
+
+export function getResultExecutionText(result: MatchResult) {
+  if (result.outcomeTier === "Great") {
+    return "Excellent execution";
+  }
+  if (result.outcomeTier === "Good") {
+    return "Clean execution";
+  }
+  if (result.outcomeTier === "Okay") {
+    return result.success ? "Decent execution" : "Mixed execution";
+  }
+  return "Execution fell short";
 }
 
 

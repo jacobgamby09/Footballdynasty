@@ -557,6 +557,12 @@ During a player highlight, the match progress label may show the current Match D
 
 The live match surface should use one compact momentum strip with a centered neutral point. Do not show a fake possession or win-probability percentage. Pair the strip with a short state label such as `Team pressure`, `Opponent building` or `Even spell`.
 
+Moment result feedback should read in one pass: chosen action, result, the three decisive factors and what happened to the attack. Teamplay outcomes must explicitly say whether they produced a chance, continued into another playable decision or ended without a shot.
+
+Club names are interactive navigation, not decorative labels. Use the shared club-link treatment in tables, fixtures, match headers, contract offers, career history and summaries. The club profile itself should remain compact: identity first, four unit ratings, season form, football identity and career fit.
+
+The Feed is a compact editorial list, not a card dashboard. Group stories by week, use one restrained tone rail per story, keep headlines short and render club references as links. Weekly Summary may show one teaser, but the full feed belongs in the Home subtab.
+
 Timeline rows use a stable three-column layout: event icon, minute and commentary. Goals/positive team events use lime or gold; opponent danger uses orange; neutral tempo and substitutions remain muted.
 
 Live player stats use a compact 3x2 metric grid on mobile. Keep labels short and use tabular numbers so updates do not shift the layout.

@@ -4,8 +4,8 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getOutcomeTierSummary, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
-import { getClubLeagueTier, getXpPercent } from "../systems/ovr";
+import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
@@ -16,26 +16,27 @@ import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingFocusWeight, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
+import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
-import { DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
+import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
-export function PlayerScreen({ game }: { game: GameState }) {
+export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   return (
     <>
-      <Header game={game} />
+      <Header game={game} onOpenClub={onOpenClub} />
       <CareerCard game={game} />
       <ReadinessStrip game={game} />
       <PrestigeStatusCard game={game} />
-      <SeasonContextCard game={game} />
-      <NextActionCard game={game} />
+      <SeasonContextCard game={game} onOpenClub={onOpenClub} />
+      <NextActionCard game={game} onOpenClub={onOpenClub} />
       <SelectionBriefingCard game={game} />
-      {game.lastMatch && <LastMatchCard summary={game.lastMatch} />}
+      {game.lastMatch && <LastMatchCard summary={game.lastMatch} onOpenClub={onOpenClub} />}
       <AttributesCard
         attributes={game.attributes}
         positionModule={getPositionModule(game.positionGroup)}
@@ -55,12 +56,14 @@ export function ContractOfferScreen({
   offers,
   onAccept,
   onDecline,
+  onOpenClub,
 }: {
   game: GameState;
   current: Contract;
   offers: ContractOffer[];
   onAccept: (offer: ContractOffer) => void;
   onDecline: (offer?: ContractOffer) => void;
+  onOpenClub?: (identity: string) => void;
 }) {
   const multiple = offers.length > 1;
   const primary = offers[0];
@@ -81,6 +84,7 @@ export function ContractOfferScreen({
           offer={offer}
           onAccept={onAccept}
           onDecline={onDecline}
+          onOpenClub={onOpenClub}
         />
       ))}
 
@@ -142,12 +146,14 @@ export function TransferWindowScreen({
   onAccept,
   onDecline,
   onStay,
+  onOpenClub,
 }: {
   game: GameState;
   window: TransferWindowState;
   onAccept: (offer: ContractOffer) => void;
   onDecline: (offer: ContractOffer) => void;
   onStay: () => void;
+  onOpenClub?: (identity: string) => void;
 }) {
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
   const tier = getClubLeagueTier(game.club);
@@ -163,7 +169,7 @@ export function TransferWindowScreen({
 
       <div className="card transfer-window-hero">
         <div>
-          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}Career market</span>
+          <span className="metric-label country-label">{country && <CountryFlag country={country} />}Career market</span>
           <h2>{window.clubFit}</h2>
           <p>{window.clubFitSummary}</p>
         </div>
@@ -178,7 +184,7 @@ export function TransferWindowScreen({
         <div className="section-heading">
           <div>
             <span className="metric-label">Current club</span>
-            <h2>{game.club.name}</h2>
+            <h2><ClubLink clubIdentity={game.club.clubId ?? game.club.shortCode} onOpenClub={onOpenClub}>{game.club.name}</ClubLink></h2>
           </div>
           <ShieldCheck size={19} />
         </div>
@@ -252,6 +258,7 @@ export function TransferWindowScreen({
           offer={offer}
           onAccept={onAccept}
           onDecline={onDecline}
+          onOpenClub={onOpenClub}
         />
       ))}
 
@@ -271,6 +278,7 @@ function ContractOfferCard({
   offer,
   onAccept,
   onDecline,
+  onOpenClub,
 }: {
   current: Contract;
   game: GameState;
@@ -278,6 +286,7 @@ function ContractOfferCard({
   offer: ContractOffer;
   onAccept: (offer: ContractOffer) => void;
   onDecline: (offer: ContractOffer) => void;
+  onOpenClub?: (identity: string) => void;
 }) {
   const country = getCountryForClub(game.world, offer.clubId);
 
@@ -285,7 +294,10 @@ function ContractOfferCard({
     <div className="card contract-offer-card">
       <div className="section-heading">
         <div>
-          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}{offer.club}</span>
+          <span className="metric-label country-label">
+            {country && <CountryFlag country={country} />}
+            <ClubLink clubIdentity={offer.clubId ?? offer.club} onOpenClub={onOpenClub}>{offer.club}</ClubLink>
+          </span>
           <h2>{offer.label}</h2>
         </div>
         <BadgeDollarSign size={19} />
@@ -495,7 +507,7 @@ export function TrainingScreen({
 }
 
 
-export function PreMatchScreen({ match }: { match: MatchState }) {
+export function PreMatchScreen({ match, onOpenClub }: { match: MatchState; onOpenClub?: (identity: string) => void }) {
   const matchupDelta = match.teamStrength - match.opponentStrength;
   const matchupTone = matchupDelta >= 4 ? "good" : matchupDelta <= -4 ? "warn" : undefined;
   const entryPlan = getPreMatchEntryPlan(match);
@@ -512,6 +524,7 @@ export function PreMatchScreen({ match }: { match: MatchState }) {
         match={match}
         opponentGoals={0}
         teamGoals={0}
+        onOpenClub={onOpenClub}
       />
 
       <div className="card pre-match-plan-card">
@@ -538,7 +551,7 @@ export function PreMatchScreen({ match }: { match: MatchState }) {
       <div className="card">
         <span className="metric-label">Opponent context</span>
         <div className="next-grid">
-          <InfoTile label="Opponent" value={match.opponent} />
+          <InfoTile label="Opponent" value={<ClubLink clubIdentity={match.opponent} onOpenClub={onOpenClub}>{match.opponent}</ClubLink>} />
           <InfoTile label="Venue" value={match.venue} />
           <InfoTile label="Importance" value={match.matchImportance} tone={match.matchImportance === "High" ? "gold" : undefined} />
           <InfoTile label="Opponent form" value={match.opponentForm} tone={match.opponentForm === "Hot" ? "warn" : undefined} />
@@ -563,6 +576,7 @@ export function MatchMomentScreen({
   onSkipToEvent,
   onSkipToHighlight,
   onSkipToFullTime,
+  onOpenClub,
 }: {
   attributes: Attribute[];
   match: MatchState;
@@ -573,6 +587,7 @@ export function MatchMomentScreen({
   onSkipToEvent: () => void;
   onSkipToHighlight: () => void;
   onSkipToFullTime: () => void;
+  onOpenClub?: (identity: string) => void;
 }) {
   const event = match.events[match.currentEventIndex];
   const isPlayerMoment = event?.type === "player_moment" && match.liveMinute >= event.minute;
@@ -593,6 +608,13 @@ export function MatchMomentScreen({
     event?.type === "player_moment" && match.currentResult
       ? Boolean(createFollowUpMoment(match, event, match.currentResult))
       : false;
+  const selectedChoice =
+    event?.type === "player_moment" && match.currentResult
+      ? event.choices.find((choice) => choice.id === match.currentResult?.choiceId)
+      : undefined;
+  const resultConsequence = match.currentResult
+    ? getResultConsequence(match.currentResult, followUpQueued)
+    : undefined;
   const directorPhase =
     event?.type === "player_moment" && event.directorPhase
       ? formatMatchPhase(event.directorPhase)
@@ -605,6 +627,7 @@ export function MatchMomentScreen({
         match={match}
         opponentGoals={visibleScore.opponentGoals}
         teamGoals={visibleScore.teamGoals}
+        onOpenClub={onOpenClub}
       />
 
       <div className="match-progress-card">
@@ -621,18 +644,20 @@ export function MatchMomentScreen({
       </div>
 
       <div className={`match-momentum-strip tone-${momentum.tone}`}>
-        <div className="match-momentum-copy">
+        <div className="match-momentum-heading">
           <span>Momentum</span>
           <strong>{momentum.label}</strong>
-          <small>{momentum.detail}</small>
         </div>
         <div className="match-momentum-track" aria-label={momentum.label}>
+          <span className="match-momentum-side opponent" />
           <span className="match-momentum-center" />
+          <span className="match-momentum-side team" />
           <span
             className="match-momentum-fill"
             style={{ "--momentum-offset": `${50 + momentum.value}%` } as CSSProperties}
           />
         </div>
+        <small>{momentum.detail}</small>
       </div>
 
       <div className={`match-role-card ${pitchStatus.tone}`}>
@@ -742,27 +767,43 @@ export function MatchMomentScreen({
           <div className={`card result-card result-popup ${getResultPopupTone(match.currentResult)}`}>
             <span className="metric-label">{getResultPopupLabel(match.currentResult)}</span>
             <div className="result-verdict">
-              <strong>{getResultVerdictText(match.currentResult)}</strong>
+              <div>
+                <span>{match.currentResult.choiceLabel}</span>
+                <strong>{getResultVerdictText(match.currentResult)}</strong>
+              </div>
               <span>{match.currentResult.chanceQuality}</span>
             </div>
             <h2>{match.currentResult.title}</h2>
             <p>{match.currentResult.detail}</p>
-            {followUpQueued && <p className="result-follow-up-note">The action opens a follow-up decision.</p>}
+            <div className="result-reason-grid">
+              <div>
+                <span>Attributes used</span>
+                <strong>
+                  {selectedChoice
+                    ? `${selectedChoice.uses.join(" + ")} · Avg ${getChoiceAttributeAverage(attributes, selectedChoice)}`
+                    : "Match attributes"}
+                </strong>
+              </div>
+              <div>
+                <span>Chance context</span>
+                <strong>{match.currentResult.chanceQuality}</strong>
+              </div>
+              <div>
+                <span>Execution</span>
+                <strong>{getResultExecutionText(match.currentResult)}</strong>
+              </div>
+            </div>
+            {resultConsequence && (
+              <div className={`result-consequence tone-${resultConsequence.tone}`}>
+                <span>{resultConsequence.label}</span>
+                <strong>{resultConsequence.title}</strong>
+                <small>{resultConsequence.detail}</small>
+              </div>
+            )}
             <div className="next-grid">
               <InfoTile label="Rating" value={match.currentResult.rating.toFixed(1)} tone="gold" />
               <InfoTile label="Trust" value={`${match.currentResult.trustDelta > 0 ? "+" : ""}${match.currentResult.trustDelta}`} />
               <InfoTile label="Fitness" value={`${match.currentResult.fitnessDelta}`} tone="warn" />
-            </div>
-            <div className="result-explain-card">
-              <div>
-                <span>Why</span>
-                <strong>{getOutcomeTierSummary(match.currentResult.outcomeTier)}</strong>
-              </div>
-              <ul>
-                {getReadableExplanations(match.currentResult.explanationTags, 3).map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
             </div>
             <button className="primary-action" type="button" onClick={onContinue}>
               {followUpQueued ? "Continue Move" : "Resume Match"}
@@ -787,7 +828,7 @@ export function MatchMomentScreen({
 }
 
 
-export function PostMatchSummaryScreen({ attributes, summary }: { attributes: Attribute[]; summary: LastMatchSummary }) {
+export function PostMatchSummaryScreen({ attributes, summary, onOpenClub }: { attributes: Attribute[]; summary: LastMatchSummary; onOpenClub?: (identity: string) => void }) {
   const xpEntries = Object.entries(summary.xp)
     .filter(([, value]) => (value ?? 0) > 0)
     .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
@@ -855,7 +896,7 @@ export function PostMatchSummaryScreen({ attributes, summary }: { attributes: At
 
   return (
     <section className="simple-screen summary-screen">
-      <SummaryScoreHeader summary={summary} />
+      <SummaryScoreHeader summary={summary} onOpenClub={onOpenClub} />
 
       <div className="card summary-hero-card">
         <div>
@@ -1070,7 +1111,7 @@ export function TrainingRevealScreen({ summary }: { summary: TrainingSummary }) 
 }
 
 
-export function WeekSummaryScreen({ game }: { game: GameState }) {
+export function WeekSummaryScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const match = game.lastMatch;
   const training = game.lastTraining;
   const record = getSeasonRecord(game.season.results);
@@ -1082,6 +1123,7 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
   const topMatch = match ? getTopXpEntry(match.xp) : undefined;
   const weekNumber = training?.week ?? Math.max(1, game.week - 1);
   const prestigeStatus = getPrestigeStatus(game.prestige);
+  const latestStory = game.worldFeed.find((story) => story.week === game.week && story.season === game.season.season);
 
   return (
     <section className="simple-screen week-summary-screen">
@@ -1168,15 +1210,32 @@ export function WeekSummaryScreen({ game }: { game: GameState }) {
         <div className="next-grid">
           <InfoTile label="Result" value={match ? `${match.teamGoals}-${match.opponentGoals}` : "-"} tone={match && match.teamGoals > match.opponentGoals ? "good" : undefined} />
           <InfoTile label="Record" value={`${record.wins}-${record.draws}-${record.losses}`} />
-          <InfoTile label={seasonComplete ? "Status" : "Next"} value={seasonComplete ? "Review" : nextFixture?.opponentShort ?? "-"} tone={seasonComplete ? "gold" : undefined} />
+          <InfoTile
+            label={seasonComplete ? "Status" : "Next"}
+            value={seasonComplete ? "Review" : nextFixture ? <ClubLink clubIdentity={nextFixture.opponent} onOpenClub={onOpenClub}>{nextFixture.opponentShort}</ClubLink> : "-"}
+            tone={seasonComplete ? "gold" : undefined}
+          />
         </div>
       </div>
+
+      {latestStory && (
+        <div className={`card weekly-feed-teaser tone-${latestStory.tone}`}>
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">{latestStory.source}</span>
+              <h2><FeedText parts={latestStory.headline} onOpenClub={onOpenClub} /></h2>
+            </div>
+            <Newspaper size={19} />
+          </div>
+          <p><FeedText parts={latestStory.body} onOpenClub={onOpenClub} /></p>
+        </div>
+      )}
     </section>
   );
 }
 
 
-export function SeasonReviewScreen({ game }: { game: GameState }) {
+export function SeasonReviewScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const review = getSeasonReview(game);
   const contractOffer = getSeasonContractOffer(game, review);
   const stats = game.seasonStats;
@@ -1191,7 +1250,10 @@ export function SeasonReviewScreen({ game }: { game: GameState }) {
 
       <div className="card season-review-hero">
         <div>
-          <span className="metric-label country-label">{country && <span className="flag-icon" aria-label={country.name}>{country.flag}</span>}{game.contract.club}</span>
+          <span className="metric-label country-label">
+            {country && <CountryFlag country={country} />}
+            <ClubLink clubIdentity={game.club.clubId ?? game.club.shortCode} onOpenClub={onOpenClub}>{game.contract.club}</ClubLink>
+          </span>
           <h2>{review.tablePosition}. place</h2>
           <p>
             {review.record.wins}-{review.record.draws}-{review.record.losses}, {review.record.points} pts
@@ -1482,8 +1544,17 @@ export function TrainingSummaryScreen({
 }
 
 
-export function ClubScreen({ game }: { game: GameState }) {
-  const [clubView, setClubView] = useState<ClubView>("overview");
+export function ClubScreen({
+  game,
+  onOpenClub,
+  view,
+  onViewChange,
+}: {
+  game: GameState;
+  onOpenClub?: (identity: string) => void;
+  view: ClubView;
+  onViewChange: (view: ClubView) => void;
+}) {
   const seasonComplete = isSeasonComplete(game.season);
   const upcomingMatch = seasonComplete ? undefined : getUpcomingMatch(game);
   const strengthGap = upcomingMatch ? upcomingMatch.teamStrength - upcomingMatch.opponentStrength : 0;
@@ -1494,20 +1565,23 @@ export function ClubScreen({ game }: { game: GameState }) {
   const leagueTier = getClubLeagueTier(game.club);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
-  if (clubView === "fixtures") {
-    return <ClubFixturesView game={game} onBack={() => setClubView("overview")} />;
+  if (view === "fixtures") {
+    return <ClubFixturesView game={game} onBack={() => onViewChange("overview")} onOpenClub={onOpenClub} />;
   }
 
-  if (clubView === "table") {
-    return <ClubTableView game={game} onBack={() => setClubView("overview")} />;
+  if (view === "table") {
+    return <ClubTableView game={game} onBack={() => onViewChange("overview")} onOpenClub={onOpenClub} />;
   }
 
   return (
     <section className="simple-screen">
-      <ScreenTitle label={country ? `${country.flag} ${country.name}` : "Club"} title={game.club.name} />
+      <ScreenTitle
+        label={country ? <span className="country-label"><CountryFlag country={country} />{country.name}</span> : "Club"}
+        title={<ClubLink clubIdentity={game.club.clubId ?? game.club.shortCode} onOpenClub={onOpenClub}>{game.club.name}</ClubLink>}
+      />
       <div className="card">
         <InfoRow label="League tier" value={leagueTier.name} />
-        {country && <InfoRow label="Country" value={`${country.flag} ${country.name}`} />}
+        {country && <InfoRow label="Country" value={<span className="country-label"><CountryFlag country={country} />{country.name}</span>} />}
         <InfoRow label="Squad role" value={upcomingMatch?.playerRole ?? "Season Review"} />
         <ProgressRow label="Manager trust" value={game.trust} accent="lime" />
         <ProgressRow label="Team form" value={getTeamFormScore(game.season.results)} display={getRecentFormText(game.season.results)} accent="neutral" />
@@ -1528,30 +1602,34 @@ export function ClubScreen({ game }: { game: GameState }) {
           <InfoTile label="Points" value={`${record.points}`} tone="good" />
         </div>
       </div>
-      <button className="card club-drill-card" type="button" onClick={() => setClubView("fixtures")}>
-        <div className="section-heading">
+      <div className="card club-drill-card">
+        <button className="club-drill-open" type="button" onClick={() => onViewChange("fixtures")}>
           <div>
             <span className="metric-label">Upcoming fixtures</span>
             <h2>Next 5 matches</h2>
           </div>
           <CalendarDays size={19} />
-        </div>
-        <FixturePreviewList season={game.season} />
-      </button>
-      <button className="card club-drill-card" type="button" onClick={() => setClubView("table")}>
-        <div className="section-heading">
+        </button>
+        <FixturePreviewList season={game.season} onOpenClub={onOpenClub} />
+      </div>
+      <div className="card club-drill-card">
+        <button className="club-drill-open" type="button" onClick={() => onViewChange("table")}>
           <div>
             <span className="metric-label">League table</span>
             <h2>{leagueTier.name}</h2>
           </div>
           <Trophy size={19} />
-        </div>
-        <LeagueTablePreview table={table} playerClubShort={game.club.shortCode} />
-      </button>
+        </button>
+        <LeagueTablePreview table={table} playerClubShort={game.club.shortCode} onOpenClub={onOpenClub} />
+      </div>
       <div className="card split-card">
         <div>
           <span className="metric-label">{seasonComplete ? "Status" : "Next match"}</span>
-          <h2>{upcomingMatch?.opponentShort ?? "Season complete"}</h2>
+          <h2>
+            {upcomingMatch
+              ? <ClubLink clubIdentity={upcomingMatch.opponent} onOpenClub={onOpenClub}>{upcomingMatch.opponentShort}</ClubLink>
+              : "Season complete"}
+          </h2>
           <p>{upcomingMatch ? `${upcomingMatch.venue} - ${upcomingMatch.competition}` : "Review and start next season"}</p>
         </div>
         <div>
@@ -1609,12 +1687,12 @@ export function ClubScreen({ game }: { game: GameState }) {
 }
 
 
-export function ClubFixturesView({ game, onBack }: { game: GameState; onBack: () => void }) {
+export function ClubFixturesView({ game, onBack, onOpenClub }: { game: GameState; onBack: () => void; onOpenClub?: (identity: string) => void }) {
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
     <section className="simple-screen club-detail-screen">
-      <DetailHeader label={country ? `${country.flag} ${country.name}` : "Club"} title="Fixtures" onBack={onBack} />
+      <DetailHeader label={country ? <span className="country-label"><CountryFlag country={country} />{country.name}</span> : "Club"} title="Fixtures" onBack={onBack} />
       <div className="card">
         <span className="metric-label">Season schedule</span>
         <div className="fixture-list">
@@ -1626,7 +1704,7 @@ export function ClubFixturesView({ game, onBack }: { game: GameState; onBack: ()
               <div className={`fixture-row ${isCurrent ? "is-current" : ""}`} key={fixture.id}>
                 <span className="fixture-index">M{index + 1}</span>
                 <div>
-                  <strong>{fixture.opponentShort}</strong>
+                  <ClubLink clubIdentity={fixture.opponent} onOpenClub={onOpenClub}>{fixture.opponentShort}</ClubLink>
                   <small>
                     {fixture.venue} - {fixture.competition}
                   </small>
@@ -1650,13 +1728,13 @@ export function ClubFixturesView({ game, onBack }: { game: GameState; onBack: ()
 }
 
 
-export function ClubTableView({ game, onBack }: { game: GameState; onBack: () => void }) {
+export function ClubTableView({ game, onBack, onOpenClub }: { game: GameState; onBack: () => void; onOpenClub?: (identity: string) => void }) {
   const table = getLeagueTable(game);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
     <section className="simple-screen club-detail-screen">
-      <DetailHeader label={country ? `${country.flag} ${country.name}` : "Club"} title="League Table" onBack={onBack} />
+      <DetailHeader label={country ? <span className="country-label"><CountryFlag country={country} />{country.name}</span> : "Club"} title="League Table" onBack={onBack} />
       <div className="card">
         <div className="table-header">
           <span>#</span>
@@ -1667,7 +1745,7 @@ export function ClubTableView({ game, onBack }: { game: GameState; onBack: () =>
         </div>
         <div className="league-table">
           {table.map((row) => (
-            <LeagueTableRowView key={row.short} row={row} playerClubShort={game.club.shortCode} />
+            <LeagueTableRowView key={row.short} row={row} playerClubShort={game.club.shortCode} onOpenClub={onOpenClub} />
           ))}
         </div>
       </div>
@@ -1685,6 +1763,9 @@ export function HomeScreen({
   onAcceptSponsorDeal,
   onOpenRetirement,
   onResetCareer,
+  onOpenClub,
+  view,
+  onViewChange,
 }: {
   game: GameState;
   saveStatus: "saved" | "unsaved";
@@ -1694,8 +1775,10 @@ export function HomeScreen({
   onAcceptSponsorDeal: (dealId: string) => void;
   onOpenRetirement: () => void;
   onResetCareer: () => void;
+  onOpenClub?: (identity: string) => void;
+  view: HomeView;
+  onViewChange: (view: HomeView) => void;
 }) {
-  const [homeView, setHomeView] = useState<HomeView>("base");
   const currentSnapshot = createDynastySeasonSnapshot(game);
   const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
   const age = getPlayerAge(game);
@@ -1706,21 +1789,24 @@ export function HomeScreen({
       <ScreenTitle label="Home" title="Private base" />
 
       <div className="subtab-control" role="tablist" aria-label="Home sections">
-        <button className={homeView === "base" ? "is-active" : ""} type="button" onClick={() => setHomeView("base")}>
+        <button className={view === "base" ? "is-active" : ""} type="button" onClick={() => onViewChange("base")}>
           Base
         </button>
-        <button className={homeView === "support" ? "is-active" : ""} type="button" onClick={() => setHomeView("support")}>
+        <button className={view === "support" ? "is-active" : ""} type="button" onClick={() => onViewChange("support")}>
           Support
         </button>
-        <button className={homeView === "deals" ? "is-active" : ""} type="button" onClick={() => setHomeView("deals")}>
+        <button className={view === "feed" ? "is-active" : ""} type="button" onClick={() => onViewChange("feed")}>
+          Feed
+        </button>
+        <button className={view === "deals" ? "is-active" : ""} type="button" onClick={() => onViewChange("deals")}>
           Deals
         </button>
-        <button className={homeView === "dynasty" ? "is-active" : ""} type="button" onClick={() => setHomeView("dynasty")}>
+        <button className={view === "dynasty" ? "is-active" : ""} type="button" onClick={() => onViewChange("dynasty")}>
           Dynasty
         </button>
       </div>
 
-      {homeView === "base" ? (
+      {view === "base" ? (
         <>
           <div className="card">
             <div className="section-heading">
@@ -1763,10 +1849,12 @@ export function HomeScreen({
             </button>
           </div>
         </>
-      ) : homeView === "support" ? (
+      ) : view === "support" ? (
         <SupportShopView game={game} onBuySupportUpgrade={onBuySupportUpgrade} />
-      ) : homeView === "deals" ? (
-        <DealsView game={game} onAcceptSponsorDeal={onAcceptSponsorDeal} />
+      ) : view === "feed" ? (
+        <FeedView game={game} onOpenClub={onOpenClub} />
+      ) : view === "deals" ? (
+        <DealsView game={game} onAcceptSponsorDeal={onAcceptSponsorDeal} onOpenClub={onOpenClub} />
       ) : (
         <>
           <div className="card">
@@ -1871,9 +1959,9 @@ export function HomeScreen({
             </div>
             <div className="dynasty-list">
               {[...game.dynastyHistory].reverse().map((season) => (
-                <DynastySeasonRow key={season.season} season={season} />
+                <DynastySeasonRow key={season.season} season={season} onOpenClub={onOpenClub} />
               ))}
-              <DynastySeasonRow current season={currentSnapshot} />
+              <DynastySeasonRow current season={currentSnapshot} onOpenClub={onOpenClub} />
             </div>
           </div>
         </>
@@ -1883,7 +1971,73 @@ export function HomeScreen({
 }
 
 
-export function DealsView({ game, onAcceptSponsorDeal }: { game: GameState; onAcceptSponsorDeal: (dealId: string) => void }) {
+export function FeedView({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
+  const grouped = game.worldFeed.reduce<Record<string, typeof game.worldFeed>>((groups, story) => {
+    const key = `Season ${story.season} · Week ${story.week}`;
+    groups[key] = [...(groups[key] ?? []), story];
+    return groups;
+  }, {});
+
+  return (
+    <div className="feed-view">
+      <div className="feed-header">
+        <div>
+          <span className="metric-label">Football world</span>
+          <h2>The Feed</h2>
+        </div>
+        <Newspaper size={20} />
+      </div>
+      {game.worldFeed.length === 0 ? (
+        <div className="card feed-empty">
+          <Newspaper size={22} />
+          <h2>The first stories are coming</h2>
+          <p>Complete a matchweek to see results, form, milestones and market news from your football world.</p>
+        </div>
+      ) : (
+        Object.entries(grouped).map(([label, stories]) => (
+          <section className="feed-week" key={label}>
+            <span className="feed-week-label">{label}</span>
+            <div className="feed-story-list">
+              {stories.map((story) => (
+                <article className={`feed-story tone-${story.tone}`} key={story.id}>
+                  <div className="feed-story-meta">
+                    <strong>{story.source}</strong>
+                    <span>{story.category}</span>
+                  </div>
+                  <h3><FeedText parts={story.headline} onOpenClub={onOpenClub} /></h3>
+                  <p><FeedText parts={story.body} onOpenClub={onOpenClub} /></p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
+  );
+}
+
+function FeedText({ parts, onOpenClub }: { parts: FeedTextPart[]; onOpenClub?: (identity: string) => void }) {
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.type === "club"
+          ? <ClubLink clubIdentity={part.clubId} key={`${part.clubId}-${index}`} onOpenClub={onOpenClub}>{part.text}</ClubLink>
+          : <span key={`text-${index}`}>{part.text}</span>,
+      )}
+    </>
+  );
+}
+
+
+export function DealsView({
+  game,
+  onAcceptSponsorDeal,
+  onOpenClub,
+}: {
+  game: GameState;
+  onAcceptSponsorDeal: (dealId: string) => void;
+  onOpenClub?: (identity: string) => void;
+}) {
   const prestige = getPrestigeStatus(game.prestige);
   const sponsorOffers = getAvailableSponsorDeals(game);
   const sponsorUnlocked = prestige.tierIndex >= 1;
@@ -1911,7 +2065,7 @@ export function DealsView({ game, onAcceptSponsorDeal }: { game: GameState; onAc
         </div>
       </div>
 
-      <ContractMarketCard game={game} />
+      <ContractMarketCard game={game} onOpenClub={onOpenClub} />
 
       <div className="card sponsor-card">
         <div className="section-heading">
@@ -2078,7 +2232,7 @@ export function CreateDynastyScreen({ countries, onCreate }: { countries: Countr
         <div className="section-heading">
           <div>
             <span className="metric-label">Nationality</span>
-            <h2>{selectedCountry?.flag} {selectedCountry?.name}</h2>
+            <h2 className="country-heading">{selectedCountry && <CountryFlag country={selectedCountry} />}{selectedCountry?.name}</h2>
           </div>
           <ShieldCheck size={19} />
         </div>
@@ -2090,7 +2244,7 @@ export function CreateDynastyScreen({ countries, onCreate }: { countries: Countr
               type="button"
               onClick={() => setNationality(country.id)}
             >
-              <span>{country.flag}</span>
+              <CountryFlag country={country} />
               <strong>{country.name}</strong>
             </button>
           ))}
@@ -2128,6 +2282,124 @@ export function CreateDynastyScreen({ countries, onCreate }: { countries: Countr
   );
 }
 
+export function ClubProfileScreen({
+  clubId,
+  game,
+  onBack,
+}: {
+  clubId: ClubId;
+  game: GameState;
+  onBack: () => void;
+}) {
+  const profile = getClubProfile(game, clubId);
+  if (!profile) {
+    return (
+      <section className="simple-screen club-profile-screen">
+        <DetailHeader label="Club" title="Profile unavailable" onBack={onBack} />
+        <div className="card">
+          <p>This club is not part of the current world model.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const isCurrentClub = profile.club.id === game.club.clubId || profile.club.shortCode === game.club.shortCode;
+
+  return (
+    <section className="simple-screen club-profile-screen">
+      <DetailHeader
+        label={<span className="country-label"><CountryFlag country={profile.country} />{profile.country.name}</span>}
+        title={profile.club.name}
+        onBack={onBack}
+      />
+
+      <div className="card club-profile-hero">
+        <div className="club-profile-identity">
+          <div className="club-profile-badge">{profile.club.shortCode.slice(0, 3)}</div>
+          <div>
+            <span className="metric-label">{profile.league.name}</span>
+            <h2>{profile.table.position}. place</h2>
+            <p>{profile.tier.name} · Reputation {profile.club.reputation}</p>
+          </div>
+        </div>
+        <div className="club-profile-headline">
+          <div><span>Club OVR</span><strong>{profile.club.strength}</strong></div>
+          <div><span>Avg rating</span><strong>{profile.averageRating.toFixed(2)}</strong></div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Squad level</span>
+            <h2>Unit averages</h2>
+          </div>
+          <BarChart3 size={19} />
+        </div>
+        <div className="club-unit-grid">
+          <div><span>GK</span><small>Keeper</small><strong>{profile.unitOvr.keeper}</strong></div>
+          <div><span>DEF</span><small>Defense</small><strong>{profile.unitOvr.defense}</strong></div>
+          <div><span>MID</span><small>Midfield</small><strong>{profile.unitOvr.midfield}</strong></div>
+          <div><span>ATT</span><small>Attack</small><strong>{profile.unitOvr.attack}</strong></div>
+        </div>
+      </div>
+
+      <div className="card">
+        <span className="metric-label">Season performance</span>
+        <div className="club-form-strip" aria-label="Recent form">
+          {profile.recentForm.length > 0
+            ? profile.recentForm.map((result, index) => <span className={`result-${result.toLowerCase()}`} key={`${result}-${index}`}>{result}</span>)
+            : <small>No matches played</small>}
+        </div>
+        <div className="stat-grid">
+          <InfoTile label="Form" value={profile.form} tone={profile.form === "Hot" || profile.form === "Good" ? "good" : profile.form === "Poor" ? "warn" : undefined} />
+          <InfoTile label="Record" value={`${profile.table.wins}-${profile.table.draws}-${profile.table.losses}`} />
+          <InfoTile label="Goals / match" value={profile.goalsPerMatch.toFixed(2)} tone="gold" />
+          <InfoTile label="Against / match" value={profile.concededPerMatch.toFixed(2)} />
+          <InfoTile label="Clean sheets" value={`${profile.cleanSheets}`} />
+          <InfoTile label="Facilities" value={profile.facilityLabel} />
+        </div>
+      </div>
+
+      <div className="card club-style-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Football identity</span>
+            <h2>{profile.style}</h2>
+          </div>
+          <Activity size={19} />
+        </div>
+        <p>{profile.styleDetail}</p>
+        <div className="club-scout-lines">
+          <div><span>Strength</span><strong>{profile.strength}</strong></div>
+          <div><span>Weakness</span><strong>{profile.weakness}</strong></div>
+        </div>
+      </div>
+
+      <div className={`card club-career-fit ${isCurrentClub ? "is-current" : ""}`}>
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">{isCurrentClub ? "Your club" : "Career fit"}</span>
+            <h2>{isCurrentClub ? "Current environment" : profile.careerFit.label}</h2>
+          </div>
+          <ShieldCheck size={19} />
+        </div>
+        <p>{isCurrentClub ? "This is your current development and match environment." : profile.careerFit.detail}</p>
+        <div className="next-grid">
+          <InfoTile label="Your OVR" value={`${calculateCurrentPlayerOvr(game)}`} tone="good" />
+          <InfoTile label="Club OVR" value={`${profile.club.strength}`} />
+          <InfoTile label="Projected role" value={isCurrentClub ? game.contract.rolePromise : profile.careerFit.projectedRole} tone="gold" />
+        </div>
+      </div>
+
+    </section>
+  );
+}
+
+function calculateCurrentPlayerOvr(game: GameState) {
+  return calculateOvr(game.attributes, getPositionModule(game.positionGroup).ovrWeights);
+}
+
 function formatMatchPhase(phase: NonNullable<PlayerMatchEvent["directorPhase"]>) {
   return {
     cagey_opening: "Cagey opening",
@@ -2161,7 +2433,7 @@ export function CountrySelectScreen({ countries, onPick }: { countries: Country[
 
       {countries.map((country) => (
         <button key={country.id} className="card country-option" type="button" onClick={() => onPick(country.id)}>
-          <span className="country-flag" aria-label={country.name}>{country.flag}</span>
+          <CountryFlag country={country} className="country-flag" />
           <div>
             <h2>{country.name}</h2>
             <span>{country.tiers.length} divisions</span>

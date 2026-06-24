@@ -33,6 +33,7 @@ export function getWorldLeagueTable(world: World, leagueId: LeagueId): LeagueTab
     const club = world.clubs[clubId];
     const rec = season.records[clubId] ?? emptyClubSeasonRecord(clubId);
     return {
+      clubId: club.id,
       name: club.name,
       short: club.shortCode,
       position: 0,
@@ -84,6 +85,8 @@ function addResult(rec: ClubSeasonRecord, r: ClubWeekResult): ClubSeasonRecord {
     goalsFor: rec.goalsFor + r.goalsFor,
     goalsAgainst: rec.goalsAgainst + r.goalsAgainst,
     points: rec.points + (r.outcome === "W" ? 3 : r.outcome === "D" ? 1 : 0),
+    cleanSheets: (rec.cleanSheets ?? 0) + (r.goalsAgainst === 0 ? 1 : 0),
+    recentForm: [...(rec.recentForm ?? []), r.outcome].slice(-5),
   };
 }
 

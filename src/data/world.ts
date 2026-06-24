@@ -150,7 +150,7 @@ function namedSpecsFor(countryId: CountryId, tierId: LeagueTierId): ClubSpec[] {
 }
 
 export function emptyClubSeasonRecord(clubId: string): ClubSeasonRecord {
-  return { clubId, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+  return { clubId, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, cleanSheets: 0, recentForm: [] };
 }
 
 export function seedWorld(): World {

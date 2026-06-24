@@ -9,12 +9,12 @@ import type { MatchDirectorState, MatchPhase } from "./engine/matchDirector";
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "dynasty-create" | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
+export type ScreenKey = NavKey | "club-profile" | "dynasty-create" | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";
 export type ClubView = "overview" | "fixtures" | "table";
-export type HomeView = "base" | "support" | "deals" | "dynasty";
+export type HomeView = "base" | "support" | "feed" | "deals" | "dynasty";
 export type SupportUpgradeId =
   | "xpFloor"
   | "xpCeiling"
@@ -168,6 +168,8 @@ export type ClubSeasonRecord = {
   goalsFor: number;
   goalsAgainst: number;
   points: number;
+  cleanSheets: number;
+  recentForm: Array<"W" | "D" | "L">;
 };
 
 export type LeagueSeason = {
@@ -203,6 +205,7 @@ export type TrainingQualityProfile = {
 };
 
 export type LeagueTableRow = {
+  clubId?: ClubId;
   name: string;
   short: string;
   position: number;
@@ -237,6 +240,36 @@ export type DynastyState = {
   // head start — the late-career "spend on yourself vs. set up your child" choice.
   estate: number;
   upgrades: Record<DynastyUpgradeId, number>;
+};
+
+export type ClubProfile = {
+  club: WorldClub;
+  country: Country;
+  league: WorldLeague;
+  tier: LeagueTier;
+  table: LeagueTableRow;
+  unitOvr: {
+    keeper: number;
+    defense: number;
+    midfield: number;
+    attack: number;
+  };
+  averageRating: number;
+  form: string;
+  recentForm: Array<"W" | "D" | "L">;
+  style: string;
+  styleDetail: string;
+  strength: string;
+  weakness: string;
+  cleanSheets: number;
+  goalsPerMatch: number;
+  concededPerMatch: number;
+  facilityLabel: string;
+  careerFit: {
+    label: string;
+    detail: string;
+    projectedRole: MatchRole;
+  };
 };
 
 export type PlayerIdentity = {
@@ -323,6 +356,36 @@ export type SponsorPayout = {
   sponsorName?: string;
 };
 
+export type FeedCategory =
+  | "player"
+  | "result"
+  | "upset"
+  | "form"
+  | "table"
+  | "milestone"
+  | "contract"
+  | "transfer";
+
+export type FeedTone = "positive" | "negative" | "neutral" | "breaking";
+
+export type FeedTextPart =
+  | { type: "text"; text: string }
+  | { type: "club"; clubId: ClubId; text: string };
+
+export type FeedStory = {
+  id: string;
+  week: number;
+  season: number;
+  category: FeedCategory;
+  source: string;
+  tone: FeedTone;
+  importance: number;
+  headline: FeedTextPart[];
+  body: FeedTextPart[];
+  clubIds: ClubId[];
+  playerRelated: boolean;
+};
+
 export type SupportUpgradeDefinition = {
   id: SupportUpgradeId;
   name: string;
@@ -392,6 +455,7 @@ export type GameState = {
   contract: Contract;
   sponsor?: SponsorDeal;
   supportUpgrades: Record<SupportUpgradeId, number>;
+  worldFeed: FeedStory[];
   lastEvent: string;
   activeMatch?: MatchState;
   lastMatch?: LastMatchSummary;
@@ -403,7 +467,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 20;
+  version: 21;
   game: GameState;
 };
 

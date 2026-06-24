@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, Intensity, MatchChoice, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
+import type { ClubView, Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, MatchChoice, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
 import { createCareerForCountry } from "./state/initialState";
 import { COUNTRIES } from "./data/world";
@@ -17,9 +17,10 @@ import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
 import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
+import { findClubByIdentity } from "./systems/clubProfile";
 import { declineTransferWindowOffer } from "./systems/transferWindow";
 import { BottomNav } from "./components/shared";
-import { ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubProfileScreen, ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
 
 const heirFirstNames = ["Noah", "Lucas", "Mikkel", "Oscar", "Elias", "Victor", "Oliver", "Felix"];
 
@@ -30,10 +31,15 @@ function App() {
   const [matchSpeed, setMatchSpeed] = useState<MatchSpeed>(2);
   const [saveStatus, setSaveStatus] = useState<"saved" | "unsaved">("saved");
   const [newCareerSetup, setNewCareerSetup] = useState<NewCareerSetup | undefined>();
+  const [selectedClubId, setSelectedClubId] = useState<string | undefined>();
+  const [clubProfileReturnScreen, setClubProfileReturnScreen] = useState<ScreenKey>("club");
+  const [clubView, setClubView] = useState<ClubView>("overview");
+  const [homeView, setHomeView] = useState<HomeView>("base");
 
   const activeNav =
     activeScreen === "dynasty-create" ||
     activeScreen === "country-select" ||
+    activeScreen === "club-profile" ||
     activeScreen === "pre-match" ||
     activeScreen === "match" ||
     activeScreen === "summary" ||
@@ -55,7 +61,9 @@ function App() {
     activeScreen === "transfer-window" &&
     Boolean(game.transferWindow?.currentClubOffer || game.transferWindow?.offers.length);
   const advanceLabel =
-    activeScreen === "pre-match"
+    activeScreen === "club-profile"
+      ? "Back"
+      : activeScreen === "pre-match"
       ? "Start Match"
       : activeScreen === "match"
       ? game.activeMatch?.isComplete
@@ -198,6 +206,10 @@ function App() {
   }
 
   function handleAdvance() {
+    if (activeScreen === "club-profile") {
+      closeClubProfile();
+      return;
+    }
     if (activeScreen === "match") {
       if (game.activeMatch?.isComplete && !game.activeMatch.currentResult) {
         finishMatch();
@@ -680,7 +692,21 @@ function App() {
   }
 
   function navigate(nav: NavKey) {
+    setSelectedClubId(undefined);
     setActiveScreen(nav);
+  }
+
+  function openClubProfile(identity: string) {
+    const club = findClubByIdentity(game, identity);
+    if (!club) return;
+    setClubProfileReturnScreen(activeScreen);
+    setSelectedClubId(club.id);
+    setActiveScreen("club-profile");
+  }
+
+  function closeClubProfile() {
+    setSelectedClubId(undefined);
+    setActiveScreen(clubProfileReturnScreen === "club-profile" ? "club" : clubProfileReturnScreen);
   }
 
   function resetCareer() {
@@ -714,7 +740,7 @@ function App() {
         <div className="screen-scroll">
           {activeScreen === "dynasty-create" && <CreateDynastyScreen countries={COUNTRIES} onCreate={createDynasty} />}
           {activeScreen === "country-select" && <CountrySelectScreen countries={COUNTRIES} onPick={startCareerInCountry} />}
-          {activeScreen === "player" && <PlayerScreen game={game} />}
+          {activeScreen === "player" && <PlayerScreen game={game} onOpenClub={openClubProfile} />}
           {activeScreen === "training" && (
             <TrainingScreen
               game={game}
@@ -722,7 +748,12 @@ function App() {
               onFocusChange={setTrainingFocus}
             />
           )}
-          {activeScreen === "club" && <ClubScreen game={game} />}
+          {activeScreen === "club" && (
+            <ClubScreen game={game} onOpenClub={openClubProfile} view={clubView} onViewChange={setClubView} />
+          )}
+          {activeScreen === "club-profile" && selectedClubId && (
+            <ClubProfileScreen clubId={selectedClubId} game={game} onBack={closeClubProfile} />
+          )}
           {activeScreen === "home" && (
             <HomeScreen
               game={game}
@@ -733,9 +764,12 @@ function App() {
               onAcceptSponsorDeal={acceptSponsorDeal}
               onOpenRetirement={openRetirement}
               onResetCareer={resetCareer}
+              onOpenClub={openClubProfile}
+              view={homeView}
+              onViewChange={setHomeView}
             />
           )}
-          {activeScreen === "pre-match" && game.activeMatch && <PreMatchScreen match={game.activeMatch} />}
+          {activeScreen === "pre-match" && game.activeMatch && <PreMatchScreen match={game.activeMatch} onOpenClub={openClubProfile} />}
           {activeScreen === "match" && game.activeMatch && (
             <MatchMomentScreen
               attributes={game.attributes}
@@ -746,11 +780,12 @@ function App() {
               onSkipToEvent={skipToNextEvent}
               onSkipToHighlight={skipToNextHighlight}
               onSkipToFullTime={skipToFullTime}
+              onOpenClub={openClubProfile}
               matchSpeed={matchSpeed}
             />
           )}
           {activeScreen === "summary" && game.lastMatch && (
-            <PostMatchSummaryScreen attributes={game.attributes} summary={game.lastMatch} />
+            <PostMatchSummaryScreen attributes={game.attributes} summary={game.lastMatch} onOpenClub={openClubProfile} />
           )}
           {activeScreen === "training-reveal" && game.lastTraining && (
             <TrainingRevealScreen summary={game.lastTraining} />
@@ -761,7 +796,7 @@ function App() {
               summary={game.lastTraining}
             />
           )}
-          {activeScreen === "week-summary" && <WeekSummaryScreen game={game} />}
+          {activeScreen === "week-summary" && <WeekSummaryScreen game={game} onOpenClub={openClubProfile} />}
           {activeScreen === "contract-offer" && (game.contractOffers?.length || game.contractOffer) && (
             <ContractOfferScreen
               game={game}
@@ -769,6 +804,7 @@ function App() {
               offers={game.contractOffers ?? (game.contractOffer ? [game.contractOffer] : [])}
               onAccept={acceptContractOffer}
               onDecline={declineContractOffer}
+              onOpenClub={openClubProfile}
             />
           )}
           {activeScreen === "free-agent" && <FreeAgentMarketScreen game={game} />}
@@ -779,9 +815,10 @@ function App() {
               onAccept={acceptTransferOffer}
               onDecline={declineTransferOffer}
               onStay={closeTransferWindow}
+              onOpenClub={openClubProfile}
             />
           )}
-          {activeScreen === "season-review" && <SeasonReviewScreen game={game} />}
+          {activeScreen === "season-review" && <SeasonReviewScreen game={game} onOpenClub={openClubProfile} />}
           {activeScreen === "retirement" && <RetirementScreen game={game} />}
         </div>
 

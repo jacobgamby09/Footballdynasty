@@ -5,7 +5,7 @@ import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, Sparkles, UserRound } from "lucide-react";
 import { useMemo } from "react";
-import type { FixtureResult, GameState, LastMatchSummary, LeagueTableRow, MatchState, NavKey } from "../types";
+import type { Country, FixtureResult, GameState, LastMatchSummary, LeagueTableRow, MatchState, NavKey } from "../types";
 import type { ReactNode } from "react";
 
 export const navItems = [
@@ -16,7 +16,7 @@ export const navItems = [
 ];
 
 
-export function Header({ game }: { game: GameState }) {
+export function Header({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
 
   return (
@@ -36,10 +36,10 @@ export function Header({ game }: { game: GameState }) {
           <span>{game.positionCode}</span>
           <span>{game.archetype}</span>
         </div>
-        <div className="club-chip">
-          {country ? <span className="flag-icon" aria-label={country.name}>{country.flag}</span> : <span className="club-dot" />}
+        <ClubLink className="club-chip" clubIdentity={game.club.clubId ?? game.club.shortCode} onOpenClub={onOpenClub}>
+          {country ? <CountryFlag country={country} /> : <span className="club-dot" />}
           {game.club.name}
-        </div>
+        </ClubLink>
       </div>
 
       <div className="resource-stack" aria-label="Resources">
@@ -47,6 +47,27 @@ export function Header({ game }: { game: GameState }) {
         <ResourcePill icon={<Sparkles size={14} />} value={formatPrestigeCompact(game.prestige)} />
       </div>
     </header>
+  );
+}
+
+export function ClubLink({
+  children,
+  clubIdentity,
+  onOpenClub,
+  className = "",
+}: {
+  children: ReactNode;
+  clubIdentity?: string;
+  onOpenClub?: (identity: string) => void;
+  className?: string;
+}) {
+  if (!clubIdentity || !onOpenClub) {
+    return <span className={className}>{children}</span>;
+  }
+  return (
+    <button className={`club-link ${className}`.trim()} type="button" onClick={() => onOpenClub(clubIdentity)}>
+      {children}
+    </button>
   );
 }
 
@@ -66,11 +87,13 @@ export function MatchScoreHeader({
   match,
   teamGoals,
   opponentGoals,
+  onOpenClub,
 }: {
   liveMinute: number;
   match: MatchState;
   teamGoals: number;
   opponentGoals: number;
+  onOpenClub?: (identity: string) => void;
 }) {
   const homeName = match.venue === "Home" ? match.teamShortName : match.opponent;
   const awayName = match.venue === "Home" ? match.opponent : match.teamShortName;
@@ -81,11 +104,11 @@ export function MatchScoreHeader({
     <header className="match-score-header">
       <span className="metric-label">{liveMinute}'</span>
       <div className="scoreboard-row">
-        <strong>{homeName}</strong>
+        <ClubLink className="score-team-name" clubIdentity={homeName} onOpenClub={onOpenClub}>{homeName}</ClubLink>
         <div className="score-pill">
           {homeGoals}-{awayGoals}
         </div>
-        <strong>{awayName}</strong>
+        <ClubLink className="score-team-name" clubIdentity={awayName} onOpenClub={onOpenClub}>{awayName}</ClubLink>
       </div>
       <small>{match.competition}</small>
     </header>
@@ -93,7 +116,7 @@ export function MatchScoreHeader({
 }
 
 
-export function SummaryScoreHeader({ summary }: { summary: LastMatchSummary }) {
+export function SummaryScoreHeader({ summary, onOpenClub }: { summary: LastMatchSummary; onOpenClub?: (identity: string) => void }) {
   const homeName = summary.venue === "Home" ? summary.clubShortName : summary.opponent;
   const awayName = summary.venue === "Home" ? summary.opponent : summary.clubShortName;
   const homeGoals = summary.venue === "Home" ? summary.teamGoals : summary.opponentGoals;
@@ -103,11 +126,11 @@ export function SummaryScoreHeader({ summary }: { summary: LastMatchSummary }) {
     <header className="match-score-header summary-score-header">
       <span className="metric-label">{summary.competition} - Match {summary.matchNumber}/{summary.seasonLength}</span>
       <div className="scoreboard-row">
-        <strong>{homeName}</strong>
+        <ClubLink className="score-team-name" clubIdentity={homeName} onOpenClub={onOpenClub}>{homeName}</ClubLink>
         <div className="score-pill">
           {homeGoals}-{awayGoals}
         </div>
-        <strong>{awayName}</strong>
+        <ClubLink className="score-team-name" clubIdentity={awayName} onOpenClub={onOpenClub}>{awayName}</ClubLink>
       </div>
       <small>Full time</small>
     </header>
@@ -146,7 +169,16 @@ export function FixtureStatusBadge({
 }
 
 
-export function DetailHeader({ label, title, onBack }: { label: string; title: string; onBack: () => void }) {
+export function CountryFlag({ country, className = "" }: { country: Country; className?: string }) {
+  return (
+    <span className={`flag-icon ${className}`.trim()} title={country.name}>
+      <img src={`/flags/${country.id}.svg`} alt={`${country.name} flag`} />
+    </span>
+  );
+}
+
+
+export function DetailHeader({ label, title, onBack }: { label: ReactNode; title: string; onBack: () => void }) {
   return (
     <div className="detail-header">
       <button className="icon-button" type="button" aria-label="Back to club overview" onClick={onBack}>
@@ -158,11 +190,23 @@ export function DetailHeader({ label, title, onBack }: { label: string; title: s
 }
 
 
-export function LeagueTableRowView({ row, compact = false, playerClubShort = initialClub.shortCode }: { row: LeagueTableRow; compact?: boolean; playerClubShort?: string }) {
+export function LeagueTableRowView({
+  row,
+  compact = false,
+  playerClubShort = initialClub.shortCode,
+  onOpenClub,
+}: {
+  row: LeagueTableRow;
+  compact?: boolean;
+  playerClubShort?: string;
+  onOpenClub?: (identity: string) => void;
+}) {
   return (
     <div className={`table-row ${row.short === playerClubShort ? "is-player-club" : ""} ${compact ? "compact" : ""}`}>
       <span>{row.position}</span>
-      <strong>{compact ? row.short : row.name}</strong>
+      <ClubLink className="table-club-link" clubIdentity={row.clubId ?? row.short} onOpenClub={onOpenClub}>
+        {compact ? row.short : row.name}
+      </ClubLink>
       {!compact && <em>{row.played}</em>}
       <em>{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</em>
       <b>{row.points}</b>
@@ -171,7 +215,7 @@ export function LeagueTableRowView({ row, compact = false, playerClubShort = ini
 }
 
 
-export function ScreenTitle({ label, title }: { label: string; title: string }) {
+export function ScreenTitle({ label, title }: { label: ReactNode; title: ReactNode }) {
   return (
     <header className="screen-title">
       <span className="metric-label">{label}</span>
@@ -206,7 +250,7 @@ export function ChoiceRow({
 }
 
 
-export function InfoRow({ label, value }: { label: string; value: string }) {
+export function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="info-row">
       <span>{label}</span>
@@ -222,7 +266,7 @@ export function InfoTile({
   tone,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   tone?: "good" | "warn" | "gold";
 }) {
   return (

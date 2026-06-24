@@ -95,6 +95,7 @@ export function createCareerForCountry(
     dynastyHistory: options.dynastyHistory ? options.dynastyHistory.map((season) => ({ ...season })) : [],
     contract: { ...initialContract, weeklyWage: startingWage, club: club.name, tierId: club.tierId },
     supportUpgrades: { ...initialSupportUpgrades },
+    worldFeed: [],
     lastEvent: `Trial terms at ${club.name}. Your first senior fixture is waiting.`,
   };
 }

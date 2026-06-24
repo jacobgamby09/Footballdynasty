@@ -10,7 +10,7 @@ import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 20;
+const SAVE_VERSION = 21;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));
@@ -26,7 +26,7 @@ function cloneWorld(world: World): World {
     leagueSeasons: Object.fromEntries(
       Object.entries(world.leagueSeasons ?? {}).map(([id, ls]) => [
         id,
-        { leagueId: ls.leagueId, records: Object.fromEntries(Object.entries(ls.records).map(([cid, rec]) => [cid, { ...rec }])) },
+        { leagueId: ls.leagueId, records: Object.fromEntries(Object.entries(ls.records).map(([cid, rec]) => [cid, { ...rec, recentForm: [...(rec.recentForm ?? [])] }])) },
       ]),
     ),
   };
@@ -67,6 +67,12 @@ export function cloneGameState(state: GameState): GameState {
         }
       : undefined,
     supportUpgrades: { ...state.supportUpgrades },
+    worldFeed: state.worldFeed.map((story) => ({
+      ...story,
+      headline: story.headline.map((part) => ({ ...part })),
+      body: story.body.map((part) => ({ ...part })),
+      clubIds: [...story.clubIds],
+    })),
     activeMatch: undefined,
     lastMatch: state.lastMatch ? cloneLastMatchSummary(state.lastMatch) : undefined,
     lastTraining: state.lastTraining ? cloneTrainingSummary(state.lastTraining) : undefined,
@@ -173,6 +179,12 @@ export function normalizeSavedGame(saved: GameState): GameState {
         }
       : undefined,
     supportUpgrades: normalizeSupportUpgrades(saved.supportUpgrades as Partial<Record<string, number>> | undefined),
+    worldFeed: saved.worldFeed?.map((story) => ({
+      ...story,
+      headline: story.headline.map((part) => ({ ...part })),
+      body: story.body.map((part) => ({ ...part })),
+      clubIds: [...story.clubIds],
+    })) ?? [],
     trainingFocuses: saved.trainingFocuses?.length ? saved.trainingFocuses : [saved.selectedFocus ?? fallback.selectedFocus],
     activeMatch: undefined,
     lastMatch: saved.lastMatch ? cloneLastMatchSummary(saved.lastMatch) : undefined,
@@ -222,7 +234,7 @@ export function mergeSavedAttributes(savedAttributes: Attribute[]) {
 }
 
 function isSupportedSaveVersion(version: unknown) {
-  return typeof version === "number" && version >= 1 && version <= SAVE_VERSION;
+  return version === SAVE_VERSION;
 }
 
 function normalizeSupportUpgrades(savedSupport?: Partial<Record<string, number>>) {

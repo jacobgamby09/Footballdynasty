@@ -402,6 +402,24 @@ Match Director is the orchestration layer between the team simulation and player
 - Timeline events use compact icons and team/opponent tones for fast scanning.
 - Live player statistics include rating, successful actions, total actions, shots, shots on target, key passes and current fitness.
 - Goal and assist involvement keeps the strongest visual reward. Follow-up chains receive a smaller pulse so the player understands the same attack is continuing.
+- A successful teamplay choice can resolve immediately as a created chance or assist, or it can keep the attack alive and open a second player decision. The result screen must state which path occurred instead of implying that every successful action was a shot attempt.
+
+### Club Discovery
+
+- Every visible club name should open the same reusable club profile where interaction is possible.
+- The profile communicates club level through keeper, defense, midfield and attack OVR, current table performance, average team rating, facilities, tactical identity, strength and weakness.
+- Career fit compares the player's OVR with the club and estimates a plausible squad role. It is guidance, not a contract guarantee.
+- Club information is derived deterministically from the persistent world model so league tables, match context and transfer surfaces do not create separate versions of the same club.
+
+### The Feed
+
+- Every completed matchweek creates 2-3 prioritized stories from actual world and player data.
+- V1 covers player output, milestones, weekly results, upsets, winning and losing streaks, table movement and formal transfer interest.
+- Stories are selected by importance with repetition penalties, category limits and club-dominance controls.
+- Winning and losing streaks become news at meaningful milestones rather than producing the same update every week.
+- Headlines and bodies use structured text parts so every referenced club remains clickable.
+- The feed stores the latest 120 stories, enough for a complete long season, and remains deterministic under identical simulation inputs.
+- Weekly Summary shows one leading teaser while the full chronological feed lives under Home.
 
 Eksempel:
 

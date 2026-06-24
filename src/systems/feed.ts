@@ -53,26 +53,28 @@ export function generateWeeklyFeed(before: GameState, after: GameState, lastMatc
       recent.filter((story) => story.category === candidate.category).length * 7 -
       recent.filter((story) => story.clubIds.some((clubId) => candidate.clubIds.includes(clubId))).length * 3,
   }));
+  // The Feed runs 1-5 stories a week, scaling with how much genuinely happened ("meat"): the cap is
+  // 5, but candidates only exist when their trigger fired, so a quiet week naturally shows 1-2 and an
+  // eventful one (goal + milestone + objective + upset + market) fills out to 5.
   const selected: StoryCandidate[] = [];
   for (const candidate of scored.sort((a, b) => b.importance - a.importance || a.key.localeCompare(b.key))) {
-    if (selected.length >= 3) break;
+    if (selected.length >= 5) break;
     if (selected.some((story) => story.key === candidate.key)) continue;
     if (usedHeadlines.has(candidate.headline.map((part) => part.text).join(""))) continue;
-    if (selected.filter((story) => story.clubIds.some((clubId) => candidate.clubIds.includes(clubId))).length >= 2) continue;
+    // The player's own club can headline a few personal beats in a big week; everyone else is capped.
+    const clubShareLimit = candidate.clubIds.includes(after.club.clubId ?? "") ? 3 : 2;
+    if (selected.filter((story) => story.clubIds.some((clubId) => candidate.clubIds.includes(clubId))).length >= clubShareLimit) continue;
     if (candidate.category === "result" && selected.some((story) => story.category === "result")) continue;
     if (candidate.category === "form" && selected.some((story) => story.category === "form")) continue;
     if (candidate.category === "table" && selected.some((story) => story.category === "table")) continue;
     selected.push(candidate);
   }
-  if (selected.length < 2) {
+  // Never end up empty after a matchweek: fall back to a light league round-up.
+  if (selected.length < 1) {
     const fallbackClub = findWorldClub(after.world, after.club.clubId, after.club.shortCode);
     if (fallbackClub) selected.push(buildRoundupCandidate(after, fallbackClub));
   }
-  if (selected.length < 2) {
-    const fallbackClub = findWorldClub(after.world, after.club.clubId, after.club.shortCode);
-    if (fallbackClub) selected.push(buildTableWatchCandidate(after, fallbackClub));
-  }
-  const stories = selected.slice(0, 3).map((candidate, index) => ({
+  const stories = selected.slice(0, 5).map((candidate, index) => ({
     ...candidate,
     id: `feed-s${after.season.season}-w${after.week}-${candidate.key}-${index}`,
     week: after.week,
@@ -334,23 +336,6 @@ function buildRoundupCandidate(after: GameState, playerClub: WorldClub): StoryCa
     body: [club(leader), text(` lead the way after week ${after.week}, while every point remains valuable.`)],
     clubIds: [leader.id],
     playerRelated: leader.id === playerClub.id,
-  };
-}
-
-function buildTableWatchCandidate(after: GameState, playerClub: WorldClub): StoryCandidate {
-  const table = getWorldLeagueTable(after.world, playerClub.leagueId);
-  const subjectRow = table.find((row) => row.clubId !== table[0]?.clubId && row.clubId !== playerClub.id) ?? table[1] ?? table[0];
-  const subject = after.world.clubs[subjectRow?.clubId ?? playerClub.id] ?? playerClub;
-  return {
-    key: `table-watch-${after.week}-${subject.id}`,
-    category: "table",
-    source: "",
-    tone: "neutral",
-    importance: 18,
-    headline: [text(`Week ${after.week} watch: `), club(subject)],
-    body: [club(subject), text(` sit ${subjectRow?.position ?? "-"}. with ${subjectRow?.points ?? 0} points as the division begins to take shape.`)],
-    clubIds: [subject.id],
-    playerRelated: subject.id === playerClub.id,
   };
 }
 

@@ -939,6 +939,19 @@ button {
   gap: 1px;
 }
 
+.week-summary-feed-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.week-summary-feed-hint svg {
+  flex-shrink: 0;
+  color: var(--gold);
+}
+
 .feed-story {
   position: relative;
   display: grid;

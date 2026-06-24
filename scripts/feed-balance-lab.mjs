@@ -117,7 +117,7 @@ const report = {
 };
 
 console.log(JSON.stringify(report, null, 2));
-if (report.weeklyRange[0] < 2 || report.weeklyRange[1] > 3) throw new Error("Feed must produce 2-3 stories per week.");
+if (report.weeklyRange[0] < 1 || report.weeklyRange[1] > 5) throw new Error("Feed must produce 1-5 stories per week.");
 if (report.repeatedHeadlineRate > 0.25) throw new Error("Feed headline repetition is too high.");
 if (Object.keys(report.categories).length < 4) throw new Error("Feed category variety is too low.");
 

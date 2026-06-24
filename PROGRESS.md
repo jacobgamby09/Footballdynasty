@@ -2184,3 +2184,26 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
 Sequence 1 (visible risk/reward) -> 3 (manager comply/defy) -> 2 (mentality dial) -> 4 (objectives)
 all complete. Deferred polish: old-club rivalry objectives (needs `formerClubs` tracking), a live
 in-match objective-progress widget, and Step 3b (transient mid-match manager ask).
+
+## 2026-06-24 - The Feed gets its own screen (1-5 stories)
+
+- The weekly feed was a single teaser tucked into the Week Summary; it is now its own beat in the
+  post-match flow: **Match -> Match summary -> Week Summary -> News feed ("End Week") -> Home**.
+- New `NewsFeedScreen` (screens.tsx) renders this week's stories
+  (`worldFeed.filter(week === game.week && season)`) as full `feed-story` cards, with a header count
+  ("N stories this week") and an empty state for a quiet week. Reuses the existing feed-story styling.
+- New `ScreenKey` `"news-feed"`. App.tsx: `closeWeekSummary` now -> `news-feed`; new `closeNewsFeed`
+  carries the old branching (free-agent / transfer-window / contract-offer / season-review / player).
+  Advance labels: Week Summary -> "The Feed", News feed -> "End Week" (or "Contract"/"Season Review").
+- The single feed teaser was removed from `WeekSummaryScreen` (replaced by a one-line "headlines are
+  next" hint); the full archive still lives under Home -> Feed.
+- `generateWeeklyFeed` now produces **1-5 stories by "meat"** instead of a fixed 2-3: story cap 3->5,
+  the player's own club may headline up to 3 beats in a big week (others capped at 2), and the
+  guaranteed minimum dropped from 2 to 1 (a genuinely quiet week shows a single story / round-up).
+  Candidate triggers already gate by what happened, so the count scales naturally. Removed the now-
+  unused `buildTableWatchCandidate` fallback.
+- No `SAVE_VERSION` change (news-feed is a transient screen; feed-story shape unchanged).
+- Verification: `balance:feed` over 60 weeks -> weeklyRange [1, 5], 1.83 stories/week avg, 0 headline
+  repeats, 6 categories (lab assertion updated 2-3 -> 1-5). In-browser (Italy career): full flow
+  summary -> "Week Summary" -> "The Feed" -> news-feed (2 story cards) -> "End Week" -> home, teaser
+  gone, 0 console errors. Build + smoke green.

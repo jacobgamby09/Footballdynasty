@@ -9,7 +9,7 @@ import type { MatchDirectorState, MatchPhase } from "./engine/matchDirector";
 import type { AttributeKey, MatchRole, PositionGroup } from "./positionRoles";
 
 export type NavKey = "player" | "training" | "club" | "home";
-export type ScreenKey = NavKey | "club-profile" | "dynasty-create" | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
+export type ScreenKey = NavKey | "club-profile" | "dynasty-create" | "country-select" | "pre-match" | "match" | "summary" | "training-reveal" | "training-summary" | "week-summary" | "news-feed" | "contract-offer" | "free-agent" | "transfer-window" | "season-review" | "retirement";
 export type Intensity = "Light" | "Balanced" | "Hard";
 export type MatchSpeed = 1 | 2 | 4;
 export type Venue = "Home" | "Away";

@@ -20,7 +20,7 @@ import { getCountryForClub } from "./systems/world";
 import { findClubByIdentity } from "./systems/clubProfile";
 import { declineTransferWindowOffer } from "./systems/transferWindow";
 import { BottomNav } from "./components/shared";
-import { ClubProfileScreen, ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
+import { ClubProfileScreen, ClubScreen, ContractOfferScreen, CountrySelectScreen, CreateDynastyScreen, FreeAgentMarketScreen, HomeScreen, MatchMomentScreen, NewsFeedScreen, PlayerScreen, PostMatchSummaryScreen, PreMatchScreen, RetirementScreen, SeasonReviewScreen, TrainingRevealScreen, TrainingScreen, TrainingSummaryScreen, TransferWindowScreen, WeekSummaryScreen } from "./components/screens";
 
 const heirFirstNames = ["Noah", "Lucas", "Mikkel", "Oscar", "Elias", "Victor", "Oliver", "Felix"];
 
@@ -47,6 +47,7 @@ function App() {
     activeScreen === "training-summary" ||
     activeScreen === "free-agent" ||
     activeScreen === "week-summary" ||
+    activeScreen === "news-feed" ||
     activeScreen === "contract-offer" ||
     activeScreen === "transfer-window" ||
     activeScreen === "season-review" ||
@@ -78,11 +79,13 @@ function App() {
       : activeScreen === "free-agent"
         ? "Sim Week"
       : activeScreen === "week-summary"
+        ? "The Feed"
+      : activeScreen === "news-feed"
         ? game.contractOffer || game.contractOffers?.length
           ? "Contract"
           : seasonComplete
             ? "Season Review"
-            : "Next Week"
+            : "End Week"
       : activeScreen === "contract-offer"
         ? "Decision Required"
       : activeScreen === "transfer-window"
@@ -236,6 +239,11 @@ function App() {
 
     if (activeScreen === "week-summary") {
       closeWeekSummary();
+      return;
+    }
+
+    if (activeScreen === "news-feed") {
+      closeNewsFeed();
       return;
     }
 
@@ -508,6 +516,10 @@ function App() {
   }
 
   function closeWeekSummary() {
+    setActiveScreen("news-feed");
+  }
+
+  function closeNewsFeed() {
     setActiveScreen(
       game.freeAgent && !game.contractOffer && !game.contractOffers?.length
         ? "free-agent"
@@ -814,6 +826,7 @@ function App() {
             />
           )}
           {activeScreen === "week-summary" && <WeekSummaryScreen game={game} onOpenClub={openClubProfile} />}
+          {activeScreen === "news-feed" && <NewsFeedScreen game={game} onOpenClub={openClubProfile} />}
           {activeScreen === "contract-offer" && (game.contractOffers?.length || game.contractOffer) && (
             <ContractOfferScreen
               game={game}

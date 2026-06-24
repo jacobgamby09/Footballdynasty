@@ -1254,7 +1254,6 @@ export function WeekSummaryScreen({ game, onOpenClub }: { game: GameState; onOpe
   const topMatch = match ? getTopXpEntry(match.xp) : undefined;
   const weekNumber = training?.week ?? Math.max(1, game.week - 1);
   const prestigeStatus = getPrestigeStatus(game.prestige);
-  const latestStory = game.worldFeed.find((story) => story.week === game.week && story.season === game.season.season);
 
   return (
     <section className="simple-screen week-summary-screen">
@@ -1349,16 +1348,52 @@ export function WeekSummaryScreen({ game, onOpenClub }: { game: GameState; onOpe
         </div>
       </div>
 
-      {latestStory && (
-        <div className={`card weekly-feed-teaser tone-${latestStory.tone}`}>
-          <div className="section-heading">
-            <div>
-              <span className="metric-label">{latestStory.source}</span>
-              <h2><FeedText parts={latestStory.headline} onOpenClub={onOpenClub} /></h2>
-            </div>
-            <Newspaper size={19} />
+      <div className="card week-summary-feed-hint">
+        <Newspaper size={18} />
+        <span>This week's headlines are next.</span>
+      </div>
+    </section>
+  );
+}
+
+
+// Dedicated weekly News Feed beat: the week's 1-5 stories get their own screen between the week
+// summary and ending the week, instead of a single teaser tucked into the summary.
+export function NewsFeedScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
+  const stories = game.worldFeed.filter((story) => story.week === game.week && story.season === game.season.season);
+
+  return (
+    <section className="simple-screen news-feed-screen">
+      <ScreenTitle label={`Week ${game.week} · Season ${game.season.season}`} title="The Feed" />
+
+      <div className="card news-feed-intro">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Around the football world</span>
+            <h2>{stories.length} {stories.length === 1 ? "story" : "stories"} this week</h2>
           </div>
-          <p><FeedText parts={latestStory.body} onOpenClub={onOpenClub} /></p>
+          <Newspaper size={20} />
+        </div>
+      </div>
+
+      {stories.length === 0 ? (
+        <div className="card feed-empty">
+          <Newspaper size={22} />
+          <h2>A quiet week</h2>
+          <p>No headlines broke this week — sometimes the football world simply moves on.</p>
+        </div>
+      ) : (
+        <div className="feed-story-list">
+          {stories.map((story) => (
+            <article className={`feed-story tone-${story.tone}`} key={story.id}>
+              <div className="feed-story-meta">
+                <strong>{story.source}</strong>
+                <span>{story.category}</span>
+              </div>
+              <h3><FeedText parts={story.headline} onOpenClub={onOpenClub} /></h3>
+              <p><FeedText parts={story.body} onOpenClub={onOpenClub} /></p>
+            </article>
+          ))}
         </div>
       )}
     </section>

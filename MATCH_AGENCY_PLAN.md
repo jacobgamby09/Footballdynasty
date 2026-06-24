@@ -62,7 +62,20 @@ low fitness; coach-lean matches `choice.manager`; build green; no console errors
 
 ---
 
-## Step 2 — Player-controlled mentality dial  *(small engine hook; SAVE bump)*
+## Step 2 — Player-controlled mentality dial  ✅ DONE  *(engine + director hook; SAVE bump 21→22)*
+
+> **Shipped:** `matchMentality: "push" | "balanced" | "hold"` on `GameState` (default `balanced`),
+> `SAVE_VERSION` 22. Director hook (`getDirectorMomentWeight` × `mentalityCategoryWeights`) shifts
+> the moment mix — push toward attacking, hold toward defensive. Resolution hook
+> (`getMentalityResolutionModifier` / `getMentalityFatigueModifier`, mirrored into
+> `estimateChoiceOdds` so the odds chip stays honest): push +3 to High-risk resultScore & −2
+> fatigue; hold +3 to Low-risk & +1 trust on Low-risk success. `chooseAutoSimChoice` biased to
+> match. UI: full `MentalityDial` on `PreMatchScreen`, compact version on the live screen (both
+> wired through `setMatchMentality` in `App.tsx`). Lab sweep proves it: director attacking share
+> push 87% / balanced 84% / hold 79%; High-risk success push 86% vs balanced/hold 68% at −10 vs
+> −8 fatigue. Balanced/undefined is a strict no-op — season-lab OVR byte-identical. Verified
+> in-browser (dial renders, switches, carries pre-match → live). Build + all labs + smoke green.
+
 
 **Player feel:** a Push / Balanced / Hold dial you set pre-match and change live — you adapt to
 the scoreline yourself, on top of the Director's automatic score-state.

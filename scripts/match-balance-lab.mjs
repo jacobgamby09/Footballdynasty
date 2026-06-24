@@ -85,6 +85,69 @@ for (const scenario of scenarios) {
   printScenario(report);
 }
 
+runMentalitySweep();
+
+// Step 2 verification: confirm the mentality dial shifts the Director's category mix toward
+// attacking (push) / defensive (hold), and that the resolution math rewards High-risk under push
+// (at a fatigue cost) and Low-risk under hold. Default (balanced) must sit between the two.
+function runMentalitySweep() {
+  const ATTACKING = new Set(["shot", "first_time_finish", "run_behind", "counter", "late_pressure", "aerial_duel"]);
+  const DEFENSIVE = new Set(["hold_up", "press", "defensive_set_piece", "link_up"]);
+  const sweepState = { trust: 50, fitness: 72, ratings: [6.9, 7.0, 6.8], attributes: baseAttributes };
+
+  console.log("\n=== Mentality dial sweep (Step 2) ===");
+  console.log("Director category mix:");
+  for (const mentality of ["push", "balanced", "hold"]) {
+    let attacking = 0;
+    let defensive = 0;
+    let total = 0;
+    for (let index = 0; index < runs; index += 1) {
+      const fixture = fixtures[index % fixtures.length];
+      const matchSeed = `mentality-${mentality}-${fixture.id}-${index}`;
+      const context = buildContext(sweepState, fixture, matchSeed);
+      const result = simulateMatch(sweepState, context, matchSeed, mentality);
+      for (const category of result.highlightCategories) {
+        total += 1;
+        if (ATTACKING.has(category)) attacking += 1;
+        else if (DEFENSIVE.has(category)) defensive += 1;
+      }
+    }
+    console.log(
+      `  ${mentality.padEnd(9)} | attacking ${percent(total ? attacking / total : 0)} | defensive ${percent(total ? defensive / total : 0)} | moments ${total}`,
+    );
+  }
+
+  console.log("Resolution probe (fixed choice, 400 seeds each):");
+  const probeAttrs = getLeagueAdjustedAttributes(baseAttributes);
+  const probeOpp = getLeagueAdjustedOpponentProfile(buildContext(sweepState, fixtures[0], "mentality-probe").opponentProfile);
+  for (const risk of ["High", "Low"]) {
+    const choice = { id: "probe", label: "probe", uses: ["Finishing"], risk, reward: "", manager: "Neutral", outcome: "goal" };
+    const moment = { id: "probe-moment", category: risk === "High" ? "shot" : "hold_up", text: "probe", uses: ["Finishing"], choices: [choice], director: {} };
+    for (const mentality of ["push", "balanced", "hold"]) {
+      let success = 0;
+      let fatigue = 0;
+      let n = 0;
+      for (let s = 0; s < 400; s += 1) {
+        const r = resolvePlayerChoice({
+          moment,
+          choice,
+          attributeValues: probeAttrs,
+          fitness: 75,
+          trust: 50,
+          playerRole: "Rotation Starter",
+          opponentProfile: probeOpp,
+          resultSeed: `probe-${risk}-${s}`,
+          mentality,
+        });
+        n += 1;
+        if (r.success) success += 1;
+        fatigue += r.fitnessDelta;
+      }
+      console.log(`  ${risk}-risk ${mentality.padEnd(9)} | success ${percent(success / n)} | avg fitnessDelta ${format(fatigue / n)}`);
+    }
+  }
+}
+
 function runScenario(scenario) {
   const aggregate = createAggregate();
 
@@ -129,7 +192,7 @@ function buildContext(state, fixture, matchSeed) {
   };
 }
 
-function simulateMatch(state, context, matchSeed) {
+function simulateMatch(state, context, matchSeed, mentality) {
   const teamMatchModel = createTeamMatchModel({
     matchSeed,
     teamStrength: context.teamStrength,
@@ -169,6 +232,7 @@ function simulateMatch(state, context, matchSeed) {
     opponentProfile: adjustedOpponentProfile,
     attributeValues: adjustedAttributes,
     preferredCategories: forwardPreferredCategories,
+    mentality,
   });
   const selectedMoments = directorPlan.moments;
   const playerResults = selectedMoments.map((moment, index) => {
@@ -178,8 +242,9 @@ function simulateMatch(state, context, matchSeed) {
       fitness: state.fitness,
       trust: state.trust,
       matchSeed,
+      mentality,
     });
-    return createMatchResult(state, context, moment, choice, `${matchSeed}-player-${index}`);
+    return createMatchResult(state, context, moment, choice, `${matchSeed}-player-${index}`, mentality);
   });
   const simScore = simEvents.reduce(
     (score, event) => ({
@@ -220,7 +285,7 @@ function simulateMatch(state, context, matchSeed) {
   };
 }
 
-function createMatchResult(state, context, moment, choice, resultSeed) {
+function createMatchResult(state, context, moment, choice, resultSeed, mentality) {
   const result = resolvePlayerChoice({
     moment,
     choice,
@@ -230,6 +295,7 @@ function createMatchResult(state, context, moment, choice, resultSeed) {
     playerRole: context.playerRole,
     opponentProfile: getLeagueAdjustedOpponentProfile(context.opponentProfile),
     resultSeed,
+    mentality,
   });
 
   return {

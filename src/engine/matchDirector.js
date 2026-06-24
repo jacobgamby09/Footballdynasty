@@ -60,6 +60,35 @@ const phaseCategoryWeights = {
   },
 };
 
+// Player-controlled mentality shifts the category mix on top of the automatic phase weighting.
+// `push` pulls toward attacking moments (and away from holding shape); `hold` does the inverse.
+// `balanced` (or undefined) leaves the mix untouched.
+const mentalityCategoryWeights = {
+  push: {
+    shot: 1.22,
+    first_time_finish: 1.2,
+    run_behind: 1.18,
+    counter: 1.15,
+    late_pressure: 1.12,
+    aerial_duel: 1.08,
+    hold_up: 0.82,
+    press: 0.86,
+    defensive_set_piece: 0.8,
+    link_up: 0.95,
+  },
+  hold: {
+    hold_up: 1.25,
+    press: 1.18,
+    defensive_set_piece: 1.2,
+    link_up: 1.12,
+    counter: 1.06,
+    shot: 0.82,
+    first_time_finish: 0.84,
+    run_behind: 0.86,
+    late_pressure: 0.9,
+  },
+};
+
 const continuityWeights = {
   press: { counter: 1.18, late_pressure: 1.16, shot: 1.08 },
   counter: { run_behind: 1.2, shot: 1.18, link_up: 1.08 },
@@ -262,6 +291,10 @@ function getDirectorMomentWeight(input) {
         ? 0.58
         : 1;
   const phaseWeight = phaseCategoryWeights[input.phase]?.[input.moment.category] ?? 0.92;
+  const mentalityWeight =
+    input.mentality && input.mentality !== "balanced"
+      ? mentalityCategoryWeights[input.mentality]?.[input.moment.category] ?? 1
+      : 1;
   const previousCategory = input.state.recentCategories.at(-1);
   const continuityWeight = previousCategory
     ? continuityWeights[previousCategory]?.[input.moment.category] ?? 1
@@ -288,6 +321,7 @@ function getDirectorMomentWeight(input) {
       minuteEligibility *
       rarityWeight *
       phaseWeight *
+      mentalityWeight *
       continuityWeight *
       repetitionWeight *
       duplicateFamilyWeight,

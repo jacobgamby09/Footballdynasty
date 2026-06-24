@@ -2128,7 +2128,32 @@ Command: `npm run balance:season -- --seasons=50 --career-seasons=1 --generation
   all green; OVR/peak unchanged (trust-only change).
 - 3b (transient mid-match manager ask) deferred — not shipped.
 
-### Remaining (sequence 1 -> 3 -> 2 -> 4)
+### Step 2 - Player-controlled mentality dial (SAVE_VERSION 21 -> 22)
 
-- Step 2 (mentality dial: push/balanced/hold) — engine + director hook, `SAVE_VERSION`++.
+- New `matchMentality: "push" | "balanced" | "hold"` on `GameState` (default `balanced`), added to
+  `createCareerForCountry`; `normalizeSavedGame` already spreads the fallback so old shapes default
+  to balanced. `SAVE_VERSION` bumped to 22 (`save.ts` + `SavePayload.version`).
+- Director hook (`matchDirector.js`): `mentalityCategoryWeights` multiplied into
+  `getDirectorMomentWeight` — push lifts attacking categories (shot/first_time_finish/run_behind/
+  counter/late_pressure/aerial_duel) and damps holding ones; hold does the inverse; balanced/
+  undefined = ×1. `mentality` threaded via the existing `...input` spread from `createMatchDirectorPlan`.
+- Resolution hook (`matchEngineCore.js`): `getMentalityResolutionModifier` (push +3 High-risk, hold
+  +3 Low-risk) added to `resultScore` AND mirrored into `estimateChoiceOdds` (odds chip stays
+  honest); `getMentalityFatigueModifier` (push −2 fatigue); `mentalityTrustShift` (hold + Low-risk +
+  success → +1 trust). `chooseAutoSimChoice` biased to match the dial.
+- Plumbing: `match.ts` passes `state.matchMentality` into `createMatchDirectorPlan`, `getChoiceOdds`/
+  `estimateChoiceOdds`, `createMatchResult`/`resolvePlayerChoice`, and both `chooseAutoSimChoice`
+  calls. `.d.ts` updated with `EngineMentality` + optional `mentality` on all four inputs.
+- UI: reusable `MentalityDial` (screens.tsx) — full 3-way control with hints on `PreMatchScreen`,
+  compact version in a live `match-mentality-bar` (hidden at full time). Wired via `setMatchMentality`
+  in `App.tsx`. Styles added in `styles.css` (push=orange, balanced=gold, hold=lime).
+- Verification: match-lab mentality sweep — director attacking share push 87% / balanced 84% / hold
+  79%; resolution probe High-risk success push 86% vs balanced/hold 68% at −10 vs −8 fatigue (shared
+  variance isolates the deterministic shift). Balanced/undefined is a strict no-op: season-lab OVR
+  byte-identical (57.20 / 67.39 / 67.11 / 63.83). In-browser: dial renders, switches, and carries
+  from pre-match into the live match (verified via Playwright). Build + match/season/feed labs +
+  smoke all green.
+
+### Remaining (sequence 1 -> 3 -> 2 -> 4; only Step 4 left)
+
 - Step 4 (personal match objectives/storylines, ties into The Feed) — `SAVE_VERSION`++.

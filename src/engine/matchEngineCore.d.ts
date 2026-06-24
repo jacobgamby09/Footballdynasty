@@ -7,6 +7,7 @@ export type EngineManagerPreference = "Likes" | "Neutral" | "Risky";
 export type EngineChoiceOutcome = "goal" | "assist" | "trust" | "defense";
 export type EngineChanceQuality = "Clear chance" | "Good chance" | "Half chance" | "Difficult chance";
 export type EngineOutcomeTier = "Poor" | "Okay" | "Good" | "Great";
+export type EngineMentality = "push" | "balanced" | "hold";
 
 export type EngineChoice = {
   id: string;
@@ -111,6 +112,7 @@ export function chooseAutoSimChoice<TChoice extends EngineChoice>(input: {
   fitness: number;
   trust: number;
   matchSeed: string;
+  mentality?: EngineMentality;
 }): TChoice;
 
 export function resolvePlayerChoice(input: {
@@ -122,6 +124,7 @@ export function resolvePlayerChoice(input: {
   playerRole?: EngineMatchRole;
   opponentProfile?: OpponentProfile;
   resultSeed: string;
+  mentality?: EngineMentality;
 }): {
   success: boolean;
   outcomeTier: EngineOutcomeTier;
@@ -144,6 +147,7 @@ export function estimateChoiceOdds(input: {
   trust: number;
   playerRole?: EngineMatchRole;
   opponentProfile?: OpponentProfile;
+  mentality?: EngineMentality;
 }): {
   band: "Strong" | "Favoured" | "Even" | "Against the odds" | "Long shot";
   delta: number;

@@ -2456,6 +2456,96 @@ button {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.mentality-dial {
+  display: grid;
+  gap: 7px;
+}
+.mentality-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.mentality-option {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-height: 40px;
+  padding: 7px 6px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+.mentality-option-label {
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+.mentality-option-hint {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--muted);
+  opacity: 0.85;
+}
+.mentality-option.is-active {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f3f5ef;
+}
+.mentality-option.mentality-push.is-active {
+  border-color: rgba(241, 138, 54, 0.5);
+  background: rgba(241, 138, 54, 0.16);
+  color: var(--orange);
+}
+.mentality-option.mentality-balanced.is-active {
+  border-color: rgba(244, 200, 74, 0.45);
+  background: rgba(244, 200, 74, 0.14);
+  color: var(--gold);
+}
+.mentality-option.mentality-hold.is-active {
+  border-color: rgba(200, 243, 95, 0.45);
+  background: rgba(200, 243, 95, 0.14);
+  color: var(--lime);
+}
+.mentality-option.is-active .mentality-option-hint {
+  color: inherit;
+  opacity: 0.92;
+}
+.mentality-dial-compact .mentality-options {
+  padding: 3px;
+  gap: 4px;
+  border-radius: 999px;
+}
+.mentality-dial-compact .mentality-option {
+  min-height: 30px;
+  padding: 5px 6px;
+  border-radius: 999px;
+}
+.match-mentality-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.match-mentality-bar .mentality-dial-compact {
+  flex: 1;
+}
+.pre-match-mentality-card {
+  display: grid;
+  gap: 8px;
+}
+.mentality-blurb {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .result-card {
   display: grid;
   gap: 12px;

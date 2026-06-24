@@ -429,6 +429,10 @@ export type DynastyTrackDefinition = {
   effect: string;
 };
 
+// Player-controlled match approach, set pre-match and adjustable live. Biases the Director's
+// moment mix and the resolution math (see matchEngineCore / matchDirector). "balanced" is neutral.
+export type MatchMentality = "push" | "balanced" | "hold";
+
 export type GameState = {
   week: number;
   player: PlayerIdentity;
@@ -445,6 +449,7 @@ export type GameState = {
   trainingFocuses: AttributeKey[];
   trainingCompletedWeek: number;
   intensity: Intensity;
+  matchMentality: MatchMentality;
   attributes: Attribute[];
   seasonStats: SeasonStats;
   season: SeasonState;
@@ -467,7 +472,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 21;
+  version: 22;
   game: GameState;
 };
 

@@ -2060,6 +2060,69 @@ button {
   font-weight: 750;
 }
 
+/* In-match heat / streak meter (Warm -> Hot -> On Fire) */
+.heat-meter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.heat-meter-track {
+  position: relative;
+  width: 88px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.heat-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--lime-2);
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+.heat-meter-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lime-2);
+}
+
+.heat-meter.heat-hot .heat-meter-fill {
+  background: var(--gold);
+}
+
+.heat-meter.heat-hot .heat-meter-label {
+  color: var(--gold);
+}
+
+.heat-meter.heat-on-fire .heat-meter-fill {
+  background: var(--orange);
+  box-shadow: 0 0 10px 1px rgba(241, 138, 54, 0.6);
+}
+
+.heat-meter.heat-on-fire .heat-meter-label {
+  color: var(--orange);
+  animation: heat-flicker 1.1s ease-in-out infinite;
+}
+
+@keyframes heat-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.62; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heat-meter.heat-on-fire .heat-meter-label {
+    animation: none;
+  }
+}
+
 .pre-match-screen .match-score-header,
 .summary-score-header {
   margin-bottom: 6px;
@@ -2571,8 +2634,48 @@ button {
   animation: goal-ring-pop 780ms ease-out 120ms both;
 }
 
+.payoff-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.heat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--lime-2);
+  background: rgba(140, 198, 63, 0.12);
+  border: 1px solid rgba(140, 198, 63, 0.3);
+}
+
+.heat-chip.heat-hot {
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.12);
+  border-color: rgba(244, 200, 74, 0.32);
+}
+
+.heat-chip.heat-on-fire {
+  color: var(--orange);
+  background: rgba(241, 138, 54, 0.14);
+  border-color: rgba(241, 138, 54, 0.36);
+  animation: heat-flicker 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heat-chip.heat-on-fire {
+    animation: none;
+  }
+}
+
 .payoff-stamp {
-  justify-self: start;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;

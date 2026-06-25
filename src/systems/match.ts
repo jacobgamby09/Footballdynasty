@@ -18,7 +18,7 @@ import { advanceWorldMatchweek } from "./world";
 import { createTransferWindowState } from "./transferWindow";
 import { generateWeeklyFeed } from "./feed";
 import type { AttributeKey, PositionModule } from "../positionRoles";
-import type { Attribute, ChanceQuality, ChoiceOutcomePreview, GameState, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchObjectiveResult, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
+import type { Attribute, ChanceQuality, ChoiceOutcomePreview, GameState, HeatTier, LastMatchSummary, MatchChoice, MatchEvent, MatchMoment, MatchObjectiveResult, MatchResult, MatchState, MatchTotals, OutcomeTier, PlayerMatchEvent, SimMatchEvent, UpcomingMatch } from "../types";
 
 export function getPreMatchEntryPlan(match: MatchState) {
   if (match.isInSquad === false || match.fitnessAvailability === "Not match fit") {
@@ -1196,6 +1196,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     currentEventIndex: 0,
     liveMinute: 0,
     results: [],
+    heat: 0,
     director: directorPlan.state,
     objective: getSponsorMatchObjective(state.sponsor),
     isComplete: false,
@@ -1277,6 +1278,36 @@ export function getPayoffStamp(result: MatchResult): { label: string; tone: "scr
   return { label: result.choiceOutcome === "goal" ? "Off target" : result.choiceOutcome === "assist" ? "Broke down" : "Lost it", tone: "bad" };
 }
 
+// --- Heat / streak -------------------------------------------------------------------------------
+// In-match momentum. Good outcomes build heat, poor ones cool it; high heat amplifies the *felt*
+// reward (rating/trust) only — never goals/assists/XP — so it's pure dopamine and OVR-neutral.
+// Resets each match (createMatch starts at 0).
+export function getHeatTier(heat: number): HeatTier {
+  if (heat >= 85) return "On Fire";
+  if (heat >= 55) return "Hot";
+  if (heat >= 25) return "Warm";
+  return "Cold";
+}
+
+function getHeatGain(result: { goals: number; assists: number; outcomeTier: OutcomeTier; success: boolean }): number {
+  if (result.goals > 0 || result.assists > 0) return 30;
+  if (result.outcomeTier === "Great") return 16;
+  if (result.success) return 9;
+  return -24;
+}
+
+function applyHeatReward<T extends { rating: number; trustDelta: number }>(result: T, heat: number): T {
+  const tier = getHeatTier(heat);
+  const ratingBonus = tier === "On Fire" ? 0.4 : tier === "Hot" ? 0.25 : tier === "Warm" ? 0.1 : 0;
+  const trustBonus = tier === "On Fire" || tier === "Hot" ? 1 : 0;
+  if (ratingBonus === 0 && trustBonus === 0) return result;
+  return {
+    ...result,
+    rating: Number(Math.min(9.9, result.rating + ratingBonus).toFixed(1)),
+    trustDelta: result.trustDelta + (result.trustDelta >= 0 ? trustBonus : 0),
+  };
+}
+
 export function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
@@ -1308,8 +1339,12 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const positionLabel = positionModule.displayName.toLowerCase();
   const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
   const outcomeCopy = getMatchOutcomeCopy(moment, choice, supportAdjustedResult, resultSeed, positionLabel);
-  const screamer = isScreamer(supportAdjustedResult, choice, resultSeed);
-  const finalCore = screamer ? applyScreamerFlair(supportAdjustedResult, choice, resultSeed) : supportAdjustedResult;
+  const currentHeat = state.activeMatch?.heat ?? 0;
+  const heatedCore = applyHeatReward(supportAdjustedResult, currentHeat);
+  const screamer = isScreamer(heatedCore, choice, resultSeed);
+  const screamerCore = screamer ? applyScreamerFlair(heatedCore, choice, resultSeed) : heatedCore;
+  const heatGain = getHeatGain(supportAdjustedResult);
+  const finalCore = { ...screamerCore, heatDelta: heatGain, heatTier: getHeatTier(clamp(currentHeat + heatGain, 0, 100)) };
   const screamerCopy = screamer ? getScreamerCopy(moment, choice, resultSeed) : undefined;
   const choiceMeta = {
     choiceId: choice.id,

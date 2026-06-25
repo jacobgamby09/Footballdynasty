@@ -20,7 +20,7 @@ import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, useCountUp, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Flame, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
@@ -626,8 +626,15 @@ function MatchResultPopup({
   return (
     <div className="result-popup-backdrop">
       <div className={`card result-card result-popup ${getResultPopupTone(result)} ${result.screamer ? "is-screamer" : ""}`}>
-        <div className={`payoff-stamp tone-${stamp.tone}`} aria-label={`Result: ${stamp.label}`}>
-          <span>{stamp.label}</span>
+        <div className="payoff-row">
+          <div className={`payoff-stamp tone-${stamp.tone}`} aria-label={`Result: ${stamp.label}`}>
+            <span>{stamp.label}</span>
+          </div>
+          {result.heatTier && result.heatTier !== "Cold" && (
+            <span className={`heat-chip heat-${result.heatTier.toLowerCase().replace(/\s+/g, "-")}`}>
+              <Flame size={13} aria-hidden /> {result.heatTier}
+            </span>
+          )}
         </div>
         <div className="result-verdict">
           <div>

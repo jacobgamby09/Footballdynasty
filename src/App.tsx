@@ -341,11 +341,13 @@ function App() {
 
       const moment = event;
       const result = { ...createMatchResult(state, moment, choice), source: "manual" as const };
+      const heat = Math.max(0, Math.min(100, (state.activeMatch.heat ?? 0) + (result.heatDelta ?? 0)));
       return {
         ...state,
         activeMatch: {
           ...state.activeMatch,
           currentResult: result,
+          heat,
         },
       };
     });

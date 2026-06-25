@@ -1,5 +1,6 @@
 import { initialClub } from "../data/leagues";
 import { getPlayerAge } from "../systems/legacy";
+import { getHeatTier } from "../systems/match";
 import { getPlayerRoleLabel } from "../positionRoles";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
@@ -138,7 +139,16 @@ export function MatchScoreHeader({
         </div>
         <ClubLink className="score-team-name" clubIdentity={awayName} onOpenClub={onOpenClub}>{awayName}</ClubLink>
       </div>
-      <small>{match.competition}</small>
+      {typeof match.heat === "number" && getHeatTier(match.heat) !== "Cold" ? (
+        <div className={`heat-meter heat-${getHeatTier(match.heat).toLowerCase().replace(/\s+/g, "-")}`}>
+          <span className="heat-meter-track">
+            <span className="heat-meter-fill" style={{ width: `${match.heat}%` }} />
+          </span>
+          <span className="heat-meter-label">{getHeatTier(match.heat)}</span>
+        </div>
+      ) : (
+        <small>{match.competition}</small>
+      )}
     </header>
   );
 }

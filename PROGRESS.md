@@ -2405,3 +2405,20 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   green; verified in a fresh preview build (stamp + count-up tiles render, 0 console errors). No
   SAVE_VERSION change. Types gained MatchResult.screamer/heatDelta/heatTier/definingMoment +
   MatchState.heat (used by Phases 2-3).
+
+## 2026-06-25 - Match dopamine, Phase 2: in-match heat / streak
+
+- Added an in-match heat meter (Cold -> Warm -> Hot -> On Fire) in the live score header, plus a heat
+  chip on the result popup (so the streak is visible from the first good moment, even in 1-moment
+  matches). getHeatTier/getHeatGain/applyHeatReward live in match.ts; MatchState.heat tracked in
+  App.resolveMatchChoice; createMatch resets heat to 0 each match.
+- Heat amplifies the *felt* reward only — rating (+0.1/+0.25/+0.4 by tier) and trust (+1 at Hot/On
+  Fire), and never goals/assists/outcomeTier/XP. At Cold (heat 0) applyHeatReward is a no-op, so the
+  first moment of every match is identical to before. OVR development stays byte-identical
+  (57.20/67.39/67.11/63.83) — the season-lab uses its own createMatchResult and never runs heat.
+- Verified: build + smoke green; lab byte-identical; 0 console errors over ~140 live resolves; a
+  deterministic probe confirmed heat 0 -> Hot -> On Fire raises rating (6.9 -> 7.2 -> 7.3) and trust
+  (+1), with heatDelta/heatTier populated.
+- Note: heat is a *streak*, so it stays Cold for early prospects who get ~1 moment/match and rarely
+  score; it ramps in for starters / established players with multi-moment matches. If we want it felt
+  earlier we can later make it carry across matches with decay (would need a save bump + lab re-model).

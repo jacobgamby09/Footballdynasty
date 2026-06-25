@@ -2342,3 +2342,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   its plain competition label.
 - Pure UI/derived-data; build green; verified in-browser (stats populate and update live, bars
   proportional, hidden during a moment then return, 0 console errors). No `SAVE_VERSION` change.
+
+## 2026-06-25 - Match summary cleanup: slick hero + manager's verdict
+
+- Slimmed the summary hero: the big 54px rating + three InfoTiles became a compact lime rating badge
+  with venue/role + an inline "goals / assists / chances" line. Smaller, slicker.
+- Replaced the generic "Performance read" + "Performance breakdown" cards with a single Manager's
+  verdict: `getManagerMatchBrief(summary)` returns tone (happy/mixed/unhappy) + concrete praise and
+  concern bullets derived from the real match (goals/assists/chances, rating, the defy/comply +
+  fatigue explanation tags, and selection/role movement). Each point is actionable (finishing,
+  fitness, discipline, selection); the "score more" concern only fires for starting roles so subs
+  aren't judged unfairly. Rendered as check (praise, lime) / x (concern, orange) bullets.
+- Removed the now-dead `getReadableExplanations` chain usage, `getPrimaryChanceQuality` and
+  `getUniqueItems` from the summary; dropped the unused getUniqueItems import. (Their definitions are
+  left in place as harmless dead exports.)
+- Fixed a latent regression: the play-session smoke still called the removed `getLiveMomentum`; it now
+  exercises `getLiveMatchStats` + `getManagerMatchBrief` instead (snapshot updated).
+- Pure UI/derived data; build + smoke green; verified in-browser (slick hero, verdict bullets,
+  read/breakdown gone, 0 console errors). No `SAVE_VERSION` change.

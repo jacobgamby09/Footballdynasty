@@ -3,8 +3,8 @@ import { dynastyTrackDefinitions } from "../data/dynastyUpgrades";
 import { supportTrackDefinitions } from "../data/support";
 import { getPlayerRoleLabel, getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
-import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, sumXp } from "../systems/formatting";
+import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getManagerMatchBrief, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -20,7 +20,7 @@ import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound } from "lucide-react";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
@@ -984,26 +984,24 @@ export function PostMatchSummaryScreen({ attributes, summary, onOpenClub }: { at
   const selectionStatus = nextRole
     ? `${summary.pointsToNextRole} pts to ${nextRole}`
     : "Starter role secured";
-  const performanceReasons = getReadableExplanations(summary.explanationTags, 3);
-  const performanceBreakdown = getUniqueItems(summary.performanceReasons, 4);
-  const primaryChanceQuality = getPrimaryChanceQuality(summary.chanceQualities);
+  const managerBrief = getManagerMatchBrief(summary);
 
   return (
     <section className="simple-screen summary-screen">
       <SummaryScoreHeader summary={summary} onOpenClub={onOpenClub} />
 
       <div className="card summary-hero-card">
-        <div>
-          <span className="metric-label">
-            {summary.venue} - {summary.playerRole}
-          </span>
-          <h2>{summary.rating.toFixed(1)}</h2>
-          <p>Match rating</p>
+        <div className="summary-hero-rating">
+          <strong>{summary.rating.toFixed(1)}</strong>
+          <span>Rating</span>
         </div>
-        <div className="summary-output">
-          <InfoTile label="Goals" value={`${summary.goals}`} tone={summary.goals > 0 ? "gold" : undefined} />
-          <InfoTile label="Assists" value={`${summary.assists}`} />
-          <InfoTile label="Chances" value={`${summary.chancesCreated}`} tone={summary.chancesCreated > 0 ? "good" : undefined} />
+        <div className="summary-hero-meta">
+          <span className="metric-label">{summary.venue} · {summary.playerRole}</span>
+          <div className="summary-hero-stats">
+            <span><b className={summary.goals > 0 ? "gold" : ""}>{summary.goals}</b> goals</span>
+            <span><b>{summary.assists}</b> assists</span>
+            <span><b className={summary.chancesCreated > 0 ? "good" : ""}>{summary.chancesCreated}</b> chances</span>
+          </div>
         </div>
       </div>
 
@@ -1024,45 +1022,29 @@ export function PostMatchSummaryScreen({ attributes, summary, onOpenClub }: { at
         </div>
       )}
 
-      {performanceReasons.length > 0 && (
-        <div className="card">
-          <div className="section-heading">
-            <div>
-              <span className="metric-label">Performance read</span>
-              <h2>{primaryChanceQuality}</h2>
-            </div>
-            <Activity size={19} />
+      <div className={`card manager-verdict-card tone-${managerBrief.tone}`}>
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Manager's verdict</span>
+            <h2>{managerBrief.tone === "happy" ? "Pleased" : managerBrief.tone === "unhappy" ? "Not good enough" : "Room to grow"}</h2>
           </div>
-          <div className="reason-list">
-            {performanceReasons.map((reason) => (
-              <div className="reason-item" key={reason}>
-                <Sparkles size={14} />
-                <span>{reason}</span>
-              </div>
-            ))}
-          </div>
+          <ShieldCheck size={19} />
         </div>
-      )}
-
-      {performanceBreakdown.length > 0 && (
-        <div className="card">
-          <div className="section-heading">
-            <div>
-              <span className="metric-label">Performance breakdown</span>
-              <h2>Why the rating moved</h2>
+        <div className="verdict-list">
+          {managerBrief.praise.map((point) => (
+            <div className="verdict-item is-praise" key={point}>
+              <Check size={15} />
+              <span>{point}</span>
             </div>
-            <BarChart3 size={19} />
-          </div>
-          <div className="reason-list">
-            {performanceBreakdown.map((reason) => (
-              <div className="reason-item" key={reason}>
-                <ShieldCheck size={14} />
-                <span>{reason}</span>
-              </div>
-            ))}
-          </div>
+          ))}
+          {managerBrief.concerns.map((point) => (
+            <div className="verdict-item is-concern" key={point}>
+              <X size={15} />
+              <span>{point}</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       <div className="card">
         <span className="metric-label">Career impact</span>

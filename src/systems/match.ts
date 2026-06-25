@@ -900,6 +900,64 @@ export function getLiveMatchStats(match: MatchState, processedEventIndex: number
   };
 }
 
+// A short, performance-specific manager verdict for the post-match summary: concrete things the
+// gaffer was pleased / unhappy with, each actionable (finishing, fitness, discipline, selection).
+// Derived from the real match outcome so it varies game to game, unlike the old generic read.
+const BRIEF_ROLE_RANK: Record<string, number> = { Bench: 0, "Impact Sub": 1, "Rotation Starter": 2, Starter: 3 };
+const BRIEF_NEXT_ROLE: Record<string, string | undefined> = {
+  Bench: "Impact Sub",
+  "Impact Sub": "Rotation Starter",
+  "Rotation Starter": "Starter",
+  Starter: undefined,
+};
+
+export function getManagerMatchBrief(summary: LastMatchSummary): {
+  tone: "happy" | "mixed" | "unhappy";
+  praise: string[];
+  concerns: string[];
+} {
+  const tags = new Set(summary.explanationTags);
+  const praise: string[] = [];
+  const concerns: string[] = [];
+  const played = summary.playerRole !== "Bench";
+
+  if (!played) {
+    concerns.push("You didn't feature — stay sharp in training and take your chance when it comes.");
+  } else {
+    if (summary.goals > 0) praise.push(`Took your chance — ${summary.goals} goal${summary.goals === 1 ? "" : "s"} that won us ground.`);
+    if (summary.assists > 0) praise.push(`Made things happen — ${summary.assists} assist${summary.assists === 1 ? "" : "s"} set up.`);
+    else if (summary.goals === 0 && summary.chancesCreated > 0) praise.push(`Created ${summary.chancesCreated} chance${summary.chancesCreated === 1 ? "" : "s"} for the team.`);
+    if (tags.has("Backed your instinct")) praise.push("Backed your instinct on the big call — that's the bravery I want.");
+    if (tags.has("Followed the plan")) praise.push("Stuck to the game plan when it counted.");
+    if (summary.rating >= 7.4) praise.push(`A real performance out there — ${summary.rating.toFixed(1)}.`);
+
+    const startingRole = summary.playerRole === "Starter" || summary.playerRole === "Rotation Starter";
+    if (summary.rating <= 6.0) concerns.push(`Too quiet — a ${summary.rating.toFixed(1)} won't keep you in the side.`);
+    else if (summary.goals === 0 && summary.rating < 7.4 && startingRole) concerns.push("I need you on the scoresheet more often.");
+    if (tags.has("Coach unhappy")) concerns.push("You went against the brief and it backfired — pick your moments.");
+    if (tags.has("fatigue_limited_action")) concerns.push("You faded on tired legs — get your fitness right before kickoff.");
+  }
+
+  const beforeRank = BRIEF_ROLE_RANK[summary.roleBefore] ?? 0;
+  const afterRank = BRIEF_ROLE_RANK[summary.roleAfter] ?? 0;
+  if (afterRank > beforeRank) {
+    praise.push(`You've played your way up to ${summary.roleAfter}.`);
+  } else if (afterRank < beforeRank) {
+    concerns.push(`You've slipped to ${summary.roleAfter} — win the shirt back.`);
+  } else if (played && summary.selectionAfter > summary.selectionBefore && summary.pointsToNextRole > 0 && summary.pointsToNextRole <= 8) {
+    const next = BRIEF_NEXT_ROLE[summary.roleAfter];
+    if (next) praise.push(`${summary.pointsToNextRole} more selection points and a ${next} role is yours.`);
+  }
+
+  const trimmedPraise = praise.slice(0, 3);
+  const trimmedConcerns = concerns.slice(0, 3);
+  if (trimmedPraise.length === 0 && trimmedConcerns.length === 0) {
+    trimmedPraise.push("A steady, unspectacular shift — solid, but I want more next time.");
+  }
+  const tone = trimmedConcerns.length === 0 ? "happy" : trimmedPraise.length === 0 ? "unhappy" : "mixed";
+  return { tone, praise: trimmedPraise, concerns: trimmedConcerns };
+}
+
 export function getLiveCommentary(match: MatchState, results: MatchResult[], processedEventIndex: number) {
   const latestSimEvent = [...match.events.slice(0, processedEventIndex + 1)]
     .reverse()

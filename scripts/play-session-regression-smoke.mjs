@@ -48,8 +48,9 @@ const {
   getChoiceOutcomePreview,
   getFollowUpTemplate,
   getLiveCommentary,
-  getLiveMomentum,
+  getLiveMatchStats,
   getLivePlayerStats,
+  getManagerMatchBrief,
   getMatchdayRecoveryBonus,
   getResultConsequence,
 } = require(path.join(outSrc, "systems", "match.js"));
@@ -191,13 +192,32 @@ const lastSimIndex = riskyStarter.events.reduce(
   -1,
 );
 const presentationMatch = { ...riskyStarter, liveMinute: 80 };
-const momentum = getLiveMomentum(presentationMatch, lastSimIndex);
+const matchStats = getLiveMatchStats(presentationMatch, lastSimIndex);
 const commentary = getLiveCommentary(presentationMatch, [], lastSimIndex);
-if (!momentum.label || !momentum.detail || !["team", "opponent", "even"].includes(momentum.tone)) {
-  throw new Error("Live momentum presentation is incomplete.");
+if (!matchStats.homeName || !matchStats.awayName || !["home", "away"].includes(matchStats.playerSide) || matchStats.rows.length !== 4) {
+  throw new Error("Live match stats presentation is incomplete.");
+}
+if (matchStats.rows.some((row) => row.homeShare < 0 || row.homeShare > 100)) {
+  throw new Error("Live match stat shares must be within 0-100.");
 }
 if (!commentary.title || !commentary.detail) {
   throw new Error("Live commentary presentation is incomplete.");
+}
+const managerBrief = getManagerMatchBrief({
+  explanationTags: ["fatigue_limited_action"],
+  playerRole: "Starter",
+  goals: 1,
+  assists: 0,
+  chancesCreated: 1,
+  rating: 7.6,
+  roleBefore: "Rotation Starter",
+  roleAfter: "Starter",
+  selectionBefore: 60,
+  selectionAfter: 70,
+  pointsToNextRole: 0,
+});
+if (!["happy", "mixed", "unhappy"].includes(managerBrief.tone) || managerBrief.praise.length + managerBrief.concerns.length === 0) {
+  throw new Error("Manager brief must return a tone and at least one point.");
 }
 const liveStats = getLivePlayerStats([
   {
@@ -242,7 +262,8 @@ console.log(JSON.stringify({
   metadataMomentCount: metadataMoments.length,
   chainRouteCount: chainRoutes.size,
   choiceOutcomePreview: choiceOutcomePreview.outcomes,
-  momentum: momentum.label,
+  matchStats: matchStats.rows.map((row) => `${row.label} ${row.homeValue}-${row.awayValue}`),
+  managerBrief: { tone: managerBrief.tone, praise: managerBrief.praise.length, concerns: managerBrief.concerns.length },
   commentary: commentary.title,
   liveStats,
   teamplayConsequences: [continuedTeamplay.title, completedTeamplay.title],

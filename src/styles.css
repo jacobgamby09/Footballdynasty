@@ -4062,28 +4062,66 @@ button {
 }
 
 .summary-hero-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px;
-  gap: 12px;
-  align-items: stretch;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(244, 200, 74, 0.15), transparent 11rem),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
-    var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.summary-hero-card h2 {
-  margin: 4px 0 0;
-  color: var(--gold);
-  font-size: 54px;
-  line-height: 0.95;
+.summary-hero-rating {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 62px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(200, 243, 95, 0.12);
+}
+
+.summary-hero-rating strong {
+  color: var(--lime);
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.summary-hero-card p {
-  margin: 6px 0 0;
+.summary-hero-rating span {
+  color: var(--lime);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-hero-meta {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.summary-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.summary-hero-stats b {
+  margin-right: 3px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-hero-stats b.gold {
+  color: var(--gold);
+}
+
+.summary-hero-stats b.good {
+  color: var(--lime);
 }
 
 .training-summary-hero h2 {
@@ -4236,35 +4274,36 @@ button {
   }
 }
 
-.summary-output {
+.manager-verdict-card {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.reason-list {
+.verdict-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
-.reason-item {
+.verdict-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.04);
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
-.reason-item svg {
+.verdict-item svg {
   flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.verdict-item.is-praise svg {
   color: var(--lime);
 }
 
-.reason-item span {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.35;
+.verdict-item.is-concern svg {
+  color: var(--orange);
 }
 
 .impact-list,

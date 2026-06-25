@@ -4,7 +4,7 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPlayerRoleLabel, getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getManagerMatchBrief, getMatchFitnessDelta, getPayoffStamp, getPitchStatus, getPreMatchEntryPlan, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getManagerMatchBrief, getMatchFitnessDelta, getPayoffStamp, getPitchStatus, getPreMatchEntryPlan, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupTone, getResultVerdictText, getTimelineScore, isDefiningMoment, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -732,6 +732,7 @@ export function MatchMomentScreen({
     event?.type === "player_moment" && event.directorPhase
       ? formatMatchPhase(event.directorPhase)
       : undefined;
+  const definingMoment = event?.type === "player_moment" && isPlayerMoment ? isDefiningMoment(match, event) : false;
 
   return (
     <section className="simple-screen match-screen">
@@ -796,7 +797,12 @@ export function MatchMomentScreen({
         </div>
       )}
 
-      <div className="card match-moment-card">
+      <div className={`card match-moment-card ${definingMoment ? "is-defining" : ""}`}>
+        {definingMoment && (
+          <div className="defining-banner">
+            <Flame size={14} aria-hidden /> Defining moment
+          </div>
+        )}
         <div className="section-heading">
           <div>
             <span className="metric-label">{isPlayerMoment ? "Your moment" : match.isComplete ? "Full time" : "Live match"}</span>

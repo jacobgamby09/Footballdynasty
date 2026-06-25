@@ -1308,6 +1308,26 @@ function applyHeatReward<T extends { rating: number; trustDelta: number }>(resul
   };
 }
 
+// --- Defining moments ----------------------------------------------------------------------------
+// Flag the rare high-stakes "be the hero" moment: late + tight scoreline, or a tight cup tie. Like
+// heat it amplifies the felt reward + drama (rating/trust swing + extra heat), never goals/XP.
+export function isDefiningMoment(match: MatchState, moment: MatchMoment): boolean {
+  const decisiveCategory = ["shot", "first_time_finish", "run_behind", "late_pressure", "counter", "link_up", "aerial_duel"].includes(moment.category);
+  if (!decisiveCategory) return false;
+  const simScore = getSimScoreAtMinute(match.events.filter((event) => event.type !== "player_moment"), moment.minute);
+  const playerGoals = match.results.reduce((total, result) => total + (result.goals ?? 0), 0);
+  const diff = Math.abs(simScore.teamGoals + playerGoals - simScore.opponentGoals);
+  const late = moment.minute >= 78;
+  const cup = match.matchImportance === "High";
+  return (late && diff <= 1) || (cup && diff <= 1 && moment.minute >= 65);
+}
+
+function applyDefiningFlair<T extends { rating: number; trustDelta: number }>(core: T, success: boolean): T {
+  return success
+    ? { ...core, rating: Number(Math.min(9.9, core.rating + 0.3).toFixed(1)), trustDelta: core.trustDelta + 1 }
+    : { ...core, rating: Number(Math.max(5, core.rating - 0.2).toFixed(1)), trustDelta: core.trustDelta - 1 };
+}
+
 export function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
@@ -1340,11 +1360,13 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
   const outcomeCopy = getMatchOutcomeCopy(moment, choice, supportAdjustedResult, resultSeed, positionLabel);
   const currentHeat = state.activeMatch?.heat ?? 0;
+  const defining = state.activeMatch ? isDefiningMoment(state.activeMatch, moment) : false;
   const heatedCore = applyHeatReward(supportAdjustedResult, currentHeat);
-  const screamer = isScreamer(heatedCore, choice, resultSeed);
-  const screamerCore = screamer ? applyScreamerFlair(heatedCore, choice, resultSeed) : heatedCore;
-  const heatGain = getHeatGain(supportAdjustedResult);
-  const finalCore = { ...screamerCore, heatDelta: heatGain, heatTier: getHeatTier(clamp(currentHeat + heatGain, 0, 100)) };
+  const definedCore = defining ? applyDefiningFlair(heatedCore, supportAdjustedResult.success) : heatedCore;
+  const screamer = isScreamer(definedCore, choice, resultSeed);
+  const screamerCore = screamer ? applyScreamerFlair(definedCore, choice, resultSeed) : definedCore;
+  const heatGain = Math.round(getHeatGain(supportAdjustedResult) * (defining ? 1.4 : 1));
+  const finalCore = { ...screamerCore, heatDelta: heatGain, heatTier: getHeatTier(clamp(currentHeat + heatGain, 0, 100)), definingMoment: defining };
   const screamerCopy = screamer ? getScreamerCopy(moment, choice, resultSeed) : undefined;
   const choiceMeta = {
     choiceId: choice.id,

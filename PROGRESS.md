@@ -2422,3 +2422,18 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 - Note: heat is a *streak*, so it stays Cold for early prospects who get ~1 moment/match and rarely
   score; it ramps in for starters / established players with multi-moment matches. If we want it felt
   earlier we can later make it carry across matches with decay (would need a save bump + lab re-model).
+
+## 2026-06-25 - Match dopamine, Phase 3: defining moments
+
+- Flag the rare high-stakes moment: a decisive-category chance that is late (>=78') with the score
+  within one goal, or a tight cup tie (matchImportance High, within one, >=65'). isDefiningMoment in
+  match.ts derives it from the live sim score + player goals (no stored flag).
+- A "Defining moment" banner (gold, pulsing) marks the moment card; the result amplifies the felt
+  reward/drama — rating +/-, trust +/- and ~1.4x heat gain — never goals/assists/XP.
+- Verified: build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83); a
+  deterministic probe confirmed detection (late+tied true, blowout/early false, cup+tied true) and
+  amplification (rating 6.9->7.2, trust 2->3, heat 9->13, definingMoment true); 0 console errors over
+  a full P1+P2+P3 playthrough.
+- UX note: per-moment dopamine (payoff stamp + count-ups, P1) lands from the very first moment;
+  heat (P2) and defining moments (P3) are *earned/situational* and ramp in for starters/established
+  players and big games — they stay quiet for early prospects who get ~1 moment/match.

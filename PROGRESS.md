@@ -2360,3 +2360,15 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   exercises `getLiveMatchStats` + `getManagerMatchBrief` instead (snapshot updated).
 - Pure UI/derived data; build + smoke green; verified in-browser (slick hero, verdict bullets,
   read/breakdown gone, 0 console errors). No `SAVE_VERSION` change.
+
+## 2026-06-25 - Manager brief: chance-quality insight + dead-helper cleanup
+
+- Folded `getPrimaryChanceQuality` into `getManagerMatchBrief`: when you don't score it now reads the
+  dominant chance quality to separate a finishing problem from a service problem —
+  Clear/Good chance + no goal -> "got into good positions and didn't take them - sharpen finishing";
+  Half/Difficult -> "fed off scraps - we need to get you better service"; otherwise the generic
+  scoring nudge (starting roles only). More precise + actionable than before.
+- Deleted the now-redundant dead helpers: `getReadableExplanations` + `getExplanationCopy` (match.ts)
+  and `getUniqueItems` (formatting.ts) — they only powered the removed performance cards.
+- Smoke updated: the manager-brief probe object now includes `chanceQualities`.
+- Build + smoke green. No `SAVE_VERSION` change.

@@ -57,11 +57,6 @@ export function roundToNearest(value: number, step: number) {
 }
 
 
-export function getUniqueItems(items: string[], limit: number) {
-  return Array.from(new Set(items)).slice(0, limit);
-}
-
-
 export function formatFixtureTitle(venue: Venue, opponent: string, clubShortName = currentClubShortName) {
   return venue === "Home" ? `${clubShortName} - ${opponent}` : `${opponent} - ${clubShortName}`;
 }

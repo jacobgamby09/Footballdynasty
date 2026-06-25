@@ -205,6 +205,7 @@ if (!commentary.title || !commentary.detail) {
 }
 const managerBrief = getManagerMatchBrief({
   explanationTags: ["fatigue_limited_action"],
+  chanceQualities: ["Good chance", "Half chance"],
   playerRole: "Starter",
   goals: 1,
   assists: 0,

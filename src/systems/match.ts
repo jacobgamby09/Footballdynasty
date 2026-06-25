@@ -459,56 +459,6 @@ export function getMatchSummaryText(results: MatchResult[], totals: ReturnType<t
 }
 
 
-export function getExplanationCopy(tag: string) {
-  const copies: Record<string, string> = {
-    execution_helped: "Your execution matched the moment.",
-    execution_lacked: "The action lacked the final sharpness.",
-    quality_clear_chance: "Clear chance created.",
-    quality_good_chance: "Good chance quality.",
-    quality_half_chance: "Only a half chance.",
-    quality_difficult_chance: "Difficult chance under pressure.",
-    opponent_countered_action: "Opponent profile countered this action.",
-    fatigue_limited_action: "Fatigue reduced your execution.",
-    high_risk_choice: "High-risk choice raised the swing.",
-    highlight_shot: "Finishing moment.",
-    highlight_first_time_finish: "First-touch finish moment.",
-    highlight_run_behind: "Movement behind the line mattered.",
-    highlight_hold_up: "Hold-up play shaped the action.",
-    highlight_aerial_duel: "Aerial duel context.",
-    highlight_press: "Pressing and work rate mattered.",
-    highlight_link_up: "Link-up decision.",
-    highlight_counter: "Counterattack context.",
-    highlight_defensive_set_piece: "Set-piece responsibility.",
-    highlight_late_pressure: "Late pressure moment.",
-  };
-
-  return copies[tag] ?? tag.replace(/_/g, " ");
-}
-
-
-export function getReadableExplanations(tags: string[], limit = 3) {
-  const priority = [
-    "quality_clear_chance",
-    "quality_good_chance",
-    "quality_half_chance",
-    "quality_difficult_chance",
-    "opponent_countered_action",
-    "fatigue_limited_action",
-    "high_risk_choice",
-    "execution_helped",
-    "execution_lacked",
-  ];
-  const uniqueTags = Array.from(new Set(tags));
-  const sortedTags = uniqueTags.sort((a, b) => {
-    const aIndex = priority.includes(a) ? priority.indexOf(a) : priority.length;
-    const bIndex = priority.includes(b) ? priority.indexOf(b) : priority.length;
-    return aIndex - bIndex;
-  });
-
-  return sortedTags.slice(0, limit).map((tag) => getExplanationCopy(tag));
-}
-
-
 export function getResultPopupTone(result: MatchResult) {
   if (result.goals > 0 || result.assists > 0) {
     return "is-goal-involvement";
@@ -932,8 +882,20 @@ export function getManagerMatchBrief(summary: LastMatchSummary): {
     if (summary.rating >= 7.4) praise.push(`A real performance out there — ${summary.rating.toFixed(1)}.`);
 
     const startingRole = summary.playerRole === "Starter" || summary.playerRole === "Rotation Starter";
-    if (summary.rating <= 6.0) concerns.push(`Too quiet — a ${summary.rating.toFixed(1)} won't keep you in the side.`);
-    else if (summary.goals === 0 && summary.rating < 7.4 && startingRole) concerns.push("I need you on the scoresheet more often.");
+    // Use the dominant chance quality to separate a finishing problem (good looks wasted) from a
+    // service problem (only half/difficult chances) before falling back to a generic scoring nudge.
+    const primaryChance = summary.chanceQualities.length > 0 ? getPrimaryChanceQuality(summary.chanceQualities) : undefined;
+    const goodLooks = primaryChance === "Clear chance" || primaryChance === "Good chance";
+    const scraps = primaryChance === "Half chance" || primaryChance === "Difficult chance";
+    if (summary.rating <= 6.0) {
+      concerns.push(`Too quiet — a ${summary.rating.toFixed(1)} won't keep you in the side.`);
+    } else if (summary.goals === 0 && goodLooks) {
+      concerns.push("You got into good positions and didn't take them — sharpen your finishing.");
+    } else if (summary.goals === 0 && scraps) {
+      concerns.push("You fed off scraps out there — we need to get you better service.");
+    } else if (summary.goals === 0 && summary.rating < 7.4 && startingRole) {
+      concerns.push("I need you on the scoresheet more often.");
+    }
     if (tags.has("Coach unhappy")) concerns.push("You went against the brief and it backfired — pick your moments.");
     if (tags.has("fatigue_limited_action")) concerns.push("You faded on tired legs — get your fitness right before kickoff.");
   }

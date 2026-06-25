@@ -1,11 +1,9 @@
-import { attributeInfo } from "../data/attributes";
 import { dynastyUpgradeMap } from "../data/dynastyUpgrades";
 import { supportUpgradeMap } from "../data/support";
 import { getPositionModule } from "../positionRoles";
-import { getAttributeGrowthPressure, getAttributeXpRequirement } from "../systems/attributeXp";
 import { getContractStatusLabel } from "../systems/contracts";
 import { formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
-import { calculateOvr, calculatePotentialOvr, getAttributeProgressPercent, getOvrBreakdown } from "../systems/ovr";
+import { calculateOvr, calculatePotentialOvr, getOvrBreakdown } from "../systems/ovr";
 import { getPrestigeStatus } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
@@ -464,76 +462,6 @@ export function NextActionCard({ game, onOpenClub }: { game: GameState; onOpenCl
             ? `${upcomingMatch.competition}. ${upcomingMatch.selection.summary}`
             : game.lastEvent}
         </span>
-      </div>
-    </section>
-  );
-}
-
-
-export function AttributesCard({
-  attributes,
-  recentXp,
-}: {
-  attributes: Attribute[];
-  recentXp?: Partial<Record<AttributeKey, number>>;
-}) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  return (
-    <section className="card">
-      <div className="section-heading">
-        <div>
-          <span className="metric-label">Attributes</span>
-          <h2>Full profile</h2>
-        </div>
-        <button
-          className={`icon-button ${showDetails ? "is-open" : ""}`}
-          aria-label={showDetails ? "Hide attribute details" : "Show attribute details"}
-          type="button"
-          onClick={() => setShowDetails((value) => !value)}
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      <div className="attribute-list">
-        {attributes.map((attribute) => {
-          const info = attributeInfo[attribute.label];
-          const recentGain = recentXp?.[attribute.label] ?? 0;
-          const xpRequirement = getAttributeXpRequirement(attribute);
-          const growthPressure = getAttributeGrowthPressure(attribute);
-          const progressPercent = getAttributeProgressPercent(attribute);
-          const xpToLevel = Math.max(0, xpRequirement - attribute.xp);
-          return (
-            <div className="attribute-row" key={attribute.label}>
-              <div className="attribute-topline">
-                <span>{attribute.label}</span>
-                <div className="attribute-score">
-                  {recentGain > 0 && <small className="recent-xp">+{recentGain} XP</small>}
-                  <strong>{attribute.value}</strong>
-                </div>
-              </div>
-              {showDetails && (
-                <div className="attribute-description">
-                  <span>{info.group}</span>
-                  <p>{info.description}</p>
-                  <small>{info.affects}</small>
-                </div>
-              )}
-              <div className="attribute-xp-line">
-                <span>Next level</span>
-                <em>{xpToLevel} XP</em>
-              </div>
-              <div className="attribute-growth-line">
-                <span className={`growth-pill tone-${growthPressure.tone}`}>{growthPressure.label}</span>
-                <em>{growthPressure.copy}</em>
-              </div>
-              <div className="attribute-track" aria-label={`${attribute.label} ${attribute.xp}/${xpRequirement} XP to next level`}>
-                <span style={{ width: `${progressPercent}%` }} />
-              </div>
-            </div>
-          );
-        })}
       </div>
     </section>
   );

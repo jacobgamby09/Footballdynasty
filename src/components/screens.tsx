@@ -18,7 +18,7 @@ import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCa
 import { getCountryForClub } from "../systems/world";
 import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
-import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
+import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -36,7 +36,6 @@ export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub
       <SeasonContextCard game={game} onOpenClub={onOpenClub} />
       <SelectionBriefingCard game={game} />
       {game.lastMatch && <LastMatchCard summary={game.lastMatch} onOpenClub={onOpenClub} />}
-      <AttributesCard attributes={game.attributes} recentXp={game.lastTraining?.xp} />
       <SeasonSnapshot stats={game.seasonStats} />
       <RelationshipsCard game={game} />
     </>

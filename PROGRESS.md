@@ -2324,3 +2324,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   Momentum stays in the header throughout.
 - Pure UI; build green; verified in-browser (momentum line in header, segmented bars, ambient cards
   hidden during a moment, 0 console errors). No `SAVE_VERSION` change.
+
+## 2026-06-25 - Replace momentum with live FM-style match stats
+
+- Removed the momentum readout entirely (the header pressure line + `getLiveMomentum`) — it carried
+  little decision value.
+- New `getLiveMatchStats(match, processedEventIndex)` (match.ts) derives team-vs-opponent stats from
+  the sim events processed so far, so they tick up through the match: Possession, Shots, Shots on
+  target, xG. Shots/goals come straight from the events; on-target and per-shot xG are seeded
+  deterministically per event id (stable, never random). Possession leans toward the stronger side
+  and drifts as each team creates chances.
+- New `MatchStatsCard` (cards.tsx): a Football Manager-style tug-of-war — team name vs opponent up
+  top, then a row per stat with both values and a two-tone split bar (your share = lime, theirs =
+  muted), widths animating as the numbers change.
+- Placed high on the live match screen (just under the score/progress); hidden during a player moment
+  (focused-decision state) and shown again afterwards + at full time. `MatchScoreHeader` reverted to
+  its plain competition label.
+- Pure UI/derived-data; build green; verified in-browser (stats populate and update live, bars
+  proportional, hidden during a moment then return, 0 console errors). No `SAVE_VERSION` change.

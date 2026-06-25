@@ -4,7 +4,7 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPlayerRoleLabel, getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -18,7 +18,7 @@ import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCa
 import { getCountryForClub } from "../systems/world";
 import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
-import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
+import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -688,7 +688,7 @@ export function MatchMomentScreen({
   const liveReadiness = getLiveMatchReadiness(match, completedResults);
   const visibleScore = getTimelineScore(match, completedResults, processedEventIndex);
   const recentEvents = getRecentTimelineItems(match, completedResults);
-  const momentum = getLiveMomentum(match, processedEventIndex);
+  const matchStats = getLiveMatchStats(match, processedEventIndex);
   const liveCommentary = getLiveCommentary(match, completedResults, processedEventIndex);
   const livePlayerStats = getLivePlayerStats(completedResults, totals.rating);
   const nextEventMinute = event ? `${event.minute}'` : "FT";
@@ -716,7 +716,6 @@ export function MatchMomentScreen({
         match={match}
         opponentGoals={visibleScore.opponentGoals}
         teamGoals={visibleScore.teamGoals}
-        momentum={match.isComplete ? undefined : momentum}
         onOpenClub={onOpenClub}
       />
 
@@ -728,6 +727,8 @@ export function MatchMomentScreen({
           <ProgressBar value={(match.liveMinute / 90) * 100} />
         </div>
       )}
+
+      {!isPlayerMoment && <MatchStatsCard stats={matchStats} />}
 
       {!match.isComplete && (
         <div className="match-mentality-bar">

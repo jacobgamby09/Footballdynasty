@@ -823,37 +823,70 @@ export function getRecentTimelineItems(match: MatchState, results: MatchResult[]
   return (meaningful.length >= 3 ? meaningful : combined).slice(-5);
 }
 
-export function getLiveMomentum(match: MatchState, processedEventIndex: number) {
-  const windowStart = Math.max(0, match.liveMinute - 16);
-  const relevant = match.events
-    .slice(0, processedEventIndex + 1)
-    .filter((event): event is SimMatchEvent => event.type !== "player_moment" && event.minute >= windowStart);
-  const rawMomentum = relevant.reduce((sum, event) => {
-    if (event.teamGoalDelta > 0) return sum + 3;
-    if (event.opponentGoalDelta > 0) return sum - 3;
-    if (event.type === "team_chance") return sum + 1.4;
-    if (event.type === "opponent_chance") return sum - 1.4;
-    return sum;
-  }, 0);
-  const value = clamp(Math.round(rawMomentum * 12), -44, 44);
-  const absolute = Math.abs(value);
+// Live team match stats (Football Manager-style tug of war), derived from the sim events processed
+// so far so they tick up through the match. Shots/goals come straight from the events; shots on
+// target and per-shot xG are seeded deterministically per event id (stable, never random).
+const isShotOnTarget = (id: string) => seededNoise(`${id}-on-target`) > 0.42;
+const getChanceXg = (id: string) => 0.05 + seededNoise(`${id}-xg`) * 0.22;
+const getGoalXg = (id: string) => 0.25 + seededNoise(`${id}-xg`) * 0.4;
 
-  if (absolute < 10) {
-    return { value, label: "Even spell", detail: "Neither side controls the current phase.", tone: "even" as const };
-  }
-  if (value > 0) {
-    return {
-      value,
-      label: absolute >= 30 ? `${match.teamShortName} pressure` : `${match.teamShortName} building`,
-      detail: absolute >= 30 ? "The opponent are being pushed deeper." : "Your side are finding more territory.",
-      tone: "team" as const,
-    };
-  }
+export type LiveMatchStatRow = { label: string; teamValue: string; opponentValue: string; teamShare: number };
+
+export function getLiveMatchStats(match: MatchState, processedEventIndex: number): {
+  teamName: string;
+  opponentName: string;
+  rows: LiveMatchStatRow[];
+} {
+  let teamShots = 0;
+  let oppShots = 0;
+  let teamOnTarget = 0;
+  let oppOnTarget = 0;
+  let teamChances = 0;
+  let oppChances = 0;
+  let teamXg = 0;
+  let oppXg = 0;
+
+  match.events.slice(0, processedEventIndex + 1).forEach((event) => {
+    if (event.type === "player_moment") return;
+    const sim = event as SimMatchEvent;
+    if (sim.type === "team_goal") {
+      teamShots += 1;
+      teamOnTarget += 1;
+      teamXg += getGoalXg(sim.id);
+    } else if (sim.type === "opponent_goal") {
+      oppShots += 1;
+      oppOnTarget += 1;
+      oppXg += getGoalXg(sim.id);
+    } else if (sim.type === "team_chance") {
+      teamShots += 1;
+      teamChances += 1;
+      teamXg += getChanceXg(sim.id);
+      if (isShotOnTarget(sim.id)) teamOnTarget += 1;
+    } else if (sim.type === "opponent_chance") {
+      oppShots += 1;
+      oppChances += 1;
+      oppXg += getChanceXg(sim.id);
+      if (isShotOnTarget(sim.id)) oppOnTarget += 1;
+    }
+  });
+
+  // Possession leans toward the stronger side and drifts as each team creates chances.
+  const possession = clamp(
+    Math.round(50 + (match.teamStrength - match.opponentStrength) * 0.8 + (teamChances - oppChances) * 2),
+    22,
+    78,
+  );
+  const share = (team: number, opp: number) => (team + opp <= 0 ? 50 : Math.round((team / (team + opp)) * 100));
+
   return {
-    value,
-    label: absolute >= 30 ? `${match.opponent} pressure` : `${match.opponent} building`,
-    detail: absolute >= 30 ? "Your side are being forced toward their own box." : "The opponent are gaining territory.",
-    tone: "opponent" as const,
+    teamName: match.teamShortName,
+    opponentName: match.opponent,
+    rows: [
+      { label: "Possession", teamValue: `${possession}%`, opponentValue: `${100 - possession}%`, teamShare: possession },
+      { label: "Shots", teamValue: `${teamShots}`, opponentValue: `${oppShots}`, teamShare: share(teamShots, oppShots) },
+      { label: "On target", teamValue: `${teamOnTarget}`, opponentValue: `${oppOnTarget}`, teamShare: share(teamOnTarget, oppOnTarget) },
+      { label: "xG", teamValue: teamXg.toFixed(1), opponentValue: oppXg.toFixed(1), teamShare: share(teamXg, oppXg) },
+    ],
   };
 }
 

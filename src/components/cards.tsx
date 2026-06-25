@@ -623,6 +623,45 @@ export function EquipmentFacilitiesCard() {
 }
 
 
+export function MatchStatsCard({
+  stats,
+}: {
+  stats: {
+    teamName: string;
+    opponentName: string;
+    rows: { label: string; teamValue: string; opponentValue: string; teamShare: number }[];
+  };
+}) {
+  return (
+    <div className="card match-stats-card">
+      <div className="match-stats-teams">
+        <strong className="match-stats-team">{stats.teamName}</strong>
+        <span className="metric-label">Match stats</span>
+        <strong className="match-stats-opp">{stats.opponentName}</strong>
+      </div>
+      <div className="match-stats-rows">
+        {stats.rows.map((row) => (
+          <div className="match-stat-row" key={row.label}>
+            <div className="match-stat-values">
+              <strong>{row.teamValue}</strong>
+              <span>{row.label}</span>
+              <strong>{row.opponentValue}</strong>
+            </div>
+            <div
+              className="match-stat-bar"
+              aria-label={`${row.label}: ${stats.teamName} ${row.teamValue}, ${stats.opponentName} ${row.opponentValue}`}
+            >
+              <span className="match-stat-bar-team" style={{ width: `${row.teamShare}%` }} />
+              <span className="match-stat-bar-opp" style={{ width: `${100 - row.teamShare}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 export function FixturePreviewList({ season, onOpenClub }: { season: SeasonState; onOpenClub?: (identity: string) => void }) {
   const upcoming = getUpcomingFixtures(season, 5);
 

@@ -6,7 +6,7 @@ import { clamp } from "../utils";
 import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, UserRound } from "lucide-react";
 import { useMemo } from "react";
 import type { Country, FixtureResult, GameState, LastMatchSummary, LeagueTableRow, MatchState, NavKey } from "../types";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },
@@ -85,24 +85,18 @@ export function MatchScoreHeader({
   match,
   teamGoals,
   opponentGoals,
-  momentum,
   onOpenClub,
 }: {
   liveMinute: number;
   match: MatchState;
   teamGoals: number;
   opponentGoals: number;
-  momentum?: { value: number; label: string; detail: string; tone: "even" | "team" | "opponent" };
   onOpenClub?: (identity: string) => void;
 }) {
   const homeName = match.venue === "Home" ? match.teamShortName : match.opponent;
   const awayName = match.venue === "Home" ? match.opponent : match.teamShortName;
   const homeGoals = match.venue === "Home" ? teamGoals : opponentGoals;
   const awayGoals = match.venue === "Home" ? opponentGoals : teamGoals;
-  // Integrated momentum: a slim centre-origin pressure line under the score (team = right),
-  // replacing the old standalone momentum card. Fill grows from centre toward the side on top.
-  const momentumPos = momentum ? 50 + clamp(momentum.value / 44, -1, 1) * 50 : 50;
-  const momentumFill = { left: `${Math.min(50, momentumPos)}%`, width: `${Math.abs(momentumPos - 50)}%` } as CSSProperties;
 
   return (
     <header className="match-score-header">
@@ -114,17 +108,7 @@ export function MatchScoreHeader({
         </div>
         <ClubLink className="score-team-name" clubIdentity={awayName} onOpenClub={onOpenClub}>{awayName}</ClubLink>
       </div>
-      {momentum ? (
-        <div className={`score-momentum tone-${momentum.tone}`}>
-          <span className="score-momentum-track" aria-label={`Momentum: ${momentum.label}`}>
-            <span className="score-momentum-center" aria-hidden="true" />
-            <span className="score-momentum-fill" style={momentumFill} aria-hidden="true" />
-          </span>
-          <small>{momentum.label}</small>
-        </div>
-      ) : (
-        <small>{match.competition}</small>
-      )}
+      <small>{match.competition}</small>
     </header>
   );
 }

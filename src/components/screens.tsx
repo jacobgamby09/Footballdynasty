@@ -716,21 +716,18 @@ export function MatchMomentScreen({
         match={match}
         opponentGoals={visibleScore.opponentGoals}
         teamGoals={visibleScore.teamGoals}
+        momentum={match.isComplete ? undefined : momentum}
         onOpenClub={onOpenClub}
       />
 
-      <div className="match-progress-card">
-        <span>
-          {isPlayerMoment
-            ? event.chainDepth
-              ? "Follow-up moment"
-              : directorPhase ?? "Player moment"
-            : match.isComplete
-              ? "Full time"
-              : `Live - next ${nextEventMinute}`}
-        </span>
-        <ProgressBar value={(match.liveMinute / 90) * 100} />
-      </div>
+      {!isPlayerMoment && (
+        <div className="match-progress-card">
+          <span>
+            {match.isComplete ? "Full time" : `Live - next ${nextEventMinute}`}
+          </span>
+          <ProgressBar value={(match.liveMinute / 90) * 100} />
+        </div>
+      )}
 
       {!match.isComplete && (
         <div className="match-mentality-bar">
@@ -739,34 +736,19 @@ export function MatchMomentScreen({
         </div>
       )}
 
-      <div className={`match-momentum-strip tone-${momentum.tone}`}>
-        <div className="match-momentum-heading">
-          <span>Momentum</span>
-          <strong>{momentum.label}</strong>
+      {!isPlayerMoment && (
+        <div className={`match-role-card ${pitchStatus.tone}`}>
+          <div>
+            <span className="metric-label">Player status</span>
+            <strong>{pitchStatus.label}</strong>
+            <small>{pitchStatus.detail}</small>
+          </div>
+          <div className="match-role-meta">
+            <span>Fitness {liveReadiness}/100</span>
+            <b>{getFitnessAvailability(liveReadiness)}</b>
+          </div>
         </div>
-        <div className="match-momentum-track" aria-label={momentum.label}>
-          <span className="match-momentum-side opponent" />
-          <span className="match-momentum-center" />
-          <span className="match-momentum-side team" />
-          <span
-            className="match-momentum-fill"
-            style={{ "--momentum-offset": `${50 + momentum.value}%` } as CSSProperties}
-          />
-        </div>
-        <small>{momentum.detail}</small>
-      </div>
-
-      <div className={`match-role-card ${pitchStatus.tone}`}>
-        <div>
-          <span className="metric-label">Player status</span>
-          <strong>{pitchStatus.label}</strong>
-          <small>{pitchStatus.detail}</small>
-        </div>
-        <div className="match-role-meta">
-          <span>Fitness {liveReadiness}/100</span>
-          <b>{getFitnessAvailability(liveReadiness)}</b>
-        </div>
-      </div>
+      )}
 
       {!isPlayerMoment && !match.isComplete && (
         <div className="match-control-card">
@@ -849,13 +831,22 @@ export function MatchMomentScreen({
                   <small>Stats used: {choice.uses.join(" + ")}</small>
                 </span>
                 <span className="choice-outcome-preview">
-                  <span className="choice-outcome-label">Possible outcomes</span>
-                  {preview.outcomes.map((outcome) => (
-                    <span className={`choice-outcome-row tone-${outcome.tone}`} key={outcome.label}>
-                      <span>{outcome.label}</span>
-                      <strong>{outcome.percentage}%</strong>
-                    </span>
-                  ))}
+                  <span className="choice-outcome-bar" aria-hidden="true">
+                    {preview.outcomes.map((outcome) => (
+                      <span
+                        className={`choice-outcome-seg tone-${outcome.tone}`}
+                        key={outcome.label}
+                        style={{ width: `${outcome.percentage}%` }}
+                      />
+                    ))}
+                  </span>
+                  <span className="choice-outcome-legend">
+                    {preview.outcomes.filter((outcome) => outcome.percentage > 0).map((outcome) => (
+                      <span className={`tone-${outcome.tone}`} key={outcome.label}>
+                        {outcome.label} <strong>{outcome.percentage}%</strong>
+                      </span>
+                    ))}
+                  </span>
                 </span>
                 <span className="choice-tags choice-tags-minimal">
                   <em className={`choice-manager manager-${getManagerLeanTone(choice.manager)}`}>{getManagerLeanLabel(choice.manager)}</em>
@@ -912,17 +903,19 @@ export function MatchMomentScreen({
         </div>
       )}
 
-      <div className="card match-summary-card">
-        <span className="metric-label">Live player stats</span>
-        <div className="live-player-stat-grid">
-          <div><span>Rating</span><strong className="gold">{livePlayerStats.rating.toFixed(1)}</strong></div>
-          <div><span>Actions</span><strong>{livePlayerStats.successfulActions}/{livePlayerStats.actions}</strong></div>
-          <div><span>Shots</span><strong>{livePlayerStats.shots}</strong></div>
-          <div><span>On target</span><strong>{livePlayerStats.shotsOnTarget}</strong></div>
-          <div><span>Key passes</span><strong>{livePlayerStats.keyPasses}</strong></div>
-          <div><span>Fitness</span><strong className={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : ""}>{liveReadiness}</strong></div>
+      {!isPlayerMoment && (
+        <div className="card match-summary-card">
+          <span className="metric-label">Live player stats</span>
+          <div className="live-player-stat-grid">
+            <div><span>Rating</span><strong className="gold">{livePlayerStats.rating.toFixed(1)}</strong></div>
+            <div><span>Actions</span><strong>{livePlayerStats.successfulActions}/{livePlayerStats.actions}</strong></div>
+            <div><span>Shots</span><strong>{livePlayerStats.shots}</strong></div>
+            <div><span>On target</span><strong>{livePlayerStats.shotsOnTarget}</strong></div>
+            <div><span>Key passes</span><strong>{livePlayerStats.keyPasses}</strong></div>
+            <div><span>Fitness</span><strong className={liveReadiness < 40 ? "warn" : liveReadiness >= 60 ? "good" : ""}>{liveReadiness}</strong></div>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

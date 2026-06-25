@@ -2102,119 +2102,62 @@ button {
   text-transform: uppercase;
 }
 
-.match-momentum-strip {
+.score-momentum {
   display: grid;
-  gap: 7px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018));
+  gap: 4px;
+  justify-items: center;
+  width: 100%;
+  max-width: 220px;
+  margin: 6px auto 0;
 }
 
-.match-momentum-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.match-momentum-heading span {
-  color: var(--subtle);
-  font-size: 9px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.match-momentum-heading strong {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.match-momentum-strip > small {
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.25;
-}
-
-.match-momentum-track {
+.score-momentum-track {
   position: relative;
-  height: 12px;
+  width: 100%;
+  height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.match-momentum-side {
+.score-momentum-center {
   position: absolute;
-  top: 5px;
-  height: 2px;
-  border-radius: 999px;
-}
-
-.match-momentum-side.opponent {
-  right: 50%;
-  left: 0;
-  background: linear-gradient(90deg, rgba(241, 138, 54, 0.52), rgba(241, 138, 54, 0.08));
-}
-
-.match-momentum-side.team {
-  right: 0;
-  left: 50%;
-  background: linear-gradient(90deg, rgba(200, 243, 95, 0.08), rgba(200, 243, 95, 0.52));
-}
-
-.match-momentum-center {
-  position: absolute;
-  z-index: 2;
-  top: 2px;
-  bottom: 2px;
+  top: -1px;
+  bottom: -1px;
   left: 50%;
   width: 1px;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
   transform: translateX(-50%);
 }
 
-.match-momentum-fill {
+.score-momentum-fill {
   position: absolute;
-  z-index: 3;
-  top: 1px;
-  left: calc(var(--momentum-offset) - 5px);
-  width: 10px;
-  height: 10px;
-  border: 2px solid rgba(9, 12, 9, 0.82);
-  border-radius: 50%;
-  background: var(--text);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 0 10px rgba(255, 255, 255, 0.18);
-  transition: left 420ms ease;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: left 420ms ease, width 420ms ease;
 }
 
-.match-momentum-strip.tone-team {
-  border-color: rgba(200, 243, 95, 0.2);
+.score-momentum > small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
 }
 
-.match-momentum-strip.tone-team .match-momentum-heading strong {
-  color: var(--lime);
-}
-
-.match-momentum-strip.tone-team .match-momentum-fill {
+.score-momentum.tone-team .score-momentum-fill {
   background: var(--lime);
 }
 
-.match-momentum-strip.tone-opponent {
-  border-color: rgba(241, 138, 54, 0.22);
+.score-momentum.tone-team > small {
+  color: var(--lime);
 }
 
-.match-momentum-strip.tone-opponent .match-momentum-heading strong {
-  color: var(--orange);
-}
-
-.match-momentum-strip.tone-opponent .match-momentum-fill {
+.score-momentum.tone-opponent .score-momentum-fill {
   background: var(--orange);
+}
+
+.score-momentum.tone-opponent > small {
+  color: var(--orange);
 }
 
 .match-role-card {
@@ -2390,42 +2333,60 @@ button {
 
 .choice-outcome-preview {
   display: grid;
+  gap: 6px;
+}
+
+.choice-outcome-bar {
+  display: flex;
+  height: 9px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.choice-outcome-label {
-  padding: 7px 9px 5px;
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 850;
-  text-transform: uppercase;
+.choice-outcome-seg {
+  height: 100%;
 }
 
-.choice-outcome-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 31px;
-  padding: 6px 9px;
-  border-top: 1px solid rgba(255, 255, 255, 0.055);
+.choice-outcome-seg.tone-negative {
+  background: var(--orange);
+}
+
+.choice-outcome-seg.tone-neutral {
+  background: var(--gold);
+}
+
+.choice-outcome-seg.tone-decisive {
+  background: var(--lime);
+}
+
+.choice-outcome-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--muted);
   font-size: 11px;
+  font-weight: 700;
 }
 
-.choice-outcome-row strong {
-  margin: 0;
-  color: var(--text);
-  font-size: 12px;
+.choice-outcome-legend span {
+  white-space: nowrap;
 }
 
-.choice-outcome-row.tone-negative strong {
+.choice-outcome-legend strong {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.choice-outcome-legend .tone-negative {
   color: var(--orange);
 }
 
-.choice-outcome-row.tone-decisive strong {
+.choice-outcome-legend .tone-neutral {
+  color: var(--gold);
+}
+
+.choice-outcome-legend .tone-decisive {
   color: var(--lime);
 }
 
@@ -4514,20 +4475,10 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .match-momentum-fill,
+  .score-momentum-fill,
   .result-card .result-follow-up-note {
     transition: none;
     animation: none;
-  }
-}
-
-@media (max-width: 360px) {
-  .match-momentum-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .match-momentum-track {
-    width: 100%;
   }
 }
 

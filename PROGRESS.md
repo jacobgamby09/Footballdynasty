@@ -2308,3 +2308,19 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 - Removed the archetype tag ("Poacher") from the Header identity row; it now shows just the readable
   role ("Striker"), via `getPlayerRoleLabel`, instead of the short code + archetype.
 - Pure UI; build green; verified in-browser (0 console errors). No `SAVE_VERSION` change.
+
+## 2026-06-25 - In-match UI cleanup: momentum + moments
+
+- Two pain points addressed (momentum bar + moments UI), per the in-match declutter discussion.
+- Momentum integrated into the score header: `MatchScoreHeader` now takes an optional `momentum` and
+  renders a slim centre-origin pressure line under the score (fill grows toward the side on top, team
+  = right, tone-coloured) + a one-word label. The standalone `match-momentum-strip` card and its CSS
+  are removed (replaced by `.score-momentum*`).
+- Choices: replaced the three stacked "label — %" outcome rows with a single 3-segment probability
+  bar (miss=orange / danger=gold / goal=lime, widths = the real 500-seed percentages) + a compact
+  legend that now hides 0% outcomes. Reads at a glance instead of three lines.
+- Focused decision state: during a player moment the ambient cards (progress, player-status/role,
+  live player stats) are hidden so the prompt + choices are the focus; they return during live play.
+  Momentum stays in the header throughout.
+- Pure UI; build green; verified in-browser (momentum line in header, segmented bars, ambient cards
+  hidden during a moment, 0 console errors). No `SAVE_VERSION` change.

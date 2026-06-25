@@ -4,7 +4,7 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPlayerRoleLabel, getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getManagerMatchBrief, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMatchStats, getLivePlayerStats, getManagerMatchBrief, getMatchFitnessDelta, getPayoffStamp, getPitchStatus, getPreMatchEntryPlan, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -19,11 +19,11 @@ import { getCountryForClub } from "../systems/world";
 import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
-import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
+import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, useCountUp, WeekNote } from "./shared";
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
@@ -606,6 +606,72 @@ function getManagerLeanTone(manager: MatchChoice["manager"]) {
   return manager === "Likes" ? "like" : manager === "Risky" ? "wary" : "neutral";
 }
 
+function MatchResultPopup({
+  result,
+  selectedChoice,
+  resultConsequence,
+  followUpQueued,
+  onContinue,
+}: {
+  result: MatchResult;
+  selectedChoice?: MatchChoice;
+  resultConsequence?: { label: string; title: string; detail: string; tone: string };
+  followUpQueued: boolean;
+  onContinue: () => void;
+}) {
+  const stamp = getPayoffStamp(result);
+  const rating = useCountUp(result.rating, { from: Math.min(6, result.rating), durationMs: 950, decimals: 1 });
+  const trust = useCountUp(Math.abs(result.trustDelta), { from: 0, durationMs: 750, decimals: 0 });
+
+  return (
+    <div className="result-popup-backdrop">
+      <div className={`card result-card result-popup ${getResultPopupTone(result)} ${result.screamer ? "is-screamer" : ""}`}>
+        <div className={`payoff-stamp tone-${stamp.tone}`} aria-label={`Result: ${stamp.label}`}>
+          <span>{stamp.label}</span>
+        </div>
+        <div className="result-verdict">
+          <div>
+            <span>{result.choiceLabel}</span>
+            <strong>{getResultVerdictText(result)}</strong>
+          </div>
+          <span>{result.chanceQuality}</span>
+        </div>
+        <h2>{result.title}</h2>
+        <p>{result.detail}</p>
+        <div className="result-reason-grid">
+          <div>
+            <span>Attributes used</span>
+            <strong>{selectedChoice ? selectedChoice.uses.join(" + ") : "Match attributes"}</strong>
+          </div>
+          <div>
+            <span>Chance context</span>
+            <strong>{result.chanceQuality}</strong>
+          </div>
+          <div>
+            <span>Execution</span>
+            <strong>{getResultExecutionText(result)}</strong>
+          </div>
+        </div>
+        {resultConsequence && (
+          <div className={`result-consequence tone-${resultConsequence.tone}`}>
+            <span>{resultConsequence.label}</span>
+            <strong>{resultConsequence.title}</strong>
+            <small>{resultConsequence.detail}</small>
+          </div>
+        )}
+        <div className="next-grid">
+          <InfoTile label="Rating" value={rating.toFixed(1)} tone="gold" />
+          <InfoTile label="Trust" value={`${result.trustDelta >= 0 ? "+" : "-"}${trust}`} />
+          <InfoTile label="Fitness" value={`${result.fitnessDelta}`} tone="warn" />
+        </div>
+        <button className="primary-action" type="button" onClick={onContinue}>
+          {followUpQueued ? "Continue Move" : "Resume Match"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function MatchMomentScreen({
   match,
   matchSpeed,
@@ -803,49 +869,13 @@ export function MatchMomentScreen({
       )}
 
       {isPlayerMoment && match.currentResult && (
-        <div className="result-popup-backdrop">
-          <div className={`card result-card result-popup ${getResultPopupTone(match.currentResult)}`}>
-            <span className="metric-label">{getResultPopupLabel(match.currentResult)}</span>
-            <div className="result-verdict">
-              <div>
-                <span>{match.currentResult.choiceLabel}</span>
-                <strong>{getResultVerdictText(match.currentResult)}</strong>
-              </div>
-              <span>{match.currentResult.chanceQuality}</span>
-            </div>
-            <h2>{match.currentResult.title}</h2>
-            <p>{match.currentResult.detail}</p>
-            <div className="result-reason-grid">
-              <div>
-                <span>Attributes used</span>
-                <strong>{selectedChoice ? selectedChoice.uses.join(" + ") : "Match attributes"}</strong>
-              </div>
-              <div>
-                <span>Chance context</span>
-                <strong>{match.currentResult.chanceQuality}</strong>
-              </div>
-              <div>
-                <span>Execution</span>
-                <strong>{getResultExecutionText(match.currentResult)}</strong>
-              </div>
-            </div>
-            {resultConsequence && (
-              <div className={`result-consequence tone-${resultConsequence.tone}`}>
-                <span>{resultConsequence.label}</span>
-                <strong>{resultConsequence.title}</strong>
-                <small>{resultConsequence.detail}</small>
-              </div>
-            )}
-            <div className="next-grid">
-              <InfoTile label="Rating" value={match.currentResult.rating.toFixed(1)} tone="gold" />
-              <InfoTile label="Trust" value={`${match.currentResult.trustDelta > 0 ? "+" : ""}${match.currentResult.trustDelta}`} />
-              <InfoTile label="Fitness" value={`${match.currentResult.fitnessDelta}`} tone="warn" />
-            </div>
-            <button className="primary-action" type="button" onClick={onContinue}>
-              {followUpQueued ? "Continue Move" : "Resume Match"}
-            </button>
-          </div>
-        </div>
+        <MatchResultPopup
+          result={match.currentResult}
+          selectedChoice={selectedChoice}
+          resultConsequence={resultConsequence}
+          followUpQueued={followUpQueued}
+          onContinue={onContinue}
+        />
       )}
 
       {!isPlayerMoment && (

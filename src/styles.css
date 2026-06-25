@@ -2571,6 +2571,88 @@ button {
   animation: goal-ring-pop 780ms ease-out 120ms both;
 }
 
+.payoff-stamp {
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--surface-2);
+  transform-origin: left center;
+  animation: payoff-pop 360ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.payoff-stamp.tone-great {
+  color: var(--lime);
+  border-color: rgba(200, 243, 95, 0.4);
+  background: rgba(200, 243, 95, 0.1);
+}
+
+.payoff-stamp.tone-good {
+  color: var(--lime-2);
+  border-color: rgba(140, 198, 63, 0.35);
+}
+
+.payoff-stamp.tone-bad {
+  color: var(--orange);
+  border-color: rgba(241, 138, 54, 0.35);
+  background: rgba(241, 138, 54, 0.08);
+}
+
+.payoff-stamp.tone-screamer {
+  color: #0e120d;
+  background: var(--lime);
+  border-color: var(--lime);
+  font-size: 15px;
+  padding: 6px 16px;
+  animation: payoff-pop 420ms cubic-bezier(0.2, 1.6, 0.35, 1) both, screamer-glow 1.6s ease-in-out 0.4s infinite;
+}
+
+@keyframes payoff-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes screamer-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 243, 95, 0); }
+  50% { box-shadow: 0 0 18px 2px rgba(200, 243, 95, 0.5); }
+}
+
+.result-popup.is-screamer {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--lime);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(200, 243, 95, 0.22), transparent 12rem),
+    radial-gradient(circle at 15% 4%, rgba(244, 200, 74, 0.14), transparent 12rem),
+    var(--card);
+  box-shadow:
+    0 0 0 1px rgba(200, 243, 95, 0.2),
+    0 0 44px rgba(200, 243, 95, 0.26),
+    0 26px 80px rgba(0, 0, 0, 0.62);
+}
+
+.result-popup.is-screamer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.16) 44%, transparent 66%);
+  transform: translateX(-125%);
+  animation: level-shine 1500ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payoff-stamp,
+  .payoff-stamp.tone-screamer {
+    animation: none;
+  }
+}
+
 .result-popup.is-success {
   background:
     radial-gradient(circle at 24% 0%, rgba(200, 243, 95, 0.16), transparent 15rem),

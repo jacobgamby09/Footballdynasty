@@ -2389,3 +2389,19 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   season-lab OVR byte-identical (57.20 / 67.39 / 67.11 / 63.83), match + feed labs unchanged, smoke
   green, build green, in-browser pre-match/match render clean (0 console errors).
 - `SAVE_VERSION` 24 -> 25 (dropped the persisted `matchMentality` field).
+
+## 2026-06-25 - Match dopamine, Phase 1: payoff ladder + screamer + reveal count-ups
+
+- Match-moment reveal is no longer flat. Added a visible quality stamp on the result popup
+  (Off target/Broke down/Lost it -> Tidy -> Sharp/Clinical/Assist -> SCREAMER) via getPayoffStamp.
+- Screamer: a rare, seeded *upgrade* on an already-decisive outcome, weighted toward audacious play
+  (high risk + harder chances). Bumps rating (~8.6-9.6) + trust, special copy + lime glow/shine flair.
+  Purely presentation: it never changes goals/assists/outcomeTier/XP, so the OVR curve is untouched.
+- Count-ups: new reusable useCountUp hook (rAF ease-out, reduced-motion safe) reusing the training
+  reveal feel. Rating sweeps up, trust counts. Extracted the popup into a MatchResultPopup component
+  so the hooks can live in it.
+- Balance: season-lab End OVR byte-identical across all personas (57.20/67.39/67.11/63.83); avg rating
+  unchanged (the lab reimplements createMatchResult and never runs the screamer path). Build + smoke
+  green; verified in a fresh preview build (stamp + count-up tiles render, 0 console errors). No
+  SAVE_VERSION change. Types gained MatchResult.screamer/heatDelta/heatTier/definingMoment +
+  MatchState.heat (used by Phases 2-3).

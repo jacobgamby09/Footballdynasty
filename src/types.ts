@@ -593,6 +593,7 @@ export type MatchState = {
   liveMinute: number;
   results: MatchResult[];
   currentResult?: MatchResult;
+  heat?: number;
   director?: MatchDirectorState;
   objective?: MatchObjective;
   isComplete?: boolean;
@@ -640,6 +641,7 @@ export type ChoiceOutcomePreview = { outcomes: ChoiceOutcomeProbability[] };
 
 export type ChanceQuality = "Clear chance" | "Good chance" | "Half chance" | "Difficult chance";
 export type OutcomeTier = "Poor" | "Okay" | "Good" | "Great";
+export type HeatTier = "Cold" | "Warm" | "Hot" | "On Fire";
 
 export type MatchResult = {
   title: string;
@@ -660,6 +662,11 @@ export type MatchResult = {
   chancesCreated: number;
   xp: Partial<Record<AttributeKey, number>>;
   source?: "manual" | "auto";
+  // Dopamine layer (presentation/reward only — never affects goals/assists/XP, so OVR is unchanged):
+  screamer?: boolean;
+  definingMoment?: boolean;
+  heatDelta?: number;
+  heatTier?: HeatTier;
 };
 
 export type MatchTotals = {

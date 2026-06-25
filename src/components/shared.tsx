@@ -4,9 +4,39 @@ import { getPlayerRoleLabel } from "../positionRoles";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
 import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, UserRound } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Country, FixtureResult, GameState, LastMatchSummary, LeagueTableRow, MatchState, NavKey } from "../types";
 import type { ReactNode } from "react";
+
+// Animate a number from `from` up to `target` (rAF, ease-out cubic). Powers match-reveal dopamine —
+// rating sweeps, trust counts — reusing the same feel as the training XP reveal. Reduced-motion jumps
+// straight to the target.
+export function useCountUp(target: number, options?: { from?: number; durationMs?: number; decimals?: number }): number {
+  const decimals = options?.decimals ?? 0;
+  const from = options?.from ?? 0;
+  const duration = options?.durationMs ?? 900;
+  const [value, setValue] = useState(from);
+
+  useEffect(() => {
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || duration <= 0) {
+      setValue(target);
+      return;
+    }
+    let frame = 0;
+    const startedAt = window.performance.now();
+    const tick = (now: number) => {
+      const progress = clamp((now - startedAt) / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(from + (target - from) * eased);
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [target, from, duration]);
+
+  return Number(value.toFixed(decimals));
+}
 
 export const navItems = [
   { key: "player" as const, label: "Player", icon: UserRound },

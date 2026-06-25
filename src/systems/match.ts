@@ -1227,6 +1227,56 @@ export function getChoiceOutcomePreview(state: GameState, moment: MatchMoment, c
   });
 }
 
+// --- Dopamine layer ------------------------------------------------------------------------------
+// The screamer is a rare, seeded *upgrade* on an already-decisive outcome — favouring audacious
+// choices (high risk, harder chances). It only touches rating/trust/copy (presentation), never
+// goals/assists/XP, so the OVR development baseline is unchanged.
+function isScreamer(result: { goals: number; assists: number; chanceQuality: string }, choice: MatchChoice, resultSeed: string): boolean {
+  if (choice.outcome === "goal" && result.goals > 0) {
+    const riskBoost = choice.risk === "High" ? 1.9 : choice.risk === "Medium" ? 1.2 : 0.7;
+    const qualityBoost = result.chanceQuality === "Difficult chance" ? 2 : result.chanceQuality === "Half chance" ? 1.4 : 1;
+    const rate = clamp(0.05 * riskBoost * qualityBoost, 0, 0.34);
+    return seededNoise(`${resultSeed}-screamer`) < rate;
+  }
+  if (choice.outcome === "assist" && result.assists > 0 && choice.risk !== "Low") {
+    return seededNoise(`${resultSeed}-screamer`) < (choice.risk === "High" ? 0.1 : 0.06);
+  }
+  return false;
+}
+
+function applyScreamerFlair<T extends { rating: number; trustDelta: number }>(result: T, choice: MatchChoice, resultSeed: string): T & { screamer: boolean } {
+  const base = choice.outcome === "goal" ? 8.6 : 8.2;
+  const bump = seededNoise(`${resultSeed}-screamer-rating`) * 0.5;
+  const rating = Math.min(9.6, Number((Math.max(result.rating, base) + bump).toFixed(1)));
+  return { ...result, rating, trustDelta: result.trustDelta + 2, screamer: true };
+}
+
+function getScreamerCopy(moment: MatchMoment, choice: MatchChoice, resultSeed: string): { title: string; detail: string } {
+  const lines = choice.outcome === "goal"
+    ? [
+        { title: "SCREAMER!", detail: `${moment.minute}': ${choice.label} — unstoppable. It flies in off the underside and the place erupts.` },
+        { title: "What a hit!", detail: `${moment.minute}': ${choice.label} from nowhere — top corner, no chance for the keeper.` },
+        { title: "Worldie!", detail: `${moment.minute}': ${choice.label} struck perfectly — the kind of goal they replay all season.` },
+      ]
+    : [
+        { title: "Outrageous!", detail: `${moment.minute}': ${choice.label} — an audacious ball that completely unlocks the defence for the tap-in.` },
+        { title: "Genius assist!", detail: `${moment.minute}': ${choice.label} that no one else on the pitch sees. Sublime.` },
+      ];
+  const index = Math.floor(seededNoise(`${resultSeed}-screamer-copy`) * lines.length) % lines.length;
+  return lines[index];
+}
+
+// Named quality stamp for the moment reveal — makes the existing tier gradient visible and fun.
+export function getPayoffStamp(result: MatchResult): { label: string; tone: "screamer" | "great" | "good" | "neutral" | "bad" } {
+  if (result.screamer) return { label: result.assists > 0 ? "OUTRAGEOUS" : "SCREAMER", tone: "screamer" };
+  if (result.goals > 0) return { label: "Clinical", tone: "great" };
+  if (result.assists > 0) return { label: "Assist", tone: "great" };
+  if (result.chancesCreated > 0) return { label: "Chance created", tone: "good" };
+  if (result.outcomeTier === "Great") return { label: "Sharp", tone: "great" };
+  if (result.success) return { label: "Tidy", tone: "neutral" };
+  return { label: result.choiceOutcome === "goal" ? "Off target" : result.choiceOutcome === "assist" ? "Broke down" : "Lost it", tone: "bad" };
+}
+
 export function createMatchResult(state: GameState, moment: MatchMoment, choice: MatchChoice): MatchResult {
   const resultSeed = `${state.activeMatch?.matchSeed ?? "match"}-${moment.id}-${choice.id}-${state.activeMatch?.results.length ?? 0}`;
   const positionModule = getPositionModule(state.activeMatch?.positionGroup ?? state.positionGroup);
@@ -1258,6 +1308,9 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   const positionLabel = positionModule.displayName.toLowerCase();
   const performanceReasons = buildPerformanceReasons(moment, choice, supportAdjustedResult, positionModule, xp);
   const outcomeCopy = getMatchOutcomeCopy(moment, choice, supportAdjustedResult, resultSeed, positionLabel);
+  const screamer = isScreamer(supportAdjustedResult, choice, resultSeed);
+  const finalCore = screamer ? applyScreamerFlair(supportAdjustedResult, choice, resultSeed) : supportAdjustedResult;
+  const screamerCopy = screamer ? getScreamerCopy(moment, choice, resultSeed) : undefined;
   const choiceMeta = {
     choiceId: choice.id,
     choiceLabel: choice.label,
@@ -1266,9 +1319,9 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
 
   if (choice.outcome === "goal") {
     return {
-      title: outcomeCopy.title,
-      detail: outcomeCopy.detail,
-      ...supportAdjustedResult,
+      title: screamerCopy?.title ?? outcomeCopy.title,
+      detail: screamerCopy?.detail ?? outcomeCopy.detail,
+      ...finalCore,
       ...choiceMeta,
       performanceReasons,
       xp,
@@ -1277,9 +1330,9 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
 
   if (choice.outcome === "assist") {
     return {
-      title: outcomeCopy.title,
-      detail: outcomeCopy.detail,
-      ...supportAdjustedResult,
+      title: screamerCopy?.title ?? outcomeCopy.title,
+      detail: screamerCopy?.detail ?? outcomeCopy.detail,
+      ...finalCore,
       ...choiceMeta,
       performanceReasons,
       xp,
@@ -1293,7 +1346,7 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
       : supportAdjustedResult.success
         ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
         : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
-    ...supportAdjustedResult,
+    ...finalCore,
     ...choiceMeta,
     performanceReasons,
     xp,

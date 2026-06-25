@@ -1136,8 +1136,8 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
 }
 
 
-// Pre-choice odds for the UI. Builds the SAME inputs as createMatchResult's resolution call so
-// the displayed band is honest (qualitative, never a %). Keep in sync with createMatchResult.
+// Pre-choice outcome preview for the UI. Builds the SAME inputs as createMatchResult's resolution
+// call so the displayed percentages are honest. Keep in sync with createMatchResult.
 export function getChoiceOutcomePreview(state: GameState, moment: MatchMoment, choice: MatchChoice): ChoiceOutcomePreview {
   const leagueTier = getClubLeagueTier(state.club);
   const aging = getAgingProfile(state);

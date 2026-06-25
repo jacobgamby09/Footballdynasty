@@ -155,38 +155,8 @@ function getMentalityFatigueModifier(mentality) {
   return mentality === "push" ? -2 : 0;
 }
 
-// Pre-choice odds estimate for the UI. Mirrors resolvePlayerChoice's deterministic resultScore
-// EXACTLY but drops the seeded `variance` (±9), then buckets (score − threshold) into a
-// qualitative band. Deliberately qualitative (no %), per the engine's design rule. Keep this in
-// lockstep with resolvePlayerChoice's resultScore terms.
-export function estimateChoiceOdds(input) {
-  const score = averageAttributes(input.attributeValues, input.choice.uses);
-  const fitnessModifier = getReadinessResolutionModifier(input.fitness);
-  const riskPenalty = input.choice.risk === "High" ? 6 : input.choice.risk === "Medium" ? 2 : -2;
-  const managerModifier = input.choice.manager === "Likes" ? 3 : input.choice.manager === "Risky" ? -2 : 0;
-  const opponentModifier = getOpponentResolutionModifier(input.moment, input.opponentProfile);
-  const chanceContext = getChanceQualityContext(input.moment, score, opponentModifier);
-  const roleConfidenceModifier = getRoleConfidenceModifier(input.playerRole);
-  const trustConfidenceModifier = clamp((input.trust - 45) * 0.08, -1, 3);
-  const mentalityModifier = getMentalityResolutionModifier(input.mentality, input.choice.risk);
-  const deterministicScore =
-    score +
-    fitnessModifier +
-    managerModifier +
-    roleConfidenceModifier +
-    trustConfidenceModifier +
-    mentalityModifier +
-    chanceContext.modifier -
-    riskPenalty -
-    opponentModifier;
-  const threshold = input.choice.risk === "High" ? 55 : input.choice.risk === "Medium" ? 50 : 45;
-  const delta = deterministicScore - threshold;
-  // variance is seeded ±9, so these boundaries reflect real likelihood without exposing a number.
-  const band =
-    delta >= 9 ? "Strong" : delta >= 2 ? "Favoured" : delta > -2 ? "Even" : delta > -9 ? "Against the odds" : "Slim chance";
-  return { band, delta: Math.round(delta) };
-}
-
+// Pre-choice outcome probabilities for the UI. Monte-Carlo over the REAL resolver across stable
+// seeds, then bucketed into three consequence-specific outcomes (see getChoiceOutcomeLabels).
 export function estimateChoiceOutcomes(input) {
   const sampleCount = 500;
   const counts = [0, 0, 0];

@@ -1335,3 +1335,199 @@ Design intent:
 - Sponsors help bridge mid-career upgrade walls.
 - Sponsor pressure makes bigger deals a tradeoff instead of a strict upgrade.
 - Sponsor balance must be tested together with minutes, output, recovery and upgrade prices.
+
+## Honours & Legacy System
+
+Honours & Legacy er spillets samlede langsigtede motivationsmotor: hvor alt hvad spilleren og
+dynastiet har opnået bor, og hvor det vigtige karrierevalg mellem *at blive og skrive klubhistorie*
+og *at jagte næste niveau* bliver reelt. Det lever i en redesignet Dynasty-tab, der fungerer som
+spillets museum + achievement-system + langsigtet progression ét sted.
+
+### De fem lag (klar adskillelse, intet overlap)
+
+- **Prestige** — hvor kendt spilleren er globalt. Ubundet score med tiers. *Eksisterende system.*
+- **Club Legacy** — spillerens eftermæle i én specifik klub. En **status**, ikke en valuta.
+- **Player Cabinet** — den aktuelle generations konkrete trofæer + individuelle priser.
+- **Dynasty Cabinet** — familiens samlede samling på tværs af alle generationer.
+- **Legacy Points** — spendable dynasty-valuta optjent ved retirement. *Eksisterende system.*
+
+`Prestige er berømmelse. Club Legacy er eftermæle i én klub. Cabinets er beviser. Legacy Points er valuta.`
+
+Lagene fodrer hinanden (en pris giver både Club Legacy, Prestige og senere Legacy Points), men de
+er adskilte begreber med hver sin overflade.
+
+### Arkitektur-princip: regenererbar verden, persistér kun udfald
+
+Et "ægte" award-show kræver en spillerverden med akkumuleret sæsonstatistik — men vi må **ikke**
+persistere ~12.000 NPC-spillere i save'en (én localStorage-JSON, ~5 MB-loft, synkron stringify).
+
+Princippet, som flugter med den eksisterende verdensmodel (`seedWorld()` er deterministisk og
+verdenen "regenerated around the player on demand"):
+
+- **Regenerér** NPC-trupper deterministisk fra et verdens-seed. Gem dem aldrig.
+- **Persistér kun udfald der betyder noget:** sæsonens vindere, brudte rekorder, klub-season-records,
+  Cabinet-indhold og spillerens egne relationer/historik.
+- **Working-set** pr. sæson er kun spillerens liga (~200–400 NPC'er i hukommelsen, kollapses til
+  vindere/rekorder bagefter). Fjernere ligaer syntetiserer en troværdig vinder fra ligastyrke + seed.
+
+`Regenerér NPC-verdenen fra seed. Persistér kun det der skete, ikke hele verdenen.`
+
+Ingen `Math.random` / `Date.now`: hele NPC-verdenen og event-fordelingen skal være seeded og
+reproducerbar, præcis som resten af `src/`.
+
+### Club Legacy
+
+Hver klub får en permanent relation til spilleren, der fryses (ikke slettes) ved et skifte:
+
+```
+ClubLegacyRecord {
+  clubId
+  seasons
+  appearances
+  starts
+  goals
+  assists
+  averageRating
+  promotions
+  records          // klubrekorder spilleren aktuelt holder
+  honours          // titler/priser vundet i denne klub
+  legacyScore
+  status
+}
+```
+
+Score-kilder — **milepæle og bedrifter skal udgøre hovedparten; almindelige kampe meget lidt:**
+
+- Kampe og sæsoner (lav, med diminishing returns).
+- Mål og assists (vægtet efter position og ligatier).
+- Gode gennemsnitsratings over en sæson.
+- Klubrekorder (stor bonus).
+- Oprykninger (stor bonus) og titler (meget stor bonus).
+- Store præstationer i vigtige kampe (derby/cup/defining moments).
+- Loyalitet gennem flere kontrakter, og at blive trods interesse fra større klubber.
+
+Status-tiers er **relative til klubben** (man kan være Legend i en tier-6-klub uden global berømmelse):
+
+1. New Arrival
+2. First-Team Regular
+3. Fan Favourite
+4. Club Hero
+5. Club Icon
+6. Club Legend
+
+Belønninger skal være **sociale, økonomiske og narrative** — og bygge på *eksisterende* systemer, ikke
+ny bespoke mekanik:
+
+- **Fan Favourite:** lidt mere prestige fra gode hjemmekampe; større tolerance i en dårlig periode; lokale sponsorater åbner.
+- **Club Hero:** bedre kontrakttilbud fra klubben; et **manager-trust-gulv**; større sponsorbonus ved klubrelaterede mål.
+- **Club Icon:** klubben forsøger aktivt at beholde dig; testimonial/særlig kontraktbegivenhed; permanent ikon på klubprofilen; større retirement-score.
+- **Club Legend:** stor Club Legacy-payout ved pension; permanent plads i klubbens historik; fremtidige generationer kan få en *blød* relation til klubben (aldrig en garanteret kontrakt).
+
+`Club Legacy-belønninger må aldrig gøre det mekanisk optimalt at blive i en for svag klub. Den stærke klub skal forblive bedre for OVR og økonomi — valget er hjerte vs. hoved.`
+
+### Club Records
+
+Hver klub starter med **troværdige, skalerede** rekorder — aldrig fra `0` (det føles gratis). Genereres
+deterministisk ud fra klubtier, klubbens alder/historie og sæsonlængde.
+
+Kerne-rekorder (V1 = de fem markeret med ★):
+
+- ★ Flest kampe
+- ★ Flest mål (all-time)
+- ★ Flest assists (all-time)
+- ★ Flest mål i én sæson
+- ★ Højeste sæsonrating
+- Flest sæsoner
+- Flest assists i én sæson
+- Flest oprykninger med klubben
+
+Vist på klubprofilen som konkrete langsigtede mål:
+
+```
+Club Records
+All-time goals       46 / 81
+All-time assists     29 / 54
+Appearances         118 / 203
+Best season goals    18 / 22
+```
+
+`Rekordbelønninger skal have diminishing returns, så det ikke bliver optimalt at farme rekorder i en svag klub for evigt.`
+
+### Player Cabinet & Dynasty Cabinet
+
+**Player Cabinet** — alt den aktuelle generation har opnået. Fryses visuelt ved pension som den
+generations karriere.
+
+- Individuelle priser: Club/League/Young Player of the Year, Top Scorer, Assist Leader, Team of the Season, Goal of the Season, Player of the Month, Record Breaker-medaljer.
+- Holdtrofæer: ligatitler, oprykninger, pokaler (senere internationale/landshold).
+
+**Dynasty Cabinet** — familiens samlede historik på tværs af generationer; hver generation kan åbnes.
+
+```
+Vale Dynasty
+6 generations · 4 league titles · 9 promotions · 2 cup wins
+3 top-scorer awards · 1 League Player of the Year · 7 club records
+```
+
+Dynasty-mål bliver langsigtede achievements: første prof-kontrakt, første ligatitel, første spiller
+med 100 mål, tre generationer som ligamestre, vinde samme liga med far og søn, slå en tidligere
+generations rekord.
+
+Kompakt på Player-screen: `Career Honours — 🏆 3 trophies · ★ 5 individual awards`. Det fulde Player
+Cabinet er undertab under Player; Dynasty Cabinet hører hjemme i Home → Dynasty.
+
+### Awards & sæson-konkurrence
+
+Priser er **datadrevne** og bygger på faktisk akkumuleret NPC-statistik (se arkitektur-princippet),
+ikke en fabrikeret grænse ved sæsonafslutning.
+
+Award-score (deterministisk):
+
+```
+Award score = average rating
+            + goals (position-weighted)
+            + assists
+            + appearances
+            + club performance
+            + league difficulty
+```
+
+Spilleren vinder kun ved at slå feltet. Award-**prestige skaleres med ligatier**: Top Scorer i en
+tier-6-liga giver stor *Club* Legacy, men lille *global* prestige — så grassroots forbliver værdifuldt
+uden at det bliver optimalt at blive nede.
+
+Ved sæsonafslutning: en kort, **skipbar** award-sekvens (klubpriser → liga-statistikvindere → Team of
+the Season → League Player of the Year), hvor trofæet "flyver ind" i Player Cabinet. **Genbruger
+match-reveal-dopaminet** (`useCountUp` + reveal-flair). Man kan tabe med lille margin:
+
+```
+League Player of the Year
+1. Erik Lund   78.4
+2. Jonas Vale  76.9
+```
+
+### Dynasty-tab redesign
+
+Gentænkes som spillets vigtigste langsigtede område med undertabs:
+
+- **Overview** — generationer, samlet prestige, vigtigste bedrifter.
+- **Cabinet** — alle spillerpriser og holdtrofæer.
+- **Records** — familie-, spiller-, liga- og klubrekorder.
+- **Club Legacy** — eftermæle i tidligere og nuværende klubber (frosne + aktiv).
+- **Bloodline** — hver generation og deres fulde karriere.
+- **Upgrades** — permanente dynasty-investeringer (eksisterende Legacy Points-spend).
+
+### Det interessante karrierevalg
+
+Når man er 25, har 67 mål og mangler 15 til klubrekorden, og en bedre klub i en stærkere liga byder:
+transferbeslutningen skifter fra "hvilken klub giver bedst progression?" til **"jager jeg næste niveau,
+eller bliver jeg og skriver klubhistorie?"** En karriere kan ende som Club Legend i barndomsklubben,
+Fan Favourite i en mellemklub og Club Icon i den største klub — en stærk personlig historik.
+
+### Staging
+
+- **V1** (lav risiko, høj værdi): Club Legacy-historik + status-tiers + 5 skalerede klubrekorder · Player Cabinet for **holdtrofæer** (udledes af eksisterende season-results) · sæson-Honours-sekvens · Dynasty-tab redesignet. Individuelle awards mod en seeded ligatærskel.
+- **V2**: letvægts-**ægte** konkurrent-trup for spillerens liga → rigtige award-kapløb, Team of the Season, statistik-tabeller.
+- **V3** (kun hvis nødvendigt): bred NPC-realisme på tværs af alle ligaer — kræver migration fra localStorage til **IndexedDB** (async, større kvote). Hold verdens-slicen separat og regenererbar så dette skift bliver muligt uden at røre kerne-saven.
+
+Detaljeret V1-plan: se `HONOURS_LEGACY_PLAN.md`.

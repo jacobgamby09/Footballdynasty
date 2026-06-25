@@ -472,38 +472,32 @@ export function NextActionCard({ game, onOpenClub }: { game: GameState; onOpenCl
 
 export function AttributesCard({
   attributes,
-  positionModule,
   recentXp,
 }: {
   attributes: Attribute[];
-  positionModule: PositionModule;
   recentXp?: Partial<Record<AttributeKey, number>>;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  const keyAttributes = positionModule.keyAttributes;
-  const visibleAttributes = showAll
-    ? attributes
-    : attributes.filter((attribute) => keyAttributes.includes(attribute.label));
+  const [showDetails, setShowDetails] = useState(false);
 
   return (
     <section className="card">
       <div className="section-heading">
         <div>
-          <span className="metric-label">Key attributes</span>
-          <h2>{showAll ? "Full profile" : `${positionModule.displayName} essentials`}</h2>
+          <span className="metric-label">Attributes</span>
+          <h2>Full profile</h2>
         </div>
         <button
-          className={`icon-button ${showAll ? "is-open" : ""}`}
-          aria-label={showAll ? "Show key attributes" : "View all attributes"}
+          className={`icon-button ${showDetails ? "is-open" : ""}`}
+          aria-label={showDetails ? "Hide attribute details" : "Show attribute details"}
           type="button"
-          onClick={() => setShowAll((value) => !value)}
+          onClick={() => setShowDetails((value) => !value)}
         >
           <ChevronRight size={18} />
         </button>
       </div>
 
       <div className="attribute-list">
-        {visibleAttributes.map((attribute) => {
+        {attributes.map((attribute) => {
           const info = attributeInfo[attribute.label];
           const recentGain = recentXp?.[attribute.label] ?? 0;
           const xpRequirement = getAttributeXpRequirement(attribute);
@@ -519,7 +513,7 @@ export function AttributesCard({
                   <strong>{attribute.value}</strong>
                 </div>
               </div>
-              {showAll && (
+              {showDetails && (
                 <div className="attribute-description">
                   <span>{info.group}</span>
                   <p>{info.description}</p>

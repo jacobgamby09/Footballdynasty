@@ -1641,6 +1641,28 @@ button {
   border-color: rgba(200, 243, 95, 0.2);
 }
 
+.stat-focus-key-mark {
+  margin-left: 5px;
+  color: var(--lime);
+  fill: currentColor;
+  vertical-align: -1px;
+}
+
+.training-key-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 2px;
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.training-key-legend svg {
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
 .stat-focus-button.is-active {
   border-color: var(--border-strong);
   background: rgba(200, 243, 95, 0.11);

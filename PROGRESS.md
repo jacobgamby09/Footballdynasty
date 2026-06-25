@@ -2290,3 +2290,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   $12000 (wait, can't afford), Invest $9000 (buy, prestige-unlocked); dynasty chips read "<n> LP"
   (wait); expanded body shows effect + You-have chips + tight item rows; 0 console errors. Build green.
   No `SAVE_VERSION` change (pure UI).
+
+## 2026-06-25 - Player screen declutter (+ key attrs in Training)
+
+- Moved the "Setup" card (`EquipmentFacilitiesCard` — boots/gym/agent) from the Player screen to the
+  Club screen, since facilities are club-dependent.
+- Removed the duplicate Prestige resource pill from the Header (top of Player screen, under cash) —
+  prestige already has its own `PrestigeStatusCard` lower down.
+- Removed `NextActionCard` from the Player screen (it was filler).
+- Removed the "Key attributes" framing from the Player screen `AttributesCard`: it now shows the full
+  profile plainly ("Attributes" / "Full profile"); the chevron toggles per-attribute descriptions
+  instead of key-only. Dropped the `positionModule` prop (no longer needed there).
+- Made key attributes clear in the Training tab instead: each key stat-focus button now carries a
+  small lime star, with a one-line legend "Key attributes for a <role>" above the grid. The role name
+  comes from a new `getPlayerRoleLabel` helper (Forward -> "Striker", Midfielder -> "Offensive
+  midfielder", else the group displayName).
+- Removed the archetype tag ("Poacher") from the Header identity row; it now shows just the readable
+  role ("Striker"), via `getPlayerRoleLabel`, instead of the short code + archetype.
+- Pure UI; build green; verified in-browser (0 console errors). No `SAVE_VERSION` change.

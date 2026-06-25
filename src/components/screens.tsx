@@ -1,7 +1,7 @@
 import { attributeInfo } from "../data/attributes";
 import { dynastyTrackDefinitions } from "../data/dynastyUpgrades";
 import { supportTrackDefinitions } from "../data/support";
-import { getPositionModule } from "../positionRoles";
+import { getPlayerRoleLabel, getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
 import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
@@ -18,9 +18,9 @@ import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCa
 import { getCountryForClub } from "../systems/world";
 import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
-import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, NextActionCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
+import { AttributesCard, CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
+import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
@@ -34,17 +34,11 @@ export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub
       <ReadinessStrip game={game} />
       <PrestigeStatusCard game={game} />
       <SeasonContextCard game={game} onOpenClub={onOpenClub} />
-      <NextActionCard game={game} onOpenClub={onOpenClub} />
       <SelectionBriefingCard game={game} />
       {game.lastMatch && <LastMatchCard summary={game.lastMatch} onOpenClub={onOpenClub} />}
-      <AttributesCard
-        attributes={game.attributes}
-        positionModule={getPositionModule(game.positionGroup)}
-        recentXp={game.lastTraining?.xp}
-      />
+      <AttributesCard attributes={game.attributes} recentXp={game.lastTraining?.xp} />
       <SeasonSnapshot stats={game.seasonStats} />
       <RelationshipsCard game={game} />
-      <EquipmentFacilitiesCard />
     </>
   );
 }
@@ -406,6 +400,10 @@ export function TrainingScreen({
             );
           })}
         </div>
+        <div className="training-key-legend">
+          <Star size={12} aria-hidden="true" />
+          <span>Key attributes for a {getPlayerRoleLabel(game.positionGroup)}</span>
+        </div>
         <div className="training-stat-grid">
           {game.attributes.map((attribute) => {
             const info = attributeInfo[attribute.label];
@@ -426,7 +424,10 @@ export function TrainingScreen({
                   }
                 }}
               >
-                <span className="stat-focus-name">{attribute.label}</span>
+                <span className="stat-focus-name">
+                  {attribute.label}
+                  {isKeyAttribute && <Star className="stat-focus-key-mark" size={11} aria-label="Key attribute" />}
+                </span>
                 <span className="stat-focus-value">{attribute.value}</span>
                 <small>{info.group}</small>
                 <button
@@ -1834,6 +1835,7 @@ export function ClubScreen({
           </div>
         </div>
       )}
+      <EquipmentFacilitiesCard />
     </section>
   );
 }

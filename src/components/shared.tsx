@@ -1,9 +1,9 @@
 import { initialClub } from "../data/leagues";
 import { getPlayerAge } from "../systems/legacy";
-import { formatPrestigeCompact } from "../systems/prestige";
+import { getPlayerRoleLabel } from "../positionRoles";
 import { getCountryForClub } from "../systems/world";
 import { clamp } from "../utils";
-import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, Sparkles, UserRound } from "lucide-react";
+import { BadgeDollarSign, Building2, ChevronRight, ChevronsRight, Dumbbell, Home, Shirt, UserRound } from "lucide-react";
 import { useMemo } from "react";
 import type { Country, FixtureResult, GameState, LastMatchSummary, LeagueTableRow, MatchState, NavKey } from "../types";
 import type { ReactNode } from "react";
@@ -33,8 +33,7 @@ export function Header({ game, onOpenClub }: { game: GameState; onOpenClub?: (id
         <h1>{game.player.firstName} {game.player.lastName}</h1>
         <div className="identity-row">
           <span>{getPlayerAge(game)} yrs</span>
-          <span>{game.positionCode}</span>
-          <span>{game.archetype}</span>
+          <span>{getPlayerRoleLabel(game.positionGroup)}</span>
         </div>
         <ClubLink className="club-chip" clubIdentity={game.club.clubId ?? game.club.shortCode} onOpenClub={onOpenClub}>
           {country ? <CountryFlag country={country} /> : <span className="club-dot" />}
@@ -44,7 +43,6 @@ export function Header({ game, onOpenClub }: { game: GameState; onOpenClub?: (id
 
       <div className="resource-stack" aria-label="Resources">
         <ResourcePill icon={<BadgeDollarSign size={14} />} value={`$${game.cash}`} />
-        <ResourcePill icon={<Sparkles size={14} />} value={formatPrestigeCompact(game.prestige)} />
       </div>
     </header>
   );

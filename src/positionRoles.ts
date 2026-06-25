@@ -285,3 +285,14 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
 export function getPositionModule(positionGroup: PositionGroup) {
   return positionModules[positionGroup];
 }
+
+// Player-facing role name (e.g. "Striker") shown in the UI, distinct from the broader group
+// displayName ("Forward") used internally. Falls back to the group displayName.
+const playerRoleLabels: Partial<Record<PositionGroup, string>> = {
+  Forward: "Striker",
+  Midfielder: "Offensive midfielder",
+};
+
+export function getPlayerRoleLabel(positionGroup: PositionGroup): string {
+  return playerRoleLabels[positionGroup] ?? positionModules[positionGroup].displayName;
+}

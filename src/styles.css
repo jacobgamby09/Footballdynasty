@@ -2384,8 +2384,8 @@ button {
 .match-choice {
   width: 100%;
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: 13px;
   color: var(--text);
@@ -2400,6 +2400,11 @@ button {
   font-size: 15px;
 }
 
+.match-choice-heading {
+  display: grid;
+  gap: 3px;
+}
+
 .match-choice small {
   color: var(--muted);
   font-size: 11px;
@@ -2411,10 +2416,55 @@ button {
   outline: none;
 }
 
+.choice-outcome-preview {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.choice-outcome-label {
+  padding: 7px 9px 5px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.choice-outcome-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 31px;
+  padding: 6px 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.choice-outcome-row strong {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.choice-outcome-row.tone-negative strong {
+  color: var(--orange);
+}
+
+.choice-outcome-row.tone-decisive strong {
+  color: var(--lime);
+}
+
 .choice-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.choice-tags-minimal {
+  justify-content: flex-end;
 }
 
 .choice-tags em {
@@ -2432,30 +2482,6 @@ button {
   background: rgba(241, 138, 54, 0.1);
 }
 
-/* Odds band (Step 1: visible risk/reward). Overrides the first-child default. */
-.choice-tags em.choice-odds {
-  font-weight: 900;
-}
-.choice-tags em.odds-strong {
-  color: #7ee08a;
-  background: rgba(126, 224, 138, 0.14);
-}
-.choice-tags em.odds-good {
-  color: var(--lime);
-  background: rgba(200, 243, 95, 0.12);
-}
-.choice-tags em.odds-even {
-  color: var(--gold);
-  background: rgba(244, 200, 74, 0.12);
-}
-.choice-tags em.odds-weak {
-  color: var(--orange);
-  background: rgba(241, 138, 54, 0.12);
-}
-.choice-tags em.odds-long {
-  color: #f0736a;
-  background: rgba(240, 115, 106, 0.13);
-}
 .choice-tags em.choice-manager.manager-like {
   color: var(--lime);
   background: rgba(200, 243, 95, 0.1);

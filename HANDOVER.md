@@ -5,8 +5,8 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-24 (through match agency, The Feed screen, per-career
-variety). Branch `main`, all work committed + pushed (`273e4d2` is HEAD).
+_Last updated: 2026-06-25 (through percentage-based match-choice outcomes).
+Branch `main`; the latest outcome-preview work is currently uncommitted.
 `SAVE_VERSION` **24**._
 
 **Current onboarding note:** new games start with Create Dynasty before country
@@ -69,6 +69,13 @@ start, so season-lab OVR is byte-identical (curve is potential-bound, not club-b
 **D. Odds-band rename** (`273e4d2`): worst band `"Long shot"` → `"Slim chance"`
 (read as a long-range shot). String only, in `types.ts` / `matchEngineCore.d.ts` /
 `matchEngineCore.js`; the `odds-long` tone CSS class is unchanged.
+
+**E. Outcome distributions replace odds bands** (working tree, 2026-06-25):
+`estimateChoiceOutcomes` previews the real resolver over 500 stable seeds and
+returns three consequence-specific outcomes rounded to 5% steps and totaling
+100%. The match-choice UI removes raw Avg, qualitative odds, risk and reward
+chips; it now shows `Stats used`, the three outcome percentages and one coach
+preference. No save bump.
 
 **Verified this session:** `npm run build` green; `balance:match` (incl. a mentality
 sweep), `balance:season` (OVR 57/67 unchanged), `balance:feed` (range [1,5]) and

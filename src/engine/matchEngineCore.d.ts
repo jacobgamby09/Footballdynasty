@@ -139,7 +139,7 @@ export function resolvePlayerChoice(input: {
   decisiveOutcome: boolean;
 };
 
-export function estimateChoiceOdds(input: {
+export function estimateChoiceOutcomes(input: {
   moment: EngineMoment;
   choice: EngineChoice;
   attributeValues: Record<string, number>;
@@ -149,8 +149,11 @@ export function estimateChoiceOdds(input: {
   opponentProfile?: OpponentProfile;
   mentality?: EngineMentality;
 }): {
-  band: "Strong" | "Favoured" | "Even" | "Against the odds" | "Slim chance";
-  delta: number;
+  outcomes: Array<{
+    label: string;
+    percentage: number;
+    tone: "negative" | "neutral" | "decisive";
+  }>;
 };
 
 export function seededNoise(seed: string): number;

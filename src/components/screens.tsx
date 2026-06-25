@@ -4,7 +4,7 @@ import { supportTrackDefinitions } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getAttributeXpRequirement } from "../systems/attributeXp";
 import { formatSigned, getMatchupText, getMoraleLabel, getTopXpEntry, getTrainingIntensityLabel, getUniqueItems, sumXp } from "../systems/formatting";
-import { createFollowUpMoment, getAppearanceText, getChoiceAttributeAverage, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
+import { createFollowUpMoment, getAppearanceText, getLiveCommentary, getLiveMatchReadiness, getLiveMomentum, getLivePlayerStats, getMatchFitnessDelta, getPitchStatus, getPreMatchEntryPlan, getPrimaryChanceQuality, getReadableExplanations, getRecentTimelineItems, getResultConsequence, getResultExecutionText, getResultPopupLabel, getResultPopupTone, getResultVerdictText, getTimelineScore, summarizeMatchResults, summarizeSimEvents } from "../systems/match";
 import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
@@ -23,7 +23,7 @@ import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRo
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ChoiceOdds, ChoiceOddsBand, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
@@ -643,18 +643,6 @@ export function PreMatchScreen({
 }
 
 
-function getChoiceOddsTone(band: ChoiceOddsBand) {
-  return band === "Strong"
-    ? "strong"
-    : band === "Favoured"
-      ? "good"
-      : band === "Even"
-        ? "even"
-        : band === "Against the odds"
-          ? "weak"
-          : "long";
-}
-
 function getManagerLeanLabel(manager: MatchChoice["manager"]) {
   return manager === "Likes" ? "Coach likes" : manager === "Risky" ? "Coach wary" : "Coach neutral";
 }
@@ -664,12 +652,11 @@ function getManagerLeanTone(manager: MatchChoice["manager"]) {
 }
 
 export function MatchMomentScreen({
-  attributes,
   match,
   matchSpeed,
   mentality,
   onSetMentality,
-  getChoiceOdds,
+  getChoiceOutcomePreview,
   onChoose,
   onContinue,
   onSetMatchSpeed,
@@ -678,12 +665,11 @@ export function MatchMomentScreen({
   onSkipToFullTime,
   onOpenClub,
 }: {
-  attributes: Attribute[];
   match: MatchState;
   matchSpeed: MatchSpeed;
   mentality: MatchMentality;
   onSetMentality: (mentality: MatchMentality) => void;
-  getChoiceOdds: (moment: MatchMoment, choice: MatchChoice) => ChoiceOdds;
+  getChoiceOutcomePreview: (moment: MatchMoment, choice: MatchChoice) => ChoiceOutcomePreview;
   onChoose: (choice: MatchChoice) => void;
   onContinue: () => void;
   onSetMatchSpeed: (speed: MatchSpeed) => void;
@@ -855,19 +841,23 @@ export function MatchMomentScreen({
       {isPlayerMoment && !match.currentResult && (
         <div className="card choice-preview">
           {event.choices.map((choice) => {
-            const odds = getChoiceOdds(event, choice);
+            const preview = getChoiceOutcomePreview(event, choice);
             return (
               <button className="match-choice" key={choice.id} type="button" onClick={() => onChoose(choice)}>
-                <span>
+                <span className="match-choice-heading">
                   <strong>{choice.label}</strong>
-                  <small>
-                    Uses: {choice.uses.join(" + ")} - Avg {getChoiceAttributeAverage(attributes, choice)}
-                  </small>
+                  <small>Stats used: {choice.uses.join(" + ")}</small>
                 </span>
-                <span className="choice-tags">
-                  <em className={`choice-odds odds-${getChoiceOddsTone(odds.band)}`}>{odds.band}</em>
-                  <em>{choice.risk} risk</em>
-                  <em>{choice.reward}</em>
+                <span className="choice-outcome-preview">
+                  <span className="choice-outcome-label">Possible outcomes</span>
+                  {preview.outcomes.map((outcome) => (
+                    <span className={`choice-outcome-row tone-${outcome.tone}`} key={outcome.label}>
+                      <span>{outcome.label}</span>
+                      <strong>{outcome.percentage}%</strong>
+                    </span>
+                  ))}
+                </span>
+                <span className="choice-tags choice-tags-minimal">
                   <em className={`choice-manager manager-${getManagerLeanTone(choice.manager)}`}>{getManagerLeanLabel(choice.manager)}</em>
                 </span>
               </button>
@@ -892,11 +882,7 @@ export function MatchMomentScreen({
             <div className="result-reason-grid">
               <div>
                 <span>Attributes used</span>
-                <strong>
-                  {selectedChoice
-                    ? `${selectedChoice.uses.join(" + ")} · Avg ${getChoiceAttributeAverage(attributes, selectedChoice)}`
-                    : "Match attributes"}
-                </strong>
+                <strong>{selectedChoice ? selectedChoice.uses.join(" + ") : "Match attributes"}</strong>
               </div>
               <div>
                 <span>Chance context</span>

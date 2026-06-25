@@ -618,7 +618,7 @@ Structure:
 - match header: minute, score, opponent, player rating
 - situation card
 - 2-4 choice buttons
-- small visible hints: risk, reward, relevant stats
+- relevant stats and a compact outcome distribution
 - result feedback
 
 Choice buttons should be compact but readable.
@@ -633,21 +633,20 @@ Choices:
 - Round Keeper
 - Square Pass
 
-Each choice can show:
+Each choice should show:
 
-- relevant attribute icons/labels
-- risk level
-- possible rating impact
+- `Stats used`, without a raw average that can be mistaken for success chance
+- three consequence-specific possible outcomes
+- percentages rounded to 5% steps and adjusted to total 100%
+- one restrained coach-preference note
 
-Open decision:
+The percentages preview the real resolver across its possible seeded variance.
+They include attributes relative to league level, fitness, trust, role, opponent
+profile, moment difficulty and match mentality. They are not a separate UI-only
+formula.
 
-- Exact percentages should not be shown in the first version.
-
-Locked starting point:
-
-- Show relevant stats and risk/reward labels.
-- Avoid exact probabilities so there is no obvious mathematically correct choice.
-- Let player build, match context, fatigue and tactical goals influence what feels right.
+Do not also show qualitative odds, explicit risk or vague reward chips. The
+outcome distribution already communicates the trade-off more clearly.
 
 Example:
 
@@ -786,8 +785,7 @@ Start med:
 - Player screen as the default/main screen
 - Home as the player's private base, facilities and legacy space
 - bottom nav with four small buttons and one large central advance-time button
-- match choice hints based on stats/risk/reward, not percentages
-- no exact percentages in the first prototype
+- match choices based on used stats and 5%-rounded possible outcomes
 - compact stylized avatar
 - one main Player screen scroll with expandable detail sections lower on the page
 
@@ -798,7 +796,7 @@ Start med:
 - The first prototype uses a compact stylized avatar, not a large realistic portrait.
 - Lime green is the dominant accent color.
 - Gold is reserved for prestige, rating and special moments.
-- Match choices show relevant stats and risk/reward, not exact percentages.
+- Match choices show relevant stats and three 5%-rounded possible outcomes that total 100%.
 - Bottom navigation has four smaller destinations plus a larger central advance-time button.
 - Player screen uses one vertical scroll with critical information in the first viewport and expandable secondary detail sections below.
 

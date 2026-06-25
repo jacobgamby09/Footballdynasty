@@ -15,7 +15,7 @@ import { applyTrainingWeek, getCurrentTrainingFocuses, getTrainingFocusCapacity 
 import { acceptContractOfferState, advanceFreeAgentMarketState, enterFreeAgentMarketState, getOfferKey } from "./systems/contracts";
 import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
-import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getChoiceOdds, simulateRemainingPlayerMoments } from "./systems/match";
+import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getChoiceOutcomePreview, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
 import { findClubByIdentity } from "./systems/clubProfile";
 import { declineTransferWindowOffer } from "./systems/transferWindow";
@@ -807,11 +807,10 @@ function App() {
           )}
           {activeScreen === "match" && game.activeMatch && (
             <MatchMomentScreen
-              attributes={game.attributes}
               match={game.activeMatch}
               mentality={game.matchMentality}
               onSetMentality={setMatchMentality}
-              getChoiceOdds={(moment, choice) => getChoiceOdds(game, moment, choice)}
+              getChoiceOutcomePreview={(moment, choice) => getChoiceOutcomePreview(game, moment, choice)}
               onChoose={resolveMatchChoice}
               onContinue={continueMatch}
               onSetMatchSpeed={setMatchSpeed}

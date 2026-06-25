@@ -187,6 +187,32 @@ export function estimateChoiceOdds(input) {
   return { band, delta: Math.round(delta) };
 }
 
+export function estimateChoiceOutcomes(input) {
+  const sampleCount = 500;
+  const counts = [0, 0, 0];
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const result = resolvePlayerChoice({
+      ...input,
+      resultSeed: `outcome-preview-${input.moment.id}-${input.choice.id}-${index}`,
+    });
+    counts[getChoiceOutcomeIndex(input.choice, result)] += 1;
+  }
+
+  const percentages = roundOutcomePercentages(
+    counts.map((count) => (count / sampleCount) * 100),
+  );
+  const labels = getChoiceOutcomeLabels(input.choice.outcome);
+
+  return {
+    outcomes: labels.map((label, index) => ({
+      label,
+      percentage: percentages[index],
+      tone: index === 0 ? "negative" : index === labels.length - 1 ? "decisive" : "neutral",
+    })),
+  };
+}
+
 export function resolvePlayerChoice(input) {
   const score = averageAttributes(input.attributeValues, input.choice.uses);
   const fitnessModifier = getReadinessResolutionModifier(input.fitness);
@@ -297,6 +323,67 @@ export function resolvePlayerChoice(input) {
     chancesCreated: 0,
     decisiveOutcome,
   };
+}
+
+function getChoiceOutcomeIndex(choice, result) {
+  if (choice.outcome === "goal") {
+    if (result.goals > 0) return 2;
+    return result.success ? 1 : 0;
+  }
+  if (choice.outcome === "assist") {
+    if (result.assists > 0) return 2;
+    return result.chancesCreated > 0 ? 1 : 0;
+  }
+  if (choice.outcome === "trust") {
+    if (!result.success) return 0;
+    return result.outcomeTier === "Great" ? 2 : 1;
+  }
+  if (!result.success) return 0;
+  return result.outcomeTier === "Great" ? 2 : 1;
+}
+
+function getChoiceOutcomeLabels(outcome) {
+  if (outcome === "goal") {
+    return ["Missed or blocked", "Dangerous attempt", "Goal"];
+  }
+  if (outcome === "assist") {
+    return ["Move breaks down", "Chance created", "Assist"];
+  }
+  if (outcome === "trust") {
+    return ["Move loses momentum", "Possession retained", "Excellent control"];
+  }
+  return ["Duel lost", "Defensive action", "Turnover won"];
+}
+
+function roundOutcomePercentages(rawPercentages) {
+  const rounded = rawPercentages.map((value) =>
+    value > 0 ? Math.max(5, Math.round(value / 5) * 5) : 0,
+  );
+
+  while (rounded.reduce((sum, value) => sum + value, 0) !== 100) {
+    const total = rounded.reduce((sum, value) => sum + value, 0);
+    if (total < 100) {
+      const addIndex = rawPercentages
+        .map((value, index) => ({ index, gap: value - rounded[index] }))
+        .sort((a, b) => b.gap - a.gap || a.index - b.index)[0].index;
+      rounded[addIndex] += 5;
+      continue;
+    }
+
+    const removable = rounded
+      .map((value, index) => ({
+        index,
+        excess: value - rawPercentages[index],
+        canRemove: value > (rawPercentages[index] > 0 ? 5 : 0),
+      }))
+      .filter((item) => item.canRemove)
+      .sort((a, b) => b.excess - a.excess || b.index - a.index)[0];
+
+    if (!removable) break;
+    rounded[removable.index] -= 5;
+  }
+
+  return rounded;
 }
 
 function getReadinessResolutionModifier(fitness) {

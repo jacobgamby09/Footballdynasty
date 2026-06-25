@@ -609,7 +609,10 @@ Chance quality should be generated from:
 - pressure from defender
 - match state
 
-The player should not see exact percentages, but UI can show terms like "Clear chance" or "Under pressure".
+Internal chance quality can still use terms such as "Clear chance" or "Under
+pressure". At the decision point, the player sees a three-outcome probability
+preview rounded to 5% steps. It is produced by sampling the real choice resolver,
+not by exposing one internal chance-quality percentage.
 
 ## Resolution Formula V2
 

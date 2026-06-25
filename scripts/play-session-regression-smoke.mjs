@@ -45,6 +45,7 @@ const require = createRequire(import.meta.url);
 const { createCareerForCountry } = require(path.join(outSrc, "state", "initialState.js"));
 const {
   createMatch,
+  getChoiceOutcomePreview,
   getFollowUpTemplate,
   getLiveCommentary,
   getLiveMomentum,
@@ -172,6 +173,19 @@ const directedMoments = riskyStarter.events.filter((event) => event.type === "pl
 if (directedMoments.some((moment) => !moment.directorPhase || !moment.narrativeTags?.length)) {
   throw new Error("Player moments are missing Match Director phase metadata.");
 }
+const previewMoment = directedMoments[0];
+const previewChoice = previewMoment?.choices[0];
+const choiceOutcomePreview = previewMoment && previewChoice
+  ? getChoiceOutcomePreview({ ...riskyState, activeMatch: riskyStarter }, previewMoment, previewChoice)
+  : undefined;
+if (
+  !choiceOutcomePreview ||
+  choiceOutcomePreview.outcomes.length !== 3 ||
+  choiceOutcomePreview.outcomes.reduce((sum, outcome) => sum + outcome.percentage, 0) !== 100 ||
+  choiceOutcomePreview.outcomes.some((outcome) => outcome.percentage % 5 !== 0)
+) {
+  throw new Error("Choice outcome preview must expose three 5%-rounded outcomes totaling 100%.");
+}
 const lastSimIndex = riskyStarter.events.reduce(
   (latest, event, index) => event.type === "player_moment" ? latest : index,
   -1,
@@ -227,6 +241,7 @@ console.log(JSON.stringify({
   momentLibrarySize: expandedPool.length,
   metadataMomentCount: metadataMoments.length,
   chainRouteCount: chainRoutes.size,
+  choiceOutcomePreview: choiceOutcomePreview.outcomes,
   momentum: momentum.label,
   commentary: commentary.title,
   liveStats,

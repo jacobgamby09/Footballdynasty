@@ -2232,3 +2232,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   match seeds, same-club careers still differ in match seed, and the no-seed fallback is stable.
   In-browser a fresh DK career started at Kolding Town with a random `careerSeed`, save v24, 0 console
   errors. Build + smoke + season + feed labs green.
+
+## 2026-06-25 - Match choices use real outcome distributions
+
+- Replaced qualitative odds, raw attribute averages, risk chips and vague reward
+  chips with three consequence-specific possible outcomes per choice.
+- `estimateChoiceOutcomes` samples the actual deterministic
+  `resolvePlayerChoice` path across 500 stable preview seeds, so attributes,
+  fitness, trust, role, opponent, moment difficulty and mentality all affect the
+  displayed distribution without maintaining a second probability formula.
+- Percentages are rounded to 5% steps, preserve a visible 5% floor for possible
+  rare outcomes and are rebalanced to total exactly 100%.
+- Outcome labels adapt to the action: shots show miss/attempt/goal, teamplay
+  shows breakdown/chance/assist, and control or defensive actions use relevant
+  non-scoring consequences.
+- Choice UI now shows only title, `Stats used`, possible outcomes and the coach
+  preference. The post-choice result also removes the misleading `Avg` value.
+- Added a play-session smoke assertion for three outcomes, 5% rounding and a
+  100% total. No save-shape change.

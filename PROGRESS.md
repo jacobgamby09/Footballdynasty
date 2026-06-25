@@ -2250,3 +2250,22 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   preference. The post-choice result also removes the misleading `Avg` value.
 - Added a play-session smoke assertion for three outcomes, 5% rounding and a
   100% total. No save-shape change.
+
+## 2026-06-25 - Fitness: full rest when benched + no starting on empty legs
+
+- Two linked fitness issues: (1) sitting out a match barely recovered fitness (a flat +14 matchday
+  bump), and (2) you could be selected to START with low fitness.
+- Recovery (`finishMatchState`): sitting out is now a full rest week — projected fitness is lifted to
+  the recovery ceiling (`getRecoveryFitnessCeiling`: 70 with no recovery investment, climbing toward
+  88), so you come back ~70-80% instead of staying low. Counts as rest when you weren't picked to play
+  (`playerRole === "Bench"`) OR logged no minutes, so a token garbage-time cameo still rests (fixes a
+  trap where a benched low-fitness player got a 10-min cameo and never recovered).
+- Selection (`capRoleByFitness`): you now need ~60%+ ("Ready"/"Sharp") to start. Risky (20-40%) ->
+  Bench (sit out and recover), Tired (40-60%) -> Impact Sub (can come on, can't start), Not match fit
+  (<20%) -> Bench. Previously Tired could still be a Rotation Starter and Risky an Impact Sub.
+- Together this forms a self-correcting rotation/rest loop: heavy minutes drag you below 60 -> you get
+  rotated to the bench -> a rest week restores you to your conditioning ceiling -> you start again.
+- Verified by probe: roles cap correctly across fitness 15/30/50/65/85 (start only at >=60); benched
+  players at 20-35% recover to 70 even with a cameo; a Tired sub who plays stays put. Build + smoke
+  green; season-lab OVR byte-identical (lab reimplements selection/recovery; the OVR curve is
+  unaffected). No `SAVE_VERSION` change.

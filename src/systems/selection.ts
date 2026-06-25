@@ -245,16 +245,20 @@ export function getPlayerMatchRole(selectionScore: number): UpcomingMatch["playe
 
 
 function capRoleByFitness(role: UpcomingMatch["playerRole"], availability: FitnessAvailability): UpcomingMatch["playerRole"] {
+  // You need to be reasonably fresh (~60%+, "Ready"/"Sharp") to start. Below that you drop out of
+  // the starting XI so you rest and recover instead of starting on empty legs.
   if (availability === "Not match fit") {
     return "Bench";
   }
 
-  if (availability === "Risky" && (role === "Starter" || role === "Rotation Starter")) {
-    return "Impact Sub";
+  // Very low (20-40%): sit it out entirely and recover — never play on near-empty legs.
+  if (availability === "Risky") {
+    return "Bench";
   }
 
-  if (availability === "Tired" && role === "Starter") {
-    return "Rotation Starter";
+  // Tired (40-60%): not fresh enough to start, but can still come off the bench.
+  if (availability === "Tired") {
+    return role === "Starter" || role === "Rotation Starter" ? "Impact Sub" : role;
   }
 
   return role;

@@ -66,7 +66,12 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const recoveryFloor = getRecoveryFitnessFloor(effectiveRecoveryBaselineLevel, recoveryBreakthroughs);
   // Elite conditioning lifts the fitness ceiling (stay fresher for longer) — non-OVR.
   const recoveryCeiling = Math.min(99, getRecoveryFitnessCeiling(effectiveRecoveryBaselineLevel, recoveryBreakthroughs) + getEliteConditioningCeilingBonus(state));
-  const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, projectedFitness, recoveryFloor), recoveryCeiling);
+  // Sitting out the match is a full rest week: recover up to your conditioning ceiling (70 with no
+  // recovery investment, climbing toward 88), not just the small matchday bump. Counts as rest if you
+  // weren't picked to play (Bench role) OR logged no minutes — a token garbage-time cameo still rests.
+  const satOut = match ? (match.playerRole === "Bench" || getPlayerMinutesPlayed(match) <= 0) : false;
+  const restedProjection = satOut ? Math.max(projectedFitness, recoveryCeiling) : projectedFitness;
+  const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, restedProjection, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
   const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
   const playerAppeared = didPlayerAppear(match);

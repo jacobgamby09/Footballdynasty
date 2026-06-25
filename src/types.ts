@@ -429,10 +429,6 @@ export type DynastyTrackDefinition = {
   effect: string;
 };
 
-// Player-controlled match approach, set pre-match and adjustable live. Biases the Director's
-// moment mix and the resolution math (see matchEngineCore / matchDirector). "balanced" is neutral.
-export type MatchMentality = "push" | "balanced" | "hold";
-
 export type GameState = {
   week: number;
   player: PlayerIdentity;
@@ -449,7 +445,6 @@ export type GameState = {
   trainingFocuses: AttributeKey[];
   trainingCompletedWeek: number;
   intensity: Intensity;
-  matchMentality: MatchMentality;
   // Per-career entropy, set once at creation and persisted. Gives each fresh career a different
   // starting club (among the weakest few) and different match-moment selection, while keeping
   // replay and the balance labs deterministic (they read the stored seed / omit it for a fixed one).
@@ -476,7 +471,7 @@ export type GameState = {
 };
 
 export type SavePayload = {
-  version: 24;
+  version: 25;
   game: GameState;
 };
 

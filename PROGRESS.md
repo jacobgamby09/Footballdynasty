@@ -2372,3 +2372,20 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   and `getUniqueItems` (formatting.ts) — they only powered the removed performance cards.
 - Smoke updated: the manager-brief probe object now includes `chanceQualities`.
 - Build + smoke green. No `SAVE_VERSION` change.
+
+## 2026-06-25 - Remove the mentality dial (match engine takes over)
+
+- Removed the player-controlled mentality dial (push/balanced/hold) entirely — it had a real but
+  subtle effect and we'd rather let the match engine's own simulation drive resolution for now.
+- Reverted all of it: `matchMentality` off `GameState` + `createCareerForCountry`; the resolution
+  hooks in `resolvePlayerChoice` (`getMentalityResolutionModifier` / fatigue / hold trust-bump), the
+  `chooseAutoSimChoice` bias, and the `mentalityCategoryWeights` director hook in `matchDirector.js`;
+  the `mentality?` engine inputs + `EngineMentality` in both `.d.ts`; the `mentality` threading in
+  `match.ts` (director plan, outcome preview, resolve, auto-sim); the `MentalityDial` component +
+  pre-match card + live `match-mentality-bar` + all `.mentality-*` CSS; `setMatchMentality` in App.tsx;
+  and the lab mentality sweep.
+- Because "balanced" was always a strict no-op, removing the dial returns the engine to exactly the
+  baseline the OVR curve is tuned for — so the design targets are preserved automatically. Confirmed:
+  season-lab OVR byte-identical (57.20 / 67.39 / 67.11 / 63.83), match + feed labs unchanged, smoke
+  green, build green, in-browser pre-match/match render clean (0 console errors).
+- `SAVE_VERSION` 24 -> 25 (dropped the persisted `matchMentality` field).

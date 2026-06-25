@@ -23,7 +23,7 @@ import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRo
 import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMentality, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties } from "react";
 
 export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
@@ -507,42 +507,6 @@ export function TrainingScreen({
 }
 
 
-const MENTALITY_OPTIONS: { id: MatchMentality; label: string; hint: string }[] = [
-  { id: "hold", label: "Hold", hint: "See it out - control & safer plays" },
-  { id: "balanced", label: "Balanced", hint: "Play it as it comes" },
-  { id: "push", label: "Push", hint: "Chase it - attacking & bolder plays" },
-];
-
-function MentalityDial({
-  mentality,
-  onSetMentality,
-  compact,
-}: {
-  mentality: MatchMentality;
-  onSetMentality: (mentality: MatchMentality) => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`mentality-dial${compact ? " mentality-dial-compact" : ""}`}>
-      {!compact && <span className="metric-label">Match approach</span>}
-      <div className="mentality-options" role="group" aria-label="Match approach">
-        {MENTALITY_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`mentality-option mentality-${option.id}${mentality === option.id ? " is-active" : ""}`}
-            aria-pressed={mentality === option.id}
-            onClick={() => onSetMentality(option.id)}
-          >
-            <span className="mentality-option-label">{option.label}</span>
-            {!compact && <span className="mentality-option-hint">{option.hint}</span>}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function getObjectiveSourceLabel(_source: MatchObjective["source"]): string {
   return "Sponsor";
 }
@@ -558,13 +522,9 @@ function formatObjectiveReward(reward: MatchObjective["reward"]): string {
 
 export function PreMatchScreen({
   match,
-  mentality,
-  onSetMentality,
   onOpenClub,
 }: {
   match: MatchState;
-  mentality: MatchMentality;
-  onSetMentality: (mentality: MatchMentality) => void;
   onOpenClub?: (identity: string) => void;
 }) {
   const matchupDelta = match.teamStrength - match.opponentStrength;
@@ -619,11 +579,6 @@ export function PreMatchScreen({
         </div>
       )}
 
-      <div className="card pre-match-mentality-card">
-        <span className="metric-label">Your approach</span>
-        <p className="mentality-blurb">Set how you'll play it. You can change this live during the match.</p>
-        <MentalityDial mentality={mentality} onSetMentality={onSetMentality} />
-      </div>
 
       <div className="card">
         <span className="metric-label">Opponent context</span>
@@ -654,8 +609,6 @@ function getManagerLeanTone(manager: MatchChoice["manager"]) {
 export function MatchMomentScreen({
   match,
   matchSpeed,
-  mentality,
-  onSetMentality,
   getChoiceOutcomePreview,
   onChoose,
   onContinue,
@@ -667,8 +620,6 @@ export function MatchMomentScreen({
 }: {
   match: MatchState;
   matchSpeed: MatchSpeed;
-  mentality: MatchMentality;
-  onSetMentality: (mentality: MatchMentality) => void;
   getChoiceOutcomePreview: (moment: MatchMoment, choice: MatchChoice) => ChoiceOutcomePreview;
   onChoose: (choice: MatchChoice) => void;
   onContinue: () => void;
@@ -729,13 +680,6 @@ export function MatchMomentScreen({
       )}
 
       {!isPlayerMoment && <MatchStatsCard stats={matchStats} />}
-
-      {!match.isComplete && (
-        <div className="match-mentality-bar">
-          <span className="metric-label">Approach</span>
-          <MentalityDial mentality={mentality} onSetMentality={onSetMentality} compact />
-        </div>
-      )}
 
       {!isPlayerMoment && (
         <div className={`match-role-card ${pitchStatus.tone}`}>

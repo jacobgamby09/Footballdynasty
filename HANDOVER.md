@@ -7,7 +7,7 @@ map, not the territory.
 
 _Last updated: 2026-06-25 (through percentage-based match-choice outcomes).
 Branch `main`; the latest outcome-preview work is currently uncommitted.
-`SAVE_VERSION` **24**._
+`SAVE_VERSION` **25**._
 
 **Current onboarding note:** new games start with Create Dynasty before country
 selection (first name, family/dynasty last name, nationality, position — Striker
@@ -35,12 +35,10 @@ All on `main`, committed and pushed (`60d4b09` → `273e4d2`). Per-step detail w
 - **Step 3 · manager comply/defy** (`325d321`): a unified `managerTrustShift` in
   `resolvePlayerChoice` — defy (`Risky`) +2 decisive / −3 fail (doghouse), obey
   (`Likes`) +1; explanation beats ("Backed your instinct" / "Coach unhappy").
-- **Step 2 · mentality dial** (`2214d36`, SAVE→22): `matchMentality:
-  "push"|"balanced"|"hold"` on `GameState`. Director hook
-  (`matchDirector.js` `mentalityCategoryWeights`) shifts the moment mix; resolution
-  hook (`getMentalityResolutionModifier`/`getMentalityFatigueModifier`, mirrored
-  into `estimateChoiceOdds`) + `chooseAutoSimChoice` bias. UI = `MentalityDial`
-  (full on pre-match, compact live). Balanced is a strict no-op.
+- **Step 2 · mentality dial — REMOVED 2026-06-25.** Was shipped (push/balanced/hold) then pulled at
+  the user's request (effect real but subtle; let the engine simulate). Fully reverted; since balanced
+  was a strict no-op, the engine is back to the baseline the OVR curve is tuned for. No `matchMentality`
+  / `MentalityDial` / mentality engine hooks remain.
 - **Step 4 · personal objective = sponsor's matchday target** (`3322be3`, reworked
   by `f077777`, SAVE→23): originally fabricated objectives, but per user that felt
   forced, so it now SURFACES the existing sponsor objective and only when a sponsor
@@ -156,7 +154,7 @@ save-resume, often without an obvious error.
    `src/state/save.ts` (and the matching literal type in `src/types.ts →
    SavePayload.version`). Saves are **disposable** — a version bump discards old
    saves and the app falls back to onboarding. That is the intended, accepted
-   behaviour during development. Currently **`SAVE_VERSION = 24`**. The loader
+   behaviour during development. Currently **`SAVE_VERSION = 25`**. The loader
    intentionally accepts only the exact current version.
 
 ---
@@ -494,7 +492,7 @@ This is the practical starting point for Claude. Everything below is currently
 - UI: a `Feed` Home subtab (chronological week groups) AND a dedicated weekly
   `NewsFeedScreen` in the post-match flow (see section 0B). `generateWeeklyFeed`
   now produces 1-5 stories by "meat", not a fixed 2-3.
-- Save shape is version 24. Old development saves intentionally reset.
+- Save shape is version 25. Old development saves intentionally reset.
 - Main files: `src/systems/feed.ts`, `src/components/screens.tsx`,
   `src/state/initialState.ts`, `src/state/save.ts`, `src/types.ts`,
   `scripts/feed-balance-lab.mjs`.

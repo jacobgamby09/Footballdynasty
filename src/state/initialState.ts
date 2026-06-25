@@ -92,7 +92,6 @@ export function createCareerForCountry(
     trainingFocuses: ["Finishing"],
     trainingCompletedWeek: 0,
     intensity: "Balanced",
-    matchMentality: "balanced",
     careerSeed,
     attributes: createGenerationAttributes(dynasty.generation, positionModule, dynasty),
     seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },

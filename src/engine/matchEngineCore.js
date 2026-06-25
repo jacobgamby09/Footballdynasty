@@ -123,36 +123,10 @@ export function chooseAutoSimChoice(input) {
               ? 2
               : 0;
       const trustAdjustment = input.trust < 45 && choice.manager === "Likes" ? 3 : 0;
-      const mentalityAdjustment =
-        input.mentality === "push"
-          ? choice.risk === "High"
-            ? 4
-            : choice.outcome === "goal"
-              ? 2
-              : 0
-          : input.mentality === "hold"
-            ? choice.risk === "Low"
-              ? 4
-              : choice.risk === "High"
-                ? -4
-                : 0
-            : 0;
       const choiceVariance = Math.round(seededNoise(`${input.matchSeed}-${input.moment.id}-${choice.id}-auto-choice`) * 6) - 3;
-      return { choice, score: attributeScore + riskScore + managerScore + outputScore + ambitionAdjustment + fitnessAdjustment + trustAdjustment + mentalityAdjustment + choiceVariance };
+      return { choice, score: attributeScore + riskScore + managerScore + outputScore + ambitionAdjustment + fitnessAdjustment + trustAdjustment + choiceVariance };
     })
     .sort((a, b) => b.score - a.score)[0].choice;
-}
-
-// Mentality dial: the player's pre/in-match stance shifts resolution. `push` chases it — High-risk
-// plays land a little sharper but cost extra fatigue; `hold` sees it out — Low-risk plays land
-// sharper and a controlled (Low-risk) success nudges trust. `balanced`/undefined is a no-op.
-function getMentalityResolutionModifier(mentality, risk) {
-  if (mentality === "push") return risk === "High" ? 3 : 0;
-  if (mentality === "hold") return risk === "Low" ? 3 : 0;
-  return 0;
-}
-function getMentalityFatigueModifier(mentality) {
-  return mentality === "push" ? -2 : 0;
 }
 
 // Pre-choice outcome probabilities for the UI. Monte-Carlo over the REAL resolver across stable
@@ -194,14 +168,12 @@ export function resolvePlayerChoice(input) {
   const chanceContext = getChanceQualityContext(input.moment, score, opponentModifier);
   const roleConfidenceModifier = getRoleConfidenceModifier(input.playerRole);
   const trustConfidenceModifier = clamp((input.trust - 45) * 0.08, -1, 3);
-  const mentalityModifier = getMentalityResolutionModifier(input.mentality, input.choice.risk);
   const resultScore =
     score +
     fitnessModifier +
     managerModifier +
     roleConfidenceModifier +
     trustConfidenceModifier +
-    mentalityModifier +
     chanceContext.modifier -
     riskPenalty -
     opponentModifier +
@@ -221,9 +193,7 @@ export function resolvePlayerChoice(input) {
   const assistConverted = input.choice.outcome === "assist" && decisiveOutcome
     ? isAssistConverted(outcomeTier, chanceContext.quality, input.opponentProfile, input.resultSeed, conversionModifier)
     : false;
-  const fatigueCost =
-    (input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4) +
-    getMentalityFatigueModifier(input.mentality);
+  const fatigueCost = input.choice.risk === "High" ? -8 : input.choice.risk === "Medium" ? -6 : -4;
   const explanationTags = buildResultExplanationTags(input.moment, input.choice, success, opponentModifier, chanceContext.quality, input.fitness);
 
   // Manager comply/defy: obeying ("Likes") nudges trust up on success; defying ("Risky") is
@@ -238,8 +208,6 @@ export function resolvePlayerChoice(input) {
       : input.choice.manager === "Likes" && success
         ? 1
         : 0;
-  // Holding shape: a controlled (Low-risk) success rewards a small trust bump for game management.
-  const mentalityTrustShift = input.mentality === "hold" && input.choice.risk === "Low" && success ? 1 : 0;
   if (input.choice.manager === "Risky" && decisiveOutcome) {
     explanationTags.push("Backed your instinct");
   } else if (input.choice.manager === "Risky" && !success) {
@@ -255,7 +223,7 @@ export function resolvePlayerChoice(input) {
       chanceQuality: chanceContext.quality,
       explanationTags,
       rating: Number((decisiveOutcome ? 7.6 + (input.choice.risk === "High" ? 0.2 : 0) + ratingVariance : success ? 6.8 + ratingVariance : 6.4 + ratingVariance).toFixed(1)),
-      trustDelta: (decisiveOutcome ? 4 : success ? 2 : 1) + managerTrustShift + mentalityTrustShift,
+      trustDelta: (decisiveOutcome ? 4 : success ? 2 : 1) + managerTrustShift,
       fitnessDelta: fatigueCost,
       goals: decisiveOutcome ? 1 : 0,
       assists: 0,
@@ -271,7 +239,7 @@ export function resolvePlayerChoice(input) {
       chanceQuality: chanceContext.quality,
       explanationTags,
       rating: Number((assistConverted ? 7.3 + ratingVariance : chancesCreated ? 6.9 + ratingVariance : success ? 6.75 + ratingVariance : 6.6 + ratingVariance).toFixed(1)),
-      trustDelta: (assistConverted ? 5 : chancesCreated ? 4 : success ? 3 : 2) + managerTrustShift + mentalityTrustShift,
+      trustDelta: (assistConverted ? 5 : chancesCreated ? 4 : success ? 3 : 2) + managerTrustShift,
       fitnessDelta: fatigueCost,
       goals: 0,
       assists: assistConverted ? 1 : 0,
@@ -286,7 +254,7 @@ export function resolvePlayerChoice(input) {
     chanceQuality: chanceContext.quality,
     explanationTags,
     rating: Number((outcomeTier === "Great" ? 7.0 + ratingVariance : success ? 6.7 + ratingVariance : 6.5 + ratingVariance).toFixed(1)),
-    trustDelta: (outcomeTier === "Great" ? 5 : success ? 3 : 2) + managerTrustShift + mentalityTrustShift,
+    trustDelta: (outcomeTier === "Great" ? 5 : success ? 3 : 2) + managerTrustShift,
     fitnessDelta: fatigueCost,
     goals: 0,
     assists: 0,

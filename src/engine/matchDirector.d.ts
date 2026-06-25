@@ -1,4 +1,4 @@
-import type { EngineMatchRole, EngineMentality, EngineMoment, EngineSimEvent } from "./matchEngineCore";
+import type { EngineMatchRole, EngineMoment, EngineSimEvent } from "./matchEngineCore";
 import type { OpponentProfile, ServiceLevel } from "../matchEngine";
 
 export type MatchPhase =
@@ -40,7 +40,6 @@ export function createMatchDirectorPlan<TMoment extends EngineMoment>(input: {
   opponentProfile: OpponentProfile;
   attributeValues: Record<string, number>;
   preferredCategories?: string[];
-  mentality?: EngineMentality;
 }): {
   moments: Array<DirectedMoment<TMoment>>;
   state: MatchDirectorState;

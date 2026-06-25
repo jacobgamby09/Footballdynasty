@@ -62,7 +62,14 @@ low fitness; coach-lean matches `choice.manager`; build green; no console errors
 
 ---
 
-## Step 2 — Player-controlled mentality dial  ✅ DONE  *(engine + director hook; SAVE bump 21→22)*
+## Step 2 — Player-controlled mentality dial  ❌ REMOVED 2026-06-25 (shipped, then pulled)
+
+> Built and shipped, then removed at the user's request: the effect was real but subtle, and we'd
+> rather let the match engine's own simulation drive resolution for now. Fully reverted (SAVE 24→25);
+> since "balanced" was a strict no-op, the engine is back to the exact baseline the OVR curve is tuned
+> for. Original spec kept below for reference if we revisit it.
+
+### (original spec) Player-controlled mentality dial  *(engine + director hook)*
 
 > **Shipped:** `matchMentality: "push" | "balanced" | "hold"` on `GameState` (default `balanced`),
 > `SAVE_VERSION` 22. Director hook (`getDirectorMomentWeight` × `mentalityCategoryWeights`) shifts

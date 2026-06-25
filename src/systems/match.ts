@@ -1156,7 +1156,6 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     opponentProfile: matchOpponentProfile,
     attributeValues: matchAttributeValues,
     preferredCategories: positionModule.matchTendencies.preferredForwardCategories,
-    mentality: state.matchMentality,
   });
   const playerEvents: PlayerMatchEvent[] = directorPlan.moments.map((moment) => ({
     ...moment,
@@ -1225,7 +1224,6 @@ export function getChoiceOutcomePreview(state: GameState, moment: MatchMoment, c
     trust: state.trust,
     playerRole: state.activeMatch?.playerRole,
     opponentProfile,
-    mentality: state.matchMentality,
   });
 }
 
@@ -1250,7 +1248,6 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
     playerRole: state.activeMatch?.playerRole,
     opponentProfile: matchOpponentProfile,
     resultSeed,
-    mentality: state.matchMentality,
   });
   const positionAdjustedResult = {
     ...coreResult,
@@ -1611,7 +1608,6 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
         fitness: getLiveMatchReadiness(match, match.results, moment.minute),
         trust: state.trust,
         matchSeed: match.matchSeed,
-        mentality: state.matchMentality,
       });
       const result = { ...createMatchResult(state, moment, choice), source: "auto" as const };
       const followUp = createFollowUpMoment(match, moment, result);
@@ -1625,7 +1621,6 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
         fitness: getLiveMatchReadiness(match, [...match.results, result], followUp.minute),
         trust: state.trust,
         matchSeed: `${match.matchSeed}-follow-up`,
-        mentality: state.matchMentality,
       });
 
       return [result, { ...createMatchResult(state, followUp, followUpChoice), source: "auto" as const }];

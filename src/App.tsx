@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
-import type { ClubView, Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, MatchChoice, MatchMentality, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
+import type { ClubView, Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, MatchChoice, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
 import { createCareerForCountry } from "./state/initialState";
 import { COUNTRIES } from "./data/world";
@@ -212,13 +212,6 @@ function App() {
       ...state,
       intensity,
       lastEvent: `${intensity} intensity selected.`,
-    }));
-  }
-
-  function setMatchMentality(matchMentality: MatchMentality) {
-    setGame((state) => ({
-      ...state,
-      matchMentality,
     }));
   }
 
@@ -800,16 +793,12 @@ function App() {
           {activeScreen === "pre-match" && game.activeMatch && (
             <PreMatchScreen
               match={game.activeMatch}
-              mentality={game.matchMentality}
-              onSetMentality={setMatchMentality}
               onOpenClub={openClubProfile}
             />
           )}
           {activeScreen === "match" && game.activeMatch && (
             <MatchMomentScreen
               match={game.activeMatch}
-              mentality={game.matchMentality}
-              onSetMentality={setMatchMentality}
               getChoiceOutcomePreview={(moment, choice) => getChoiceOutcomePreview(game, moment, choice)}
               onChoose={resolveMatchChoice}
               onContinue={continueMatch}

@@ -2269,3 +2269,24 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   players at 20-35% recover to 70 even with a cameo; a Tired sub who plays stays put. Build + smoke
   green; season-lab OVR byte-identical (lab reimplements selection/recovery; the OVR curve is
   unaffected). No `SAVE_VERSION` change.
+
+## 2026-06-25 - Upgrade-tab UI cleanup (support + dynasty)
+
+- The support- and dynasty-upgrade tabs felt cluttered: two expand controls per card, no colour
+  hierarchy (everything the same grey), and duplicated cost/effect lines.
+- Extracted a single shared `UpgradeTrackCard` (cards.tsx) used by both `SupportTrackCard` (cash) and
+  `DynastyTrackCard` (LP) — they now just compute items and pass a `formatCost` + `onBuy`. Removes the
+  prior duplication between the two near-identical cards.
+- Each track is one clickable header row carrying a single colour-coded status chip: green "Complete",
+  gold "Invest <cost>" (affordable now), muted "<cost>" (can't afford yet), dim "Locked". The list now
+  reads at a glance — gold = buy now, green = done, dim = locked.
+- Cut: the redundant footer "Upgrades/Hide" toggle (header is the toggle), the "Next investment" line
+  (per-item next-effect already shows it), the per-item progress bars (the "Lv x/max" pill says it),
+  the confusing "x/<maxTotal>" levels number (maxTotal summed all upgrade max-levels into e.g. 443),
+  and the "Scope" summary tiles on both shops (the in-run/permanent hint already says it).
+- Kept (important): the breakthrough subtitle ("Next: <name> · current/required") and the "You have"
+  chip row (what you already own). Items color by state (buyable tinted, done/locked dimmed).
+- Verified in-browser (injected cash/prestige/levels): support chips read Invest $171/$327/... (buy),
+  $12000 (wait, can't afford), Invest $9000 (buy, prestige-unlocked); dynasty chips read "<n> LP"
+  (wait); expanded body shows effect + You-have chips + tight item rows; 0 console errors. Build green.
+  No `SAVE_VERSION` change (pure UI).

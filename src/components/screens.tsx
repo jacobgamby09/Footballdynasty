@@ -2055,7 +2055,6 @@ export function HomeScreen({
             <div className="next-grid">
               <InfoTile label="Legacy Points" value={`${game.dynasty.legacyPoints}`} tone="gold" />
               <InfoTile label="Generation" value={`Gen ${game.dynasty.generation}`} />
-              <InfoTile label="Scope" value="Permanent" />
             </div>
             <div className="match-hint">
               <Sparkles size={16} />
@@ -2312,7 +2311,6 @@ export function SupportShopView({
         <div className="next-grid">
           <InfoTile label="Cash" value={`$${game.cash}`} tone="good" />
           <InfoTile label="Owned levels" value={`${totalLevels}`} />
-          <InfoTile label="Scope" value="Current run" />
         </div>
         <div className="match-hint">
           <Activity size={16} />

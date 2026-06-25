@@ -2126,11 +2126,15 @@ button {
 
 .match-stats-team {
   text-align: left;
-  color: var(--lime);
 }
 
 .match-stats-opp {
   text-align: right;
+}
+
+.match-stats-team.is-player,
+.match-stats-opp.is-player {
+  color: var(--lime);
 }
 
 .match-stats-rows {
@@ -2179,19 +2183,17 @@ button {
   gap: 3px;
 }
 
-.match-stat-bar-team,
-.match-stat-bar-opp {
+.match-stat-bar-home,
+.match-stat-bar-away {
   height: 100%;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
   transition: width 420ms ease;
 }
 
-.match-stat-bar-team {
+.match-stat-bar-home.is-player,
+.match-stat-bar-away.is-player {
   background: var(--lime);
-}
-
-.match-stat-bar-opp {
-  background: rgba(255, 255, 255, 0.18);
 }
 
 .match-role-card {
@@ -4509,8 +4511,8 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .match-stat-bar-team,
-  .match-stat-bar-opp,
+  .match-stat-bar-home,
+  .match-stat-bar-away,
   .result-card .result-follow-up-note {
     transition: none;
     animation: none;

@@ -627,32 +627,34 @@ export function MatchStatsCard({
   stats,
 }: {
   stats: {
-    teamName: string;
-    opponentName: string;
-    rows: { label: string; teamValue: string; opponentValue: string; teamShare: number }[];
+    homeName: string;
+    awayName: string;
+    playerSide: "home" | "away";
+    rows: { label: string; homeValue: string; awayValue: string; homeShare: number }[];
   };
 }) {
+  const homeIsPlayer = stats.playerSide === "home";
   return (
     <div className="card match-stats-card">
       <div className="match-stats-teams">
-        <strong className="match-stats-team">{stats.teamName}</strong>
+        <strong className={`match-stats-team ${homeIsPlayer ? "is-player" : ""}`}>{stats.homeName}</strong>
         <span className="metric-label">Match stats</span>
-        <strong className="match-stats-opp">{stats.opponentName}</strong>
+        <strong className={`match-stats-opp ${homeIsPlayer ? "" : "is-player"}`}>{stats.awayName}</strong>
       </div>
       <div className="match-stats-rows">
         {stats.rows.map((row) => (
           <div className="match-stat-row" key={row.label}>
             <div className="match-stat-values">
-              <strong>{row.teamValue}</strong>
+              <strong>{row.homeValue}</strong>
               <span>{row.label}</span>
-              <strong>{row.opponentValue}</strong>
+              <strong>{row.awayValue}</strong>
             </div>
             <div
               className="match-stat-bar"
-              aria-label={`${row.label}: ${stats.teamName} ${row.teamValue}, ${stats.opponentName} ${row.opponentValue}`}
+              aria-label={`${row.label}: ${stats.homeName} ${row.homeValue}, ${stats.awayName} ${row.awayValue}`}
             >
-              <span className="match-stat-bar-team" style={{ width: `${row.teamShare}%` }} />
-              <span className="match-stat-bar-opp" style={{ width: `${100 - row.teamShare}%` }} />
+              <span className={`match-stat-bar-home ${homeIsPlayer ? "is-player" : ""}`} style={{ width: `${row.homeShare}%` }} />
+              <span className={`match-stat-bar-away ${homeIsPlayer ? "" : "is-player"}`} style={{ width: `${100 - row.homeShare}%` }} />
             </div>
           </div>
         ))}

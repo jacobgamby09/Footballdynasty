@@ -830,11 +830,12 @@ const isShotOnTarget = (id: string) => seededNoise(`${id}-on-target`) > 0.42;
 const getChanceXg = (id: string) => 0.05 + seededNoise(`${id}-xg`) * 0.22;
 const getGoalXg = (id: string) => 0.25 + seededNoise(`${id}-xg`) * 0.4;
 
-export type LiveMatchStatRow = { label: string; teamValue: string; opponentValue: string; teamShare: number };
+export type LiveMatchStatRow = { label: string; homeValue: string; awayValue: string; homeShare: number };
 
 export function getLiveMatchStats(match: MatchState, processedEventIndex: number): {
-  teamName: string;
-  opponentName: string;
+  homeName: string;
+  awayName: string;
+  playerSide: "home" | "away";
   rows: LiveMatchStatRow[];
 } {
   let teamShots = 0;
@@ -878,14 +879,23 @@ export function getLiveMatchStats(match: MatchState, processedEventIndex: number
   );
   const share = (team: number, opp: number) => (team + opp <= 0 ? 50 : Math.round((team / (team + opp)) * 100));
 
+  // Orient to home/away so the stats card matches the score header (home left, away right), while
+  // the player's own team keeps the highlight via playerSide.
+  const homeIsPlayer = match.venue === "Home";
+  const row = (label: string, teamValue: string, opponentValue: string, teamShare: number): LiveMatchStatRow =>
+    homeIsPlayer
+      ? { label, homeValue: teamValue, awayValue: opponentValue, homeShare: teamShare }
+      : { label, homeValue: opponentValue, awayValue: teamValue, homeShare: 100 - teamShare };
+
   return {
-    teamName: match.teamShortName,
-    opponentName: match.opponent,
+    homeName: homeIsPlayer ? match.teamShortName : match.opponent,
+    awayName: homeIsPlayer ? match.opponent : match.teamShortName,
+    playerSide: homeIsPlayer ? "home" : "away",
     rows: [
-      { label: "Possession", teamValue: `${possession}%`, opponentValue: `${100 - possession}%`, teamShare: possession },
-      { label: "Shots", teamValue: `${teamShots}`, opponentValue: `${oppShots}`, teamShare: share(teamShots, oppShots) },
-      { label: "On target", teamValue: `${teamOnTarget}`, opponentValue: `${oppOnTarget}`, teamShare: share(teamOnTarget, oppOnTarget) },
-      { label: "xG", teamValue: teamXg.toFixed(1), opponentValue: oppXg.toFixed(1), teamShare: share(teamXg, oppXg) },
+      row("Possession", `${possession}%`, `${100 - possession}%`, possession),
+      row("Shots", `${teamShots}`, `${oppShots}`, share(teamShots, oppShots)),
+      row("On target", `${teamOnTarget}`, `${oppOnTarget}`, share(teamOnTarget, oppOnTarget)),
+      row("xG", teamXg.toFixed(1), oppXg.toFixed(1), share(teamXg, oppXg)),
     ],
   };
 }

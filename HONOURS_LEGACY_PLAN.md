@@ -18,9 +18,15 @@ Scope here is **V1**; V2/V3 are summarized at the end.
 - **Determinism.** No `Math.random` / `Date.now` in `src/`. Squad generation and per-matchweek event
   distribution seed off `worldSeed` / `careerSeed`, exactly like `data/world.ts → seedWorld()` and the
   existing `advanceWorldMatchweek` sim.
-- **Balance neutrality.** Honours / Club Legacy / awards grant Prestige, Club Legacy status and (at
-  retirement) Legacy Points — but never alter goals/assists/XP or the OVR development curve. The
-  season-lab End OVR baseline (57.20 / 67.39 / 67.11 / 63.83) must stay byte-identical after V1.
+- **Balance neutrality (with a defined boundary).** Honours / Club Legacy / awards never *directly*
+  alter goals/assists/XP. The gate is staged:
+  - **Steps 1-9: OVR byte-identical.** The season-lab End OVR baseline (57.20 / 67.39 / 67.11 / 63.83)
+    must not move at all. Any drift = a bug.
+  - **Step 10: OVR may move only via deliberate economy coupling.** Wiring status into trust floor /
+    contract quality / sponsor eligibility can *indirectly* change economy → minutes → progression over
+    a career. That is allowed, but it must be intentional: when we turn the coupling on, we measure the
+    OVR delta, confirm it is attributable to that coupling (not accidental drift), and **re-document the
+    season-lab baseline with the new expected numbers.** No silent shifts.
 - **Reuse, don't reinvent.** Rewards hook into existing systems (manager-trust floor, contract-offer
   quality, sponsor eligibility, prestige gain, the retirement Legacy Points formula). The NPC race
   hooks into the existing `advanceWorldMatchweek` / `simulateClubWeek`, which already produce a weekly
@@ -63,8 +69,16 @@ Scope here is **V1**; V2/V3 are summarized at the end.
 | Player Cabinet + Dynasty Cabinet | season rollover | **Yes** |
 
 Reload safety: a mid-season reload reconstructs the live standings from the persisted
-`LeaguePlayerSeasonStats` + regenerated identities — nothing is lost. Save size stays bounded because the
-per-season table is cleared every rollover; only winners/records/cabinet survive across seasons.
+`LeaguePlayerSeasonStats` + regenerated identities — nothing is lost.
+
+**Ephemeral vs permanent (a hard rule).** `LeaguePlayerSeasonStats` is a **mid-season working buffer**,
+not history. It holds at most one season's worth, is rebuilt as the season plays, and is **wiped at
+every rollover** — it must never accumulate across seasons. The only data that persists permanently is:
+
+`Permanent = award winners + broken records + cabinet entries + per-season legacy summaries (+ Club Legacy records).`
+
+This keeps the save clean and future-proof: long dynasties grow only by small, bounded summaries, never
+by retained NPC stat tables.
 
 ## Data model (types to add)
 
@@ -114,7 +128,10 @@ normalise). The live `LeaguePlayerSeasonStats` lives on the world/season slice, 
 
 ## Verification per step
 - `npm run build` + `node scripts/play-session-regression-smoke.mjs` green.
-- `node scripts/season-balance-lab.mjs` → End OVR byte-identical (Honours never touches XP/goals/dev).
+- `node scripts/season-balance-lab.mjs`:
+  - **Steps 1-9** → End OVR byte-identical (Honours never touches XP/goals/dev).
+  - **Step 10** → OVR may move only from the deliberate economy coupling; measure the delta, confirm
+    it's intended, and re-document the lab baseline. No unexplained drift.
 - Deterministic Node probes: squad regeneration stable per seed; record seeding scales with tier (no
   0s); matchweek distribution sums back to club `goalsFor`; award winner is contested (player can lose
   by a small margin — never a free win).

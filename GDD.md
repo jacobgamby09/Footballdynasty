@@ -1364,13 +1364,18 @@ persistere ~12.000 NPC-spillere i save'en (én localStorage-JSON, ~5 MB-loft, sy
 Princippet, som flugter med den eksisterende verdensmodel (`seedWorld()` er deterministisk og
 verdenen "regenerated around the player on demand"):
 
-- **Regenerér** NPC-trupper deterministisk fra et verdens-seed. Gem dem aldrig.
-- **Persistér kun udfald der betyder noget:** sæsonens vindere, brudte rekorder, klub-season-records,
-  Cabinet-indhold og spillerens egne relationer/historik.
-- **Working-set** pr. sæson er kun spillerens liga (~200–400 NPC'er i hukommelsen, kollapses til
-  vindere/rekorder bagefter). Fjernere ligaer syntetiserer en troværdig vinder fra ligastyrke + seed.
+- **Regenerér NPC-identiteter og attributter** (navn, alder, position, OVR, potentiale) deterministisk
+  fra `playerId + worldSeed` — gem dem aldrig.
+- **Persistér kompakte sæsonstats for spillerens aktive liga** (`LeaguePlayerSeasonStats`: apps, starts,
+  minutter, mål, assists, rating-total/-count) — ~50–200 KB. Nødvendigt: stats akkumuleres
+  kamp-for-kamp og kan *ikke* regenereres efter et midt-sæson-genindlæs (detaljeret kamphistorik findes
+  ikke i save'en).
+- **Kollaps ved sæsonafslutning:** når awards og rekorder er gemt, slettes sæsonstats-tabellen. Kun
+  vindere, rekorder, Cabinet-indhold og Club Legacy persisterer permanent.
+- **Resten af verden** syntetiserer en troværdig vinder fra ligastyrke + seed — ingen per-spiller-stats,
+  ingen persistering.
 
-`Regenerér NPC-verdenen fra seed. Persistér kun det der skete, ikke hele verdenen.`
+`Regenerér identiteter fra seed. Persistér kun spillerligaens kompakte sæsonstats (slettet ved sæsonslut) + de udfald der varer ved.`
 
 Ingen `Math.random` / `Date.now`: hele NPC-verdenen og event-fordelingen skal være seeded og
 reproducerbar, præcis som resten af `src/`.
@@ -1473,8 +1478,8 @@ Dynasty-mål bliver langsigtede achievements: første prof-kontrakt, første lig
 med 100 mål, tre generationer som ligamestre, vinde samme liga med far og søn, slå en tidligere
 generations rekord.
 
-Kompakt på Player-screen: `Career Honours — 🏆 3 trophies · ★ 5 individual awards`. Det fulde Player
-Cabinet er undertab under Player; Dynasty Cabinet hører hjemme i Home → Dynasty.
+Begge cabinets lever under **Home → Dynasty → Cabinet**, filtrerbar på `Current player` / `Generation` /
+`Entire dynasty`. Player-screen viser kun en klikbar teaser: `Career Honours · 3 trophies · 5 awards`.
 
 ### Awards & sæson-konkurrence
 
@@ -1526,8 +1531,14 @@ Fan Favourite i en mellemklub og Club Icon i den største klub — en stærk per
 
 ### Staging
 
-- **V1** (lav risiko, høj værdi): Club Legacy-historik + status-tiers + 5 skalerede klubrekorder · Player Cabinet for **holdtrofæer** (udledes af eksisterende season-results) · sæson-Honours-sekvens · Dynasty-tab redesignet. Individuelle awards mod en seeded ligatærskel.
-- **V2**: letvægts-**ægte** konkurrent-trup for spillerens liga → rigtige award-kapløb, Team of the Season, statistik-tabeller.
-- **V3** (kun hvis nødvendigt): bred NPC-realisme på tværs af alle ligaer — kræver migration fra localStorage til **IndexedDB** (async, større kvote). Hold verdens-slicen separat og regenererbar så dette skift bliver muligt uden at røre kerne-saven.
+- **V1**: Dynasty-tab redesignet · Club Legacy-historik + status-tiers + 5 skalerede klubrekorder ·
+  holdtrofæer (udledes af eksisterende season-results) · **ægte spillerlig-race for spillerens egen
+  liga** (regenererede trupper + kompakte persisterede sæsonstats → rigtige topscorer-/assist-/
+  ratinglister + datadrevne awards + Team of the Season) · sæson-Honours-sekvens · Player Cabinet.
+  Øvrige ligaer = syntetiske vindere. *Ingen hul threshold-award — racen er ægte fra start.*
+- **V2**: udvid den ægte race til flere ligaer; rivaliserings- og Feed-kobling (du vs. ligaens topscorer).
+- **V3** (kun hvis nødvendigt): fuld NPC-realisme på tværs af alle ~38 ligaer — kræver migration fra
+  localStorage til **IndexedDB** (async, større kvote). Hold verdens-slicen separat og regenererbar så
+  skiftet kan ske uden at røre kerne-saven.
 
 Detaljeret V1-plan: se `HONOURS_LEGACY_PLAN.md`.

@@ -1347,6 +1347,304 @@ button {
   gap: 10px;
 }
 
+/* Dynasty hub — Honours & Legacy */
+.dynasty-view {
+  display: grid;
+  gap: 11px;
+}
+
+.dynasty-subnav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-top: 2px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.dynasty-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.dynasty-subnav button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.dynasty-subnav button.is-active {
+  color: #0e120d;
+  background: var(--lime);
+  border-color: var(--lime);
+}
+
+.dynasty-hero {
+  display: grid;
+  gap: 3px;
+  border-color: var(--border-strong);
+  background:
+    radial-gradient(circle at 85% 0%, rgba(244, 200, 74, 0.12), transparent 13rem),
+    radial-gradient(circle at 8% 4%, rgba(200, 243, 95, 0.1), transparent 14rem),
+    var(--surface);
+}
+
+.dynasty-hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dynasty-hero-gen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.dynasty-hero-tier {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.dynasty-hero-prestige {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.honours-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.honours-strip > div {
+  display: grid;
+  gap: 1px;
+  justify-items: center;
+  padding: 9px 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.honours-strip strong {
+  font-size: 19px;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.honours-strip span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+.dynasty-filter {
+  display: flex;
+  gap: 6px;
+}
+
+.dynasty-filter button {
+  flex: 1;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dynasty-filter button.is-active {
+  color: var(--lime);
+  border-color: var(--border-strong);
+  background: rgba(200, 243, 95, 0.1);
+}
+
+.cabinet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.cabinet-entry {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cabinet-entry-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.cabinet-entry.kind-team .cabinet-entry-icon {
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.12);
+}
+
+.cabinet-entry.kind-individual .cabinet-entry-icon {
+  color: var(--lime);
+  background: rgba(200, 243, 95, 0.1);
+}
+
+.cabinet-entry strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cabinet-entry small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dynasty-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 26px 18px;
+  text-align: center;
+}
+
+.dynasty-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  color: var(--subtle);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dynasty-empty strong {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dynasty-empty p {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.club-legacy-card {
+  display: grid;
+  gap: 11px;
+}
+
+.club-legacy-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.club-legacy-status {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.club-legacy-status.status-first-team-regular,
+.club-legacy-status.status-fan-favourite {
+  color: var(--lime-2);
+  border-color: rgba(140, 198, 63, 0.32);
+  background: rgba(140, 198, 63, 0.1);
+}
+
+.club-legacy-status.status-club-hero,
+.club-legacy-status.status-club-icon {
+  color: var(--gold);
+  border-color: rgba(244, 200, 74, 0.34);
+  background: rgba(244, 200, 74, 0.12);
+}
+
+.club-legacy-status.status-club-legend {
+  color: #0e120d;
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.career-honours-teaser {
+  appearance: none;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.career-honours-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.12);
+}
+
+.career-honours-text {
+  flex: 1;
+  display: grid;
+  gap: 1px;
+}
+
+.career-honours-text strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.career-honours-teaser > svg {
+  flex: 0 0 auto;
+  color: var(--subtle);
+}
+
 .dynasty-list {
   display: grid;
   gap: 8px;

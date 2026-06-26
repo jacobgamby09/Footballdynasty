@@ -2452,3 +2452,20 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 - Verified: build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
   deterministic save probe (old-save default-fill, new-save preserve, deep-clone no-leak) all pass;
   app boots on the existing v25 save with honours/cabinet defaulted, 0 console errors.
+
+## 2026-06-26 - Honours & Legacy V1, Step 2: Dynasty hub redesign (shell)
+
+- Rebuilt the Home -> Dynasty subtab into a premium 6-section hub (new `DynastyView`):
+  Overview / Cabinet / Records / Club Legacy / Bloodline / Upgrades, via a scrollable lime sub-nav.
+  - Overview: gold-accented dynasty hero (Gen, prestige tier, prestige) + an honours strip
+    (trophies/awards/records/seasons) + career totals + legacy planning.
+  - Cabinet: This player / Whole dynasty filter + entry grid + polished empty state (cabinet empty in V1).
+  - Records: real career bests (best season goals/rating, totals) + club-records empty state (seeded in Step 3).
+  - Club Legacy: live "New Arrival" preview card for the current club (real club + season stats); accrual lands in Step 4.
+  - Bloodline: the existing season-history list, reframed.
+  - Upgrades: the existing dynasty economy / family-trust / dynasty-upgrade tracks (fully functional, moved here).
+- Player screen: a clickable `Career honours` teaser that jumps to Home -> Dynasty.
+- DESIGN.md-aligned: charcoal surfaces, lime primary, gold for prestige/awards, compact mobile layout,
+  graceful empty states. Kept under Home (bottom nav stays the locked four + center).
+- Pure UI — no engine/balance change. Build + smoke green; season-lab End OVR byte-identical
+  (57.20/67.39/67.11/63.83); all 6 sections render with correct tokens; 0 console errors.

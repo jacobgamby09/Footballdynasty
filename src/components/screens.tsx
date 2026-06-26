@@ -20,19 +20,20 @@ import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, useCountUp, WeekNote } from "./shared";
-import { Activity, ArrowRightLeft, BadgeDollarSign, BarChart3, CalendarDays, Check, Coins, Dumbbell, Flame, Home, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
+import { Activity, ArrowRightLeft, Award, BadgeDollarSign, BarChart3, CalendarDays, Check, ChevronRight, Coins, Crown, Dumbbell, Flame, Home, Landmark, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, ChoiceOutcomePreview, ClubId, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
-import type { CSSProperties } from "react";
+import type { Attribute, CabinetEntry, ChoiceOutcomePreview, ClubId, ClubLegacyRecord, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { CSSProperties, ReactNode } from "react";
 
-export function PlayerScreen({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
+export function PlayerScreen({ game, onOpenClub, onOpenDynasty }: { game: GameState; onOpenClub?: (identity: string) => void; onOpenDynasty?: () => void }) {
   return (
     <>
       <Header game={game} onOpenClub={onOpenClub} />
       <CareerCard game={game} />
       <ReadinessStrip game={game} />
       <PrestigeStatusCard game={game} />
+      <CareerHonoursTeaser game={game} onOpenDynasty={onOpenDynasty} />
       <SeasonContextCard game={game} onOpenClub={onOpenClub} />
       <SelectionBriefingCard game={game} />
       {game.lastMatch && <LastMatchCard summary={game.lastMatch} onOpenClub={onOpenClub} />}
@@ -1895,8 +1896,6 @@ export function HomeScreen({
   view: HomeView;
   onViewChange: (view: HomeView) => void;
 }) {
-  const currentSnapshot = createDynastySeasonSnapshot(game);
-  const careerTotals = getDynastyTotals([...game.dynastyHistory, currentSnapshot]);
   const age = getPlayerAge(game);
   const legacyEstimate = getLegacyEstimate(game);
 
@@ -1972,14 +1971,142 @@ export function HomeScreen({
       ) : view === "deals" ? (
         <DealsView game={game} onAcceptSponsorDeal={onAcceptSponsorDeal} onOpenClub={onOpenClub} />
       ) : (
+        <DynastyView
+          game={game}
+          onBuyDynastyUpgrade={onBuyDynastyUpgrade}
+          onInvestEstate={onInvestEstate}
+          onOpenRetirement={onOpenRetirement}
+          onOpenClub={onOpenClub}
+        />
+      )}
+    </section>
+  );
+}
+
+
+type DynastySection = "overview" | "cabinet" | "records" | "club-legacy" | "bloodline" | "upgrades";
+
+const DYNASTY_SECTIONS: { id: DynastySection; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "cabinet", label: "Cabinet" },
+  { id: "records", label: "Records" },
+  { id: "club-legacy", label: "Club Legacy" },
+  { id: "bloodline", label: "Bloodline" },
+  { id: "upgrades", label: "Upgrades" },
+];
+
+function DynastyEmptyState({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+  return (
+    <div className="card dynasty-empty">
+      <span className="dynasty-empty-icon" aria-hidden="true">{icon}</span>
+      <strong>{title}</strong>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+function CabinetEntryCard({ entry }: { entry: CabinetEntry }) {
+  return (
+    <div className={`cabinet-entry kind-${entry.kind}`}>
+      <span className="cabinet-entry-icon" aria-hidden="true">{entry.kind === "team" ? <Trophy size={18} /> : <Star size={18} />}</span>
+      <div>
+        <strong>{entry.label}</strong>
+        <small>Season {entry.season}{entry.detail ? ` · ${entry.detail}` : ""}</small>
+      </div>
+    </div>
+  );
+}
+
+function ClubLegacyCard({ record, onOpenClub }: { record: ClubLegacyRecord; onOpenClub?: (identity: string) => void }) {
+  return (
+    <div className="card club-legacy-card">
+      <div className="club-legacy-head">
+        <div>
+          <span className="metric-label">Club legacy{record.frozen ? " · former club" : ""}</span>
+          <h2><ClubLink clubIdentity={record.clubName} onOpenClub={onOpenClub}>{record.clubName}</ClubLink></h2>
+        </div>
+        <span className={`club-legacy-status status-${record.status.toLowerCase().replace(/[^a-z]+/g, "-")}`}>{record.status}</span>
+      </div>
+      <div className="stat-grid">
+        <InfoTile label="Seasons" value={`${record.seasons}`} />
+        <InfoTile label="Apps" value={`${record.appearances}`} />
+        <InfoTile label="Goals" value={`${record.goals}`} tone={record.goals > 0 ? "gold" : undefined} />
+        <InfoTile label="Assists" value={`${record.assists}`} />
+      </div>
+    </div>
+  );
+}
+
+export function DynastyView({
+  game,
+  onBuyDynastyUpgrade,
+  onInvestEstate,
+  onOpenRetirement,
+  onOpenClub,
+}: {
+  game: GameState;
+  onBuyDynastyUpgrade: (upgradeId: DynastyUpgradeId) => void;
+  onInvestEstate: () => void;
+  onOpenRetirement: () => void;
+  onOpenClub?: (identity: string) => void;
+}) {
+  const [section, setSection] = useState<DynastySection>("overview");
+  const [cabinetFilter, setCabinetFilter] = useState<"player" | "dynasty">("player");
+
+  const currentSnapshot = createDynastySeasonSnapshot(game);
+  const seasons = [...game.dynastyHistory, currentSnapshot];
+  const careerTotals = getDynastyTotals(seasons);
+  const age = getPlayerAge(game);
+  const legacyEstimate = getLegacyEstimate(game);
+  const prestige = getPrestigeStatus(game.prestige);
+  const cabinet = game.dynasty.cabinet.entries;
+  const trophies = cabinet.filter((entry) => entry.kind === "team").length;
+  const awards = cabinet.filter((entry) => entry.kind === "individual").length;
+  const recordsHeld = game.honours.clubLegacy.reduce((total, record) => total + record.recordsHeld.length, 0);
+  const bestSeasonGoals = seasons.reduce((max, entry) => Math.max(max, entry.goals), 0);
+  const bestSeasonRating = seasons.reduce((max, entry) => Math.max(max, entry.averageRating), 0);
+  const cabinetEntries = cabinetFilter === "player"
+    ? cabinet.filter((entry) => entry.generation === game.dynasty.generation)
+    : cabinet;
+
+  return (
+    <div className="dynasty-view">
+      <div className="dynasty-subnav" role="tablist" aria-label="Dynasty sections">
+        {DYNASTY_SECTIONS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={section === item.id}
+            className={section === item.id ? "is-active" : ""}
+            onClick={() => setSection(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {section === "overview" && (
         <>
+          <div className="card dynasty-hero">
+            <div className="dynasty-hero-row">
+              <span className="metric-label">{game.dynasty.familyName} dynasty</span>
+              <span className="dynasty-hero-gen"><Crown size={13} aria-hidden="true" /> Gen {game.dynasty.generation}</span>
+            </div>
+            <strong className="dynasty-hero-tier">{prestige.current.label}</strong>
+            <small className="dynasty-hero-prestige">{game.prestige.toLocaleString()} prestige</small>
+            <div className="honours-strip">
+              <div><strong>{trophies}</strong><span>Trophies</span></div>
+              <div><strong>{awards}</strong><span>Awards</span></div>
+              <div><strong>{recordsHeld}</strong><span>Records</span></div>
+              <div><strong>{seasons.length}</strong><span>Seasons</span></div>
+            </div>
+          </div>
+
           <div className="card">
             <div className="section-heading">
-              <div>
-                <span className="metric-label">Dynasty record</span>
-                <h2>{game.dynastyHistory.length} completed seasons</h2>
-              </div>
-              <Trophy size={19} />
+              <div><span className="metric-label">Career totals</span><h2>{careerTotals.goals} career goals</h2></div>
+              <BarChart3 size={19} />
             </div>
             <div className="stat-grid">
               <InfoTile label="Apps" value={`${careerTotals.apps}`} />
@@ -1991,10 +2118,7 @@ export function HomeScreen({
 
           <div className="card retirement-card">
             <div className="section-heading">
-              <div>
-                <span className="metric-label">Legacy planning</span>
-                <h2>{legacyEstimate.eligible ? `${legacyEstimate.totalPoints} points ready` : `Retire from age 30`}</h2>
-              </div>
+              <div><span className="metric-label">Legacy planning</span><h2>{legacyEstimate.eligible ? `${legacyEstimate.totalPoints} points ready` : "Retire from age 30"}</h2></div>
               <Sparkles size={19} />
             </div>
             <div className="next-grid">
@@ -2002,18 +2126,98 @@ export function HomeScreen({
               <InfoTile label="Current LP" value={`${game.dynasty.legacyPoints}`} tone="gold" />
               <InfoTile label="Estimate" value={`+${legacyEstimate.totalPoints}`} tone={legacyEstimate.eligible ? "good" : undefined} />
             </div>
-            <p>{legacyEstimate.hint}</p>
-            <button className="secondary-action" type="button" onClick={onOpenRetirement}>
-              Review Retirement
-            </button>
+            <button className="secondary-action" type="button" onClick={onOpenRetirement}>Review Retirement</button>
           </div>
+        </>
+      )}
 
+      {section === "cabinet" && (
+        <>
+          <div className="dynasty-filter" role="tablist" aria-label="Cabinet filter">
+            <button type="button" role="tab" aria-selected={cabinetFilter === "player"} className={cabinetFilter === "player" ? "is-active" : ""} onClick={() => setCabinetFilter("player")}>This player</button>
+            <button type="button" role="tab" aria-selected={cabinetFilter === "dynasty"} className={cabinetFilter === "dynasty" ? "is-active" : ""} onClick={() => setCabinetFilter("dynasty")}>Whole dynasty</button>
+          </div>
+          {cabinetEntries.length > 0 ? (
+            <div className="cabinet-grid">
+              {cabinetEntries.map((entry) => <CabinetEntryCard key={entry.id} entry={entry} />)}
+            </div>
+          ) : (
+            <DynastyEmptyState icon={<Trophy size={26} />} title="No silverware yet" body="Win league titles, cups and individual awards — they fly into the cabinet at season's end." />
+          )}
+        </>
+      )}
+
+      {section === "records" && (
+        <>
           <div className="card">
             <div className="section-heading">
-              <div>
-                <span className="metric-label">Dynasty economy</span>
-                <h2>Legacy upgrades</h2>
-              </div>
+              <div><span className="metric-label">Career bests</span><h2>Personal milestones</h2></div>
+              <Award size={19} />
+            </div>
+            <div className="stat-grid">
+              <InfoTile label="Best season goals" value={`${bestSeasonGoals}`} tone={bestSeasonGoals > 0 ? "gold" : undefined} />
+              <InfoTile label="Best season rating" value={bestSeasonRating.toFixed(1)} tone={bestSeasonRating >= 7 ? "good" : undefined} />
+              <InfoTile label="Total apps" value={`${careerTotals.apps}`} />
+              <InfoTile label="Total goals" value={`${careerTotals.goals}`} />
+            </div>
+          </div>
+          <DynastyEmptyState icon={<Award size={26} />} title="No club records held" body="Each club keeps all-time records for goals, assists and appearances. Play enough and your name takes over the leaderboard." />
+        </>
+      )}
+
+      {section === "club-legacy" && (
+        <>
+          {game.honours.clubLegacy.length > 0
+            ? game.honours.clubLegacy.map((record) => <ClubLegacyCard key={record.clubId} record={record} onOpenClub={onOpenClub} />)
+            : (
+              <ClubLegacyCard
+                record={{
+                  clubId: game.club.clubId ?? game.club.shortCode ?? game.club.name,
+                  clubName: game.club.name,
+                  seasons: 1,
+                  appearances: game.seasonStats.apps,
+                  starts: game.seasonStats.starts,
+                  goals: game.seasonStats.goals,
+                  assists: game.seasonStats.assists,
+                  ratingTotal: 0,
+                  ratingCount: 0,
+                  promotions: 0,
+                  honours: [],
+                  recordsHeld: [],
+                  legacyScore: 0,
+                  status: "New Arrival",
+                  frozen: false,
+                }}
+                onOpenClub={onOpenClub}
+              />
+            )}
+          <div className="match-hint">
+            <Landmark size={16} />
+            <span>Your standing grows with appearances, goals, records and trophies at each club — and freezes for good when you leave.</span>
+          </div>
+        </>
+      )}
+
+      {section === "bloodline" && (
+        <div className="card dynasty-card">
+          <div className="section-heading">
+            <div><span className="metric-label">Bloodline</span><h2>{game.dynasty.familyName} family</h2></div>
+            <BarChart3 size={19} />
+          </div>
+          <div className="dynasty-list">
+            {[...game.dynastyHistory].reverse().map((season) => (
+              <DynastySeasonRow key={season.season} season={season} onOpenClub={onOpenClub} />
+            ))}
+            <DynastySeasonRow current season={currentSnapshot} onOpenClub={onOpenClub} />
+          </div>
+        </div>
+      )}
+
+      {section === "upgrades" && (
+        <>
+          <div className="card">
+            <div className="section-heading">
+              <div><span className="metric-label">Dynasty economy</span><h2>Legacy upgrades</h2></div>
               <Sparkles size={19} />
             </div>
             <div className="next-grid">
@@ -2028,10 +2232,7 @@ export function HomeScreen({
 
           <div className="card">
             <div className="section-heading">
-              <div>
-                <span className="metric-label">Family trust fund</span>
-                <h2>Estate level {game.dynasty.estate}</h2>
-              </div>
+              <div><span className="metric-label">Family trust fund</span><h2>Estate level {game.dynasty.estate}</h2></div>
               <Coins size={19} />
             </div>
             <div className="next-grid">
@@ -2039,52 +2240,41 @@ export function HomeScreen({
               <InfoTile label="Heir inherits" value={`$${getEstateHeirCash(game.dynasty).toLocaleString()}`} tone="good" />
               <InfoTile label="Next level" value={`+$${(getEstateHeirCash({ estate: game.dynasty.estate + 1 }) - getEstateHeirCash(game.dynasty)).toLocaleString()}`} />
             </div>
-            <div className="match-hint">
-              <Coins size={16} />
-              <span>Bank surplus cash for your heir's starting capital — your money either improves you now or sets up your child.</span>
-            </div>
-            <button
-              className="secondary-action"
-              type="button"
-              disabled={game.cash < getEstateCost(game.dynasty.estate)}
-              onClick={onInvestEstate}
-            >
+            <button className="secondary-action" type="button" disabled={game.cash < getEstateCost(game.dynasty.estate)} onClick={onInvestEstate}>
               Invest ${getEstateCost(game.dynasty.estate).toLocaleString()}
             </button>
           </div>
 
           <div className="support-shop-list">
             {dynastyTrackDefinitions.map((track) => (
-              <DynastyTrackCard
-                key={track.id}
-                game={game}
-                track={track}
-                onBuyDynastyUpgrade={onBuyDynastyUpgrade}
-              />
+              <DynastyTrackCard key={track.id} game={game} track={track} onBuyDynastyUpgrade={onBuyDynastyUpgrade} />
             ))}
-          </div>
-
-          <div className="card dynasty-card">
-            <div className="section-heading">
-              <div>
-                <span className="metric-label">Season history</span>
-                <h2>{game.player.firstName} {game.player.lastName}</h2>
-              </div>
-              <BarChart3 size={19} />
-            </div>
-            <div className="dynasty-list">
-              {[...game.dynastyHistory].reverse().map((season) => (
-                <DynastySeasonRow key={season.season} season={season} onOpenClub={onOpenClub} />
-              ))}
-              <DynastySeasonRow current season={currentSnapshot} onOpenClub={onOpenClub} />
-            </div>
           </div>
         </>
       )}
-    </section>
+    </div>
   );
 }
 
+export function CareerHonoursTeaser({ game, onOpenDynasty }: { game: GameState; onOpenDynasty?: () => void }) {
+  const cabinet = game.dynasty.cabinet.entries;
+  const trophies = cabinet.filter((entry) => entry.kind === "team").length;
+  const awards = cabinet.filter((entry) => entry.kind === "individual").length;
+  const summary = trophies + awards > 0
+    ? `${trophies} ${trophies === 1 ? "trophy" : "trophies"} · ${awards} ${awards === 1 ? "award" : "awards"}`
+    : "No silverware yet — build your legacy";
+
+  return (
+    <button className="card career-honours-teaser" type="button" onClick={onOpenDynasty} aria-label="Open dynasty honours">
+      <span className="career-honours-icon" aria-hidden="true"><Trophy size={18} /></span>
+      <div className="career-honours-text">
+        <span className="metric-label">Career honours</span>
+        <strong>{summary}</strong>
+      </div>
+      <ChevronRight size={18} aria-hidden="true" />
+    </button>
+  );
+}
 
 export function FeedView({ game, onOpenClub }: { game: GameState; onOpenClub?: (identity: string) => void }) {
   const grouped = game.worldFeed.reduce<Record<string, typeof game.worldFeed>>((groups, story) => {

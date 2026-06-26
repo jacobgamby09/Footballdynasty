@@ -763,7 +763,7 @@ function App() {
         <div className="screen-scroll">
           {activeScreen === "dynasty-create" && <CreateDynastyScreen countries={COUNTRIES} onCreate={createDynasty} />}
           {activeScreen === "country-select" && <CountrySelectScreen countries={COUNTRIES} onPick={startCareerInCountry} />}
-          {activeScreen === "player" && <PlayerScreen game={game} onOpenClub={openClubProfile} />}
+          {activeScreen === "player" && <PlayerScreen game={game} onOpenClub={openClubProfile} onOpenDynasty={() => { setActiveScreen("home"); setHomeView("dynasty"); }} />}
           {activeScreen === "training" && (
             <TrainingScreen
               game={game}

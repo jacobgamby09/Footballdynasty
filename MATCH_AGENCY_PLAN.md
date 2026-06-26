@@ -4,6 +4,14 @@ Builds on the Match Director + 50-moment library + live presentation already shi
 is to make the **moment decision itself** carry more agency and stakes. None of these touch
 attribute values or potential, so the 60/70 OVR guidance is safe by construction.
 
+> **Update 2026-06-26 — superseded for normal play.** Match moments now **auto-resolve via the
+> simulation** and play out as cinematic **chain highlights** (the Codex "moment chain" direction; see
+> `MATCH_ENGINE.md → Chain-highlight match moments` + `systems/highlights.ts`). The visible risk/reward
+> choice cards this plan built are no longer shown in normal play — the manual choice path
+> (`resolveMatchChoice`) is kept intact underneath as a fallback and as the basis for a future rare
+> **"defining moment" choice** (an intentional agency spike). Steps 1/3/4 below remain accurate history
+> of the choice system the auto-resolver + reveal sit on.
+
 ## Shared principles (apply to every step)
 
 - **Determinism first.** All new modifiers are deterministic (seed from existing seeds). Odds

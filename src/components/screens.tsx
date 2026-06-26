@@ -12,6 +12,7 @@ import { getPrestigeStatus } from "../systems/prestige";
 import { CLUB_RECORD_ROWS, seedClubRecords } from "../systems/honours";
 import { computeSeasonAwards, getLeagueLeaderboards } from "../systems/worldPlayers";
 import type { LeaderboardEntry } from "../systems/worldPlayers";
+import { buildHighlightChain } from "../systems/highlights";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
@@ -24,7 +25,7 @@ import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
 import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRow, InfoTile, LeagueTableRowView, MatchScoreHeader, ProgressBar, ProgressRow, ScreenTitle, SummaryScoreHeader, useCountUp, WeekNote } from "./shared";
 import { Activity, ArrowRightLeft, Award, BadgeDollarSign, BarChart3, CalendarDays, Check, ChevronRight, Coins, Crown, Dumbbell, Flame, Home, Landmark, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
 import type { Attribute, CabinetEntry, ChoiceOutcomePreview, ClubId, ClubLegacyRecord, ClubRecordKey, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties, ReactNode } from "react";
@@ -610,74 +611,172 @@ function getManagerLeanTone(manager: MatchChoice["manager"]) {
   return manager === "Likes" ? "like" : manager === "Risky" ? "wary" : "neutral";
 }
 
+// The reward tally — its own component so the count-ups only START when the impact beat is revealed
+// (mounting it triggers useCountUp). Carries the existing consequence block + attribute "why" line.
+function ImpactBeat({
+  result,
+  selectedChoice,
+  reason,
+  resultConsequence,
+}: {
+  result: MatchResult;
+  selectedChoice?: MatchChoice;
+  reason: string;
+  resultConsequence?: { label: string; title: string; detail: string; tone: string };
+}) {
+  const rating = useCountUp(result.rating, { from: Math.min(6, result.rating), durationMs: 900, decimals: 1 });
+  const trust = useCountUp(Math.abs(result.trustDelta), { from: 0, durationMs: 700, decimals: 0 });
+  const executionReason = reason || getResultExecutionText(result);
+
+  return (
+    <div className="highlight-beat beat-impact">
+      {resultConsequence && (
+        <div className={`result-consequence tone-${resultConsequence.tone}`}>
+          <span>{resultConsequence.label}</span>
+          <strong>{resultConsequence.title}</strong>
+          <small>{resultConsequence.detail}</small>
+        </div>
+      )}
+      <div className="next-grid">
+        <InfoTile label="Rating" value={rating.toFixed(1)} tone="gold" />
+        <InfoTile label="Trust" value={`${result.trustDelta >= 0 ? "+" : "-"}${trust}`} />
+        <InfoTile label="Fitness" value={`${result.fitnessDelta}`} tone="warn" />
+      </div>
+      {(selectedChoice || executionReason) && (
+        <p className="highlight-why">
+          {selectedChoice && <span className="highlight-uses">{selectedChoice.uses.join(" + ")}</span>}
+          {executionReason && <span>{executionReason}</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Plays a resolved moment out as a short, cinematic beat-by-beat chain. Pure presentation: the result
+// (and its rating/trust/goals) is already decided — this only choreographs the reveal. The payoff
+// stamp, heat chip and screamer/goal glow stay hidden until the OUTCOME beat lands, so nothing is
+// spoiled. Tap anywhere to reveal the rest instantly; reduced-motion shows everything at once.
 function MatchResultPopup({
   result,
   selectedChoice,
   resultConsequence,
   followUpQueued,
   onContinue,
+  moment,
+  seed,
 }: {
   result: MatchResult;
   selectedChoice?: MatchChoice;
   resultConsequence?: { label: string; title: string; detail: string; tone: string };
   followUpQueued: boolean;
   onContinue: () => void;
+  moment?: MatchMoment;
+  seed: string;
 }) {
+  const chain = useMemo(
+    () => buildHighlightChain({ result, moment, choice: selectedChoice, seed }),
+    [result, moment, selectedChoice, seed],
+  );
+  const [revealed, setRevealed] = useState(1);
+
+  useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setRevealed(chain.length);
+      return;
+    }
+    setRevealed(1);
+    let timer = 0;
+    const step = (shown: number) => {
+      if (shown >= chain.length) return;
+      const nextKind = chain[shown]?.kind;
+      // Paced for reading — the reveal IS the interaction now that moments auto-resolve. Tap to skip.
+      const delay = nextKind === "outcome" ? 1500 : nextKind === "impact" ? 1000 : 1150;
+      timer = window.setTimeout(() => {
+        setRevealed((current) => Math.max(current, shown + 1));
+        step(shown + 1);
+      }, delay);
+    };
+    step(1);
+    return () => window.clearTimeout(timer);
+  }, [chain]);
+
+  const outcomeIndex = chain.findIndex((beat) => beat.kind === "outcome");
+  const outcomeRevealed = outcomeIndex >= 0 && revealed > outcomeIndex;
+  const fullyRevealed = revealed >= chain.length;
   const stamp = getPayoffStamp(result);
-  const rating = useCountUp(result.rating, { from: Math.min(6, result.rating), durationMs: 950, decimals: 1 });
-  const trust = useCountUp(Math.abs(result.trustDelta), { from: 0, durationMs: 750, decimals: 0 });
+  const revealAll = () => {
+    if (!fullyRevealed) setRevealed(chain.length);
+  };
+  const toneClass = outcomeRevealed ? getResultPopupTone(result) : "is-pending";
+  const screamerClass = outcomeRevealed && result.screamer ? "is-screamer" : "";
 
   return (
-    <div className="result-popup-backdrop">
-      <div className={`card result-card result-popup ${getResultPopupTone(result)} ${result.screamer ? "is-screamer" : ""}`}>
-        <div className="payoff-row">
-          <div className={`payoff-stamp tone-${stamp.tone}`} aria-label={`Result: ${stamp.label}`}>
-            <span>{stamp.label}</span>
-          </div>
-          {result.heatTier && result.heatTier !== "Cold" && (
-            <span className={`heat-chip heat-${result.heatTier.toLowerCase().replace(/\s+/g, "-")}`}>
-              <Flame size={13} aria-hidden /> {result.heatTier}
-            </span>
-          )}
+    <div className="result-popup-backdrop" onClick={revealAll}>
+      <div
+        className={`card result-card result-popup highlight-popup ${toneClass} ${screamerClass}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          revealAll();
+        }}
+      >
+        <div className="highlight-head">
+          <span className="highlight-minute">{moment ? `${moment.minute}'` : "Live"}</span>
+          <span className="metric-label">{outcomeRevealed ? getResultVerdictText(result) : "Your moment"}</span>
         </div>
-        <div className="result-verdict">
-          <div>
-            <span>{result.choiceLabel}</span>
-            <strong>{getResultVerdictText(result)}</strong>
-          </div>
-          <span>{result.chanceQuality}</span>
+
+        <div className="highlight-beats">
+          {chain.slice(0, revealed).map((beat, index) => {
+            if (beat.kind === "outcome") {
+              return (
+                <div key={index} className={`highlight-beat beat-outcome tone-${beat.tone} emphasis-${beat.emphasis}`}>
+                  <div className="payoff-row">
+                    <div className={`payoff-stamp tone-${stamp.tone}`} aria-label={`Result: ${stamp.label}`}>
+                      <span>{stamp.label}</span>
+                    </div>
+                    {result.heatTier && result.heatTier !== "Cold" && (
+                      <span className={`heat-chip heat-${result.heatTier.toLowerCase().replace(/\s+/g, "-")}`}>
+                        <Flame size={13} aria-hidden /> {result.heatTier}
+                      </span>
+                    )}
+                  </div>
+                  <strong className="highlight-outcome-text">{beat.text}</strong>
+                  {beat.sub && <p className="highlight-outcome-sub">{beat.sub}</p>}
+                </div>
+              );
+            }
+            if (beat.kind === "impact") {
+              return (
+                <ImpactBeat
+                  key={index}
+                  result={result}
+                  selectedChoice={selectedChoice}
+                  reason={beat.text}
+                  resultConsequence={resultConsequence}
+                />
+              );
+            }
+            return (
+              <div key={index} className={`highlight-beat beat-${beat.kind} tone-${beat.tone} emphasis-${beat.emphasis}`}>
+                {beat.text}
+              </div>
+            );
+          })}
         </div>
-        <h2>{result.title}</h2>
-        <p>{result.detail}</p>
-        <div className="result-reason-grid">
-          <div>
-            <span>Attributes used</span>
-            <strong>{selectedChoice ? selectedChoice.uses.join(" + ") : "Match attributes"}</strong>
-          </div>
-          <div>
-            <span>Chance context</span>
-            <strong>{result.chanceQuality}</strong>
-          </div>
-          <div>
-            <span>Execution</span>
-            <strong>{getResultExecutionText(result)}</strong>
-          </div>
-        </div>
-        {resultConsequence && (
-          <div className={`result-consequence tone-${resultConsequence.tone}`}>
-            <span>{resultConsequence.label}</span>
-            <strong>{resultConsequence.title}</strong>
-            <small>{resultConsequence.detail}</small>
-          </div>
+
+        {outcomeRevealed && (
+          <button
+            className="primary-action"
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onContinue();
+            }}
+          >
+            {followUpQueued ? "Continue Move" : "Resume Match"}
+          </button>
         )}
-        <div className="next-grid">
-          <InfoTile label="Rating" value={rating.toFixed(1)} tone="gold" />
-          <InfoTile label="Trust" value={`${result.trustDelta >= 0 ? "+" : "-"}${trust}`} />
-          <InfoTile label="Fitness" value={`${result.fitnessDelta}`} tone="warn" />
-        </div>
-        <button className="primary-action" type="button" onClick={onContinue}>
-          {followUpQueued ? "Continue Move" : "Resume Match"}
-        </button>
       </div>
     </div>
   );
@@ -892,6 +991,8 @@ export function MatchMomentScreen({
           resultConsequence={resultConsequence}
           followUpQueued={followUpQueued}
           onContinue={onContinue}
+          moment={event?.type === "player_moment" ? event : undefined}
+          seed={`${match.matchSeed}-${event?.type === "player_moment" ? event.id : "moment"}-${match.currentResult.choiceId}-${match.results.length}`}
         />
       )}
 

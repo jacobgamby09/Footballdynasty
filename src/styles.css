@@ -3293,6 +3293,143 @@ button {
     var(--card);
 }
 
+/* --- Chain highlight: cinematic beat-by-beat moment reveal ------------------------------------ */
+.highlight-popup {
+  display: grid;
+  gap: 13px;
+}
+
+.highlight-popup.is-pending {
+  border-color: var(--border);
+}
+
+.highlight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.highlight-minute {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+
+.highlight-head .metric-label {
+  text-align: right;
+}
+
+.highlight-beats {
+  display: grid;
+  gap: 10px;
+}
+
+.highlight-beat {
+  font-size: 14px;
+  line-height: 1.42;
+  color: var(--text);
+  animation: beat-in 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.beat-setup,
+.beat-action {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.beat-pressure.tone-danger {
+  color: var(--orange);
+  font-weight: 650;
+}
+
+.beat-pressure.tone-build,
+.beat-chance {
+  color: var(--lime-2);
+  font-weight: 650;
+}
+
+.beat-chance.emphasis-strong {
+  color: var(--lime);
+  font-weight: 750;
+}
+
+.beat-outcome {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.highlight-outcome-text {
+  display: block;
+  font-size: 21px;
+  font-weight: 850;
+  line-height: 1.14;
+  color: var(--text);
+}
+
+.beat-outcome.tone-goal .highlight-outcome-text,
+.beat-outcome.tone-positive .highlight-outcome-text {
+  color: var(--lime);
+}
+
+.beat-outcome.emphasis-major .highlight-outcome-text {
+  color: var(--lime);
+  font-size: 25px;
+}
+
+.beat-outcome.tone-negative .highlight-outcome-text {
+  color: var(--orange);
+}
+
+.highlight-outcome-sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.beat-impact {
+  display: grid;
+  gap: 11px;
+  margin-top: 2px;
+  animation-duration: 460ms;
+}
+
+.highlight-why {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.highlight-uses {
+  font-weight: 800;
+  color: var(--lime-2);
+}
+
+@keyframes beat-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlight-beat {
+    animation: none;
+  }
+}
+
 .result-card h2 {
   margin: 0;
   font-size: 20px;

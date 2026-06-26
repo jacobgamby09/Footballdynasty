@@ -15,7 +15,7 @@ import { applyTrainingWeek, getCurrentTrainingFocuses, getTrainingFocusCapacity 
 import { acceptContractOfferState, advanceFreeAgentMarketState, enterFreeAgentMarketState, getOfferKey } from "./systems/contracts";
 import { acceptSponsorDealState } from "./systems/sponsors";
 import { startNextSeasonState } from "./systems/season";
-import { createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getChoiceOutcomePreview, simulateRemainingPlayerMoments } from "./systems/match";
+import { autoResolveMomentState, createFollowUpMoment, createMatch, createMatchResult, finishMatchState, getChoiceOutcomePreview, simulateRemainingPlayerMoments } from "./systems/match";
 import { getCountryForClub } from "./systems/world";
 import { findClubByIdentity } from "./systems/clubProfile";
 import { declineTransferWindowOffer } from "./systems/transferWindow";
@@ -157,7 +157,8 @@ function App() {
 
         if (match.liveMinute >= nextEvent.minute) {
           if (nextEvent.type === "player_moment") {
-            return state;
+            // (B) The simulation plays your moment automatically; it then reveals as a chain highlight.
+            return autoResolveMomentState(state);
           }
 
           return {
@@ -169,11 +170,17 @@ function App() {
           };
         }
 
+        const liveMinute = Math.min(nextEvent.minute, match.liveMinute + 1);
+        if (liveMinute >= nextEvent.minute && nextEvent.type === "player_moment") {
+          // Resolve the instant the clock lands on the moment — no flash of the old choice cards.
+          return autoResolveMomentState({ ...state, activeMatch: { ...match, liveMinute } });
+        }
+
         return {
           ...state,
           activeMatch: {
             ...match,
-            liveMinute: Math.min(nextEvent.minute, match.liveMinute + 1),
+            liveMinute,
           },
         };
       });
@@ -433,13 +440,15 @@ function App() {
         };
       }
 
-      return {
+      const reachedState = {
         ...state,
         activeMatch: {
           ...match,
           liveMinute: nextEvent.minute,
         },
       };
+      // (B) If we land on a player moment, the sim resolves it straight into a chain highlight.
+      return nextEvent.type === "player_moment" ? autoResolveMomentState(reachedState) : reachedState;
     });
   }
 
@@ -467,14 +476,15 @@ function App() {
       }
 
       const nextPlayerEvent = match.events[nextPlayerIndex];
-      return {
+      // (B) Jump to the moment and let the sim resolve it straight into a chain highlight.
+      return autoResolveMomentState({
         ...state,
         activeMatch: {
           ...match,
           currentEventIndex: nextPlayerIndex,
           liveMinute: nextPlayerEvent.minute,
         },
-      };
+      });
     });
   }
 

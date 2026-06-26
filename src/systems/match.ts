@@ -1756,6 +1756,50 @@ export function simulateRemainingPlayerMoments(state: GameState, match: MatchSta
 }
 
 
+// Auto-pick the contextually-best choice for a moment — the SAME deterministic picker the sim/skip
+// path uses (reads league/age-adjusted attributes, live fitness, trust and the match seed).
+export function chooseAutoChoiceForMoment(state: GameState, match: MatchState, moment: MatchMoment): MatchChoice {
+  const aging = getAgingProfile(state);
+  const attributeValues = getLeagueAdjustedAttributeValueMap(
+    getAgeAdjustedAttributes(state.attributes, getPlayerAgeFromSeason(state.season.season), aging.peakAge, aging.declineResist),
+    getClubLeagueTier(state.club),
+  );
+  return chooseAutoSimChoice({
+    moment,
+    attributeValues,
+    fitness: getLiveMatchReadiness(match, match.results, moment.minute),
+    trust: state.trust,
+    matchSeed: match.matchSeed,
+  });
+}
+
+// (B) Auto-resolve the current player moment via the simulation: the moment plays itself, then the UI
+// reveals it as a chain highlight. Mirrors resolveMatchChoice's state shape but with an auto-picked
+// choice — deterministic + reload-safe. The manual choice path (App.resolveMatchChoice + the choice
+// cards) remains intact as a fallback and for future "defining moment" decisions.
+export function autoResolveMomentState(state: GameState): GameState {
+  const match = state.activeMatch;
+  if (!match || match.currentResult) {
+    return state;
+  }
+  const event = match.events[match.currentEventIndex];
+  if (!event || event.type !== "player_moment") {
+    return state;
+  }
+  const choice = chooseAutoChoiceForMoment(state, match, event);
+  const result = { ...createMatchResult(state, event, choice), source: "auto" as const };
+  const heat = clamp((match.heat ?? 0) + (result.heatDelta ?? 0), 0, 100);
+  return {
+    ...state,
+    activeMatch: {
+      ...match,
+      currentResult: result,
+      heat,
+    },
+  };
+}
+
+
 export function buildChoiceXp(choice: MatchChoice, tier: OutcomeTier, positionModule: PositionModule, moment: MatchMoment): Partial<Record<AttributeKey, number>> {
   const xp: Partial<Record<AttributeKey, number>> = {};
   const tierBase: Record<OutcomeTier, number> = {

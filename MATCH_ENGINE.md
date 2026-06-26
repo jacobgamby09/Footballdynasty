@@ -30,6 +30,29 @@ goals/assists/XP, so the OVR balance curve is untouched (season-lab byte-identic
 - **Defining moments** (`isDefiningMoment`): late + tight scoreline / cup tie → a banner + amplified
   rating/trust swing + extra heat.
 
+## Chain-highlight match moments — auto-resolve (shipped 2026-06)
+
+Player moments no longer ask the player to pick from choice cards in normal play. When the live clock
+reaches a moment, the simulation auto-resolves it and the result plays out as a cinematic, beat-by-beat
+**chain highlight** (the Codex "moment chain" direction — the player *is* the player, preparing via
+training/recovery/contracts; the match simulates; in-match agency is reserved for a future rare
+"defining moment" choice).
+
+- **Auto-resolution** (`systems/match.ts`): `chooseAutoChoiceForMoment` picks the contextually-best
+  option via the same deterministic `chooseAutoSimChoice` the sim/skip path (and the balance-lab)
+  already use — reads league/age-adjusted attributes, live fitness, trust, opponent, seed.
+  `autoResolveMomentState(state)` mirrors the manual resolve (sets `currentResult` + heat). The
+  auto-advance tick + both skip handlers (`App.tsx`) resolve in-place, so the old choice cards never
+  flash. The manual choice path (`resolveMatchChoice` + the choice cards) stays intact as a fallback.
+- **Chain reveal** (`systems/highlights.ts → buildHighlightChain`, pure + deterministic): an ordered
+  beat list — setup → action → pressure → chance → **outcome** → impact — drama-scaled (routine 4 /
+  notable 5 / decisive·defining 6 beats). Rendered in `MatchResultPopup`: beats reveal one at a time
+  (~1.15s, ~1.5s before the payoff), the payoff stamp / heat chip / screamer glow stay hidden until the
+  outcome beat, count-ups fire on the impact beat. Tap-to-skip; reduced-motion shows everything at once.
+- **Balance**: presentation only — no new persisted state, no SAVE bump. The season-lab already
+  resolves moments via the auto-picker, so the real game now matches its tuned baseline
+  (57.20/67.39/67.11/63.83 byte-identical).
+
 ## Relative Ability Model
 
 Match engine maa ikke behandle en raw 18 OVR spiller ens i alle ligaer. Den skal foerst forstaa kampens niveau.

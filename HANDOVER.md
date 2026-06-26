@@ -5,9 +5,9 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-26 (through Honours & Legacy V1 + match-moment dopamine).
-Branch `main`, all committed and pushed. `SAVE_VERSION` **25** (unchanged — the
-Honours work is additive + default-filled on load, so old saves load intact)._
+_Last updated: 2026-06-26 (player moments now auto-resolve as chain highlights; through Honours &
+Legacy V1 + match-moment dopamine). Branch `main`, all committed and pushed. `SAVE_VERSION` **25**
+(unchanged — recent work is additive / presentation-only, so old saves load intact)._
 
 **Current onboarding note:** new games start with Create Dynasty before country
 selection (first name, family/dynasty last name, nationality, position — Striker
@@ -20,12 +20,26 @@ weakest. The remaining Gen-2 gap is offer-driven heir start logic.
 
 ---
 
-## 0. Latest session — match-moment dopamine + Honours & Legacy V1
+## 0. Latest session — chain-highlight match moments + dopamine + Honours V1
 
-All on `main`, committed and pushed. `SAVE_VERSION` unchanged at **25** (the Honours work is additive
-+ default-filled on load, so old saves load intact — no bump, no wipe). Per-step "Shipped" detail in
+All on `main`, committed and pushed. `SAVE_VERSION` unchanged at **25** (recent work is additive /
+presentation-only, so old saves load intact — no bump, no wipe). Per-step "Shipped" detail in
 `PROGRESS.md`; Honours design is canon in `GDD.md → Honours & Legacy System`, built per
 `HONOURS_LEGACY_PLAN.md` (now marked V1 COMPLETE).
+
+**★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
+direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim
+auto-picks the contextually-best action (`chooseAutoSimChoice` — the same deterministic picker the
+balance-lab uses) and it plays out beat-by-beat (setup → action → tension → **outcome** → impact,
+drama-scaled 4–6 beats). New pure module `systems/highlights.ts → buildHighlightChain`; `systems/match.ts`
+gained `autoResolveMomentState` + `chooseAutoChoiceForMoment`; the auto-tick + both skip handlers in
+`App.tsx` resolve in-place (no choice-card flash). `MatchResultPopup` is now the reveal (payoff stamp /
+heat / screamer hidden until the outcome beat; count-ups on impact; ~1.15s/beat, tap to skip,
+reduced-motion = instant). **Presentation only: zero new persisted state, no SAVE bump, season-lab
+byte-identical** (the lab already resolved via the auto-picker, so the real game now matches its tuned
+assumption). The manual choice path (`resolveMatchChoice` + choice cards) stays intact as a fallback /
+for a future **defining-moment choice** spike (deferred). See `MATCH_ENGINE.md → Chain-highlight match
+moments`.
 
 **A. Match-moment dopamine layer** (3 commits): a visible payoff ladder + a rare **screamer** upgrade
 on decisive goals, reveal **count-ups** (rating sweep / trust) via a reusable `useCountUp`; an in-match

@@ -2599,3 +2599,33 @@ team trophies, and loyalty rewards — all OVR-neutral and reload-safe.
   content above (cards were display:block so their gap was inert; measured 0px). Added one app-wide
   rule: `.card:has(> .primary/.secondary/.danger-action)` becomes a 12px-gap grid. Verified 12px above
   the button across the affected cards. CSS-only; 0 console errors.
+
+## 2026-06-26 - Chain-highlight match moments (auto-resolve via simulation)
+
+- New direction (the Codex "moment chain" idea): player moments no longer show choice cards in normal
+  play. When the live clock reaches a moment, the simulation auto-resolves it and the result plays out
+  as a cinematic, beat-by-beat chain highlight. The player *is* the player (prepares via training /
+  recovery / contracts); the match simulates. Built in two approved steps — (A) the cinematic reveal on
+  top of the existing choice+result, then (B) auto-resolution removing the choice for normal moments.
+- New pure module `systems/highlights.ts → buildHighlightChain(result, moment, choice, seed)`:
+  deterministic ordered beats — setup -> action -> pressure -> chance -> OUTCOME -> impact — drama-scaled
+  (routine 4 / notable 5 / decisive·defining 6). Beats woven from the already-resolved MatchResult +
+  the authored moment situation + chosen action; banks selected via seededNoise. No new persisted state.
+- `MatchResultPopup` (screens.tsx) rebuilt into the beat reveal: beats appear one at a time (~1.15s
+  each, ~1.5s before the payoff); the payoff stamp / heat chip / screamer glow stay hidden until the
+  outcome beat (no spoiler), then burst in; count-ups (rating/trust) fire when the impact beat mounts
+  (new `ImpactBeat` child). Tap anywhere skips to the end; reduced-motion shows everything at once.
+- Auto-resolution (match.ts): `chooseAutoChoiceForMoment` + `autoResolveMomentState` reuse the same
+  deterministic `chooseAutoSimChoice` the sim/skip path (and the season-lab) already use. App.tsx's
+  auto-advance tick + `skipToNextEvent` + `skipToNextHighlight` resolve the moment in-place the instant
+  the clock lands on it, so the old choice cards never flash. The manual choice path
+  (`resolveMatchChoice` + the choice cards) is kept intact underneath as a fallback and as the basis for
+  a future rare **"defining moment" choice** (an intentional agency spike, deferred).
+- Balance: presentation/flow only — no new persisted state, no `SAVE_VERSION` bump (still 25).
+  Season-lab End OVR byte-identical (57.20/67.39/67.11/63.83): the lab already resolved moments via the
+  auto-picker, so the real game now matches its tuned assumption. Build green; play-session smoke exit 0.
+- Verified in-browser (vite preview :4173): drove a full match — moments at 72' and 85' both
+  auto-resolved straight into chain reveals with zero choice cards, match completed to Finish Match, 0
+  console errors. Reveal pacing confirmed readable; tap-to-skip works.
+- Docs: `MATCH_ENGINE.md` ("Chain-highlight match moments" section), `MATCH_AGENCY_PLAN.md` (superseded
+  note), `HANDOVER.md` (section 0).

@@ -111,6 +111,24 @@ export function accrueClubLegacyMatch(honours: HonoursState, club: ClubState, co
   return { ...honours, clubLegacy: [...others, merged] };
 }
 
+// Record season awards/trophies the player won at the active club (climbs Club Legacy via the honours
+// weight in the score). Cabinet entries are written separately.
+export function addClubLegacyHonours(honours: HonoursState, club: ClubState, honourIds: string[]): HonoursState {
+  if (honourIds.length === 0) {
+    return honours;
+  }
+  const id = clubKey(club);
+  let changed = false;
+  const clubLegacy = honours.clubLegacy.map((record) => {
+    if (record.frozen || record.clubId !== id) {
+      return record;
+    }
+    changed = true;
+    return rescore({ ...record, honours: [...record.honours, ...honourIds] });
+  });
+  return changed ? { ...honours, clubLegacy } : honours;
+}
+
 // Season rollover: the active club's record gains a season (and a promotion, if the club went up).
 export function accrueClubLegacySeason(honours: HonoursState, club: ClubState, promoted: boolean): HonoursState {
   const id = clubKey(club);

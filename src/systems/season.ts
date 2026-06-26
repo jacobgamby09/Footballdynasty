@@ -3,7 +3,8 @@ import { getPositionModule } from "../positionRoles";
 import { createLeagueTeams, createSeasonFixturesFromWorld } from "./club";
 import { contractFromOffer, getContractOfferSummary, getPromisedRole } from "./contracts";
 import { getAverageRating, roundToNearest } from "./formatting";
-import { accrueClubLegacySeason } from "./honours";
+import { accrueClubLegacySeason, addClubLegacyHonours } from "./honours";
+import { computeSeasonAwards } from "./worldPlayers";
 import { calculateOvr, getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
@@ -53,6 +54,23 @@ export function startNextSeasonState(state: GameState): GameState {
 
   const oldTier = getClubLeagueTier(state.club);
   const newTier = getClubLeagueTier(syncedClub);
+  const promoted = newTier.averageOvr > oldTier.averageOvr;
+  // Bank the season's player awards (computed from the season that just ended, before the buffer clear).
+  const awards = computeSeasonAwards(state);
+  const awardEntries = awards.playerAwards.map((award) => ({
+    id: `g${state.dynasty.generation}-s${state.season.season}-${award.id}`,
+    kind: "individual" as const,
+    label: award.label,
+    season: state.season.season,
+    generation: state.dynasty.generation,
+    clubId: state.club.clubId,
+    detail: award.detail,
+  }));
+  const rolledHonours = addClubLegacyHonours(
+    accrueClubLegacySeason(state.honours, state.club, promoted),
+    state.club,
+    awards.playerAwards.map((award) => award.id),
+  );
   const moveNote =
     newTier.averageOvr > oldTier.averageOvr
       ? `${syncedClub.name} promoted to ${newTier.name}! `
@@ -64,7 +82,7 @@ export function startNextSeasonState(state: GameState): GameState {
     ...state,
     week: nextWeek,
     cash: state.cash + review.cashReward + (contractOffer?.signingBonus ?? 0),
-    prestige: state.prestige + review.prestigeReward,
+    prestige: state.prestige + review.prestigeReward + awards.prestige,
     contract: contractOffer ? { ...contractFromOffer(contractOffer), tierId: syncedClub.tierId } : { ...state.contract, tierId: syncedClub.tierId },
     trainingCompletedWeek: nextWeek - 1,
     seasonStats: {
@@ -82,9 +100,10 @@ export function startNextSeasonState(state: GameState): GameState {
     },
     club: syncedClub,
     world: newWorld,
-    // Bump Club Legacy seasons/promotions, then wipe the ephemeral per-season NPC stats buffer
-    // (awards/records are banked from it at rollover in a later step before this clear).
-    honours: { ...accrueClubLegacySeason(state.honours, state.club, newTier.averageOvr > oldTier.averageOvr), leagueSeasonStats: [] },
+    // Club Legacy (seasons/promotions + banked award honours), then wipe the ephemeral per-season
+    // NPC stats buffer now that this season's awards have been computed.
+    honours: { ...rolledHonours, leagueSeasonStats: [] },
+    dynasty: { ...state.dynasty, cabinet: { entries: [...state.dynasty.cabinet.entries, ...awardEntries] } },
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,

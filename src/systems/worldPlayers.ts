@@ -1,3 +1,4 @@
+import { leagueTiers } from "../data/leagues";
 import { seededNoise } from "../engine/matchEngineCore";
 import { clamp } from "../utils";
 import type { PositionGroup } from "../positionRoles";
@@ -132,9 +133,81 @@ export function accrueLeagueSeasonStats(
   return { ...honours, leagueSeasonStats: [...byId.values()] };
 }
 
+// --- League rows (shared) ------------------------------------------------------------------------
+// One ranked row per competitor in the player's league: the NPC buffer + the player's own tally, with
+// an award score used for Player-of-the-Year style awards. Names/ages/positions come from squads.
+type LeagueRow = {
+  id: string;
+  name: string;
+  club: string;
+  clubId: string;
+  goals: number;
+  assists: number;
+  apps: number;
+  avg: number;
+  age: number;
+  positionGroup?: PositionGroup;
+  isPlayer: boolean;
+  awardScore: number;
+};
+
+function awardScoreOf(goals: number, assists: number, apps: number, avg: number): number {
+  return avg * 9 + goals * 4 + assists * 2.2 + apps * 0.25;
+}
+
+function buildLeagueRows(game: GameState): { leagueId: string; tierId: string; rows: LeagueRow[] } | undefined {
+  const league = findLeagueByClubShortCode(game.world, game.club.shortCode);
+  if (!league) {
+    return undefined;
+  }
+  const clubName: Record<string, string> = {};
+  const playerById = new Map<string, WorldPlayer>();
+  for (const clubId of league.clubIds) {
+    const club = game.world.clubs[clubId];
+    if (!club) continue;
+    clubName[clubId] = club.name;
+    for (const player of regenerateSquad(club)) playerById.set(player.id, player);
+  }
+  const rows: LeagueRow[] = game.honours.leagueSeasonStats
+    .filter((stat) => clubName[stat.clubId] !== undefined)
+    .map((stat) => {
+      const wp = playerById.get(stat.playerId);
+      const avg = stat.ratingCount > 0 ? stat.ratingTotal / stat.ratingCount : 0;
+      return {
+        id: stat.playerId,
+        name: wp?.name ?? "Unknown",
+        club: clubName[stat.clubId] ?? "",
+        clubId: stat.clubId,
+        goals: stat.goals,
+        assists: stat.assists,
+        apps: stat.apps,
+        avg,
+        age: wp?.age ?? 25,
+        positionGroup: wp?.positionGroup,
+        isPlayer: false,
+        awardScore: awardScoreOf(stat.goals, stat.assists, stat.apps, avg),
+      };
+    });
+  const ratings = game.seasonStats.ratings;
+  const playerAvg = ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : 0;
+  rows.push({
+    id: "you",
+    name: `${game.player.firstName} ${game.player.lastName}`,
+    club: game.club.name,
+    clubId: game.club.clubId ?? game.club.shortCode ?? game.club.name,
+    goals: game.seasonStats.goals,
+    assists: game.seasonStats.assists,
+    apps: game.seasonStats.apps,
+    avg: playerAvg,
+    age: 15 + game.season.season,
+    positionGroup: game.positionGroup,
+    isPlayer: true,
+    awardScore: awardScoreOf(game.seasonStats.goals, game.seasonStats.assists, game.seasonStats.apps, playerAvg),
+  });
+  return { leagueId: league.id, tierId: league.tierId, rows };
+}
+
 // --- League leaderboards -------------------------------------------------------------------------
-// Real top-scorer / assist / rating tables for the player's league, combining the NPC buffer with the
-// player's own season tally so they compete on the same list. Names come from regenerated squads.
 export type LeaderboardEntry = { id: string; name: string; club: string; value: number; isPlayer: boolean };
 export type LeagueLeaderboards = { topScorers: LeaderboardEntry[]; assistLeaders: LeaderboardEntry[]; topRated: LeaderboardEntry[] };
 
@@ -142,50 +215,64 @@ const RATING_MIN_APPS = 5;
 const LEADERBOARD_SIZE = 8;
 
 export function getLeagueLeaderboards(game: GameState): LeagueLeaderboards | undefined {
-  const league = findLeagueByClubShortCode(game.world, game.club.shortCode);
-  if (!league) {
+  const built = buildLeagueRows(game);
+  if (!built) {
     return undefined;
   }
-  const clubName: Record<string, string> = {};
-  const nameById = new Map<string, WorldPlayer>();
-  for (const clubId of league.clubIds) {
-    const club = game.world.clubs[clubId];
-    if (!club) continue;
-    clubName[clubId] = club.name;
-    for (const player of regenerateSquad(club)) nameById.set(player.id, player);
-  }
-
-  type Row = { id: string; name: string; club: string; goals: number; assists: number; apps: number; avg: number; isPlayer: boolean };
-  const rows: Row[] = game.honours.leagueSeasonStats
-    .filter((stat) => clubName[stat.clubId] !== undefined)
-    .map((stat) => ({
-      id: stat.playerId,
-      name: nameById.get(stat.playerId)?.name ?? "Unknown",
-      club: clubName[stat.clubId] ?? "",
-      goals: stat.goals,
-      assists: stat.assists,
-      apps: stat.apps,
-      avg: stat.ratingCount > 0 ? stat.ratingTotal / stat.ratingCount : 0,
-      isPlayer: false,
-    }));
-
-  const ratings = game.seasonStats.ratings;
-  rows.push({
-    id: "you",
-    name: `${game.player.firstName} ${game.player.lastName}`,
-    club: game.club.name,
-    goals: game.seasonStats.goals,
-    assists: game.seasonStats.assists,
-    apps: game.seasonStats.apps,
-    avg: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : 0,
-    isPlayer: true,
-  });
-
-  const toEntry = (row: Row, value: number): LeaderboardEntry => ({ id: row.id, name: row.name, club: row.club, value, isPlayer: row.isPlayer });
-
+  const { rows } = built;
+  const toEntry = (row: LeagueRow, value: number): LeaderboardEntry => ({ id: row.id, name: row.name, club: row.club, value, isPlayer: row.isPlayer });
   return {
     topScorers: [...rows].sort((a, b) => b.goals - a.goals || b.assists - a.assists).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, row.goals)),
     assistLeaders: [...rows].sort((a, b) => b.assists - a.assists || b.goals - a.goals).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, row.assists)),
     topRated: [...rows].filter((row) => row.apps >= RATING_MIN_APPS).sort((a, b) => b.avg - a.avg).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, Number(row.avg.toFixed(2)))),
   };
+}
+
+// --- Season awards -------------------------------------------------------------------------------
+// Data-driven end-of-season awards the player won (they compete on the same list as the NPCs). Prestige
+// is tier-scaled: the same award is worth far more in a higher division. Other leagues use synthetic
+// winners (not modelled here). Returned awards are banked into the cabinet + Club Legacy at rollover.
+export type SeasonAward = { id: string; label: string; detail: string };
+
+export function computeSeasonAwards(game: GameState): { playerAwards: SeasonAward[]; prestige: number } {
+  const built = buildLeagueRows(game);
+  if (!built) {
+    return { playerAwards: [], prestige: 0 };
+  }
+  const { rows, tierId } = built;
+  const player = rows.find((row) => row.isPlayer);
+  if (!player || player.apps < 3) {
+    return { playerAwards: [], prestige: 0 };
+  }
+  const multiplier = leagueTiers[tierId as keyof typeof leagueTiers]?.prestigeMultiplier ?? 1;
+  const awards: SeasonAward[] = [];
+  let prestige = 0;
+  const win = (id: string, label: string, base: number, detail: string) => {
+    awards.push({ id, label, detail });
+    prestige += Math.round(base * multiplier);
+  };
+  const leaderBy = (compare: (a: LeagueRow, b: LeagueRow) => number, pool: LeagueRow[] = rows) => [...pool].sort(compare)[0];
+
+  if (player.goals > 0 && leaderBy((a, b) => b.goals - a.goals || b.assists - a.assists).isPlayer) {
+    win("top-scorer", "Golden Boot", 200, `${player.goals} league goals`);
+  }
+  if (player.assists > 0 && leaderBy((a, b) => b.assists - a.assists || b.goals - a.goals).isPlayer) {
+    win("assist-leader", "Assist Leader", 120, `${player.assists} league assists`);
+  }
+  if (leaderBy((a, b) => b.awardScore - a.awardScore).isPlayer) {
+    win("league-poty", "League Player of the Year", 400, "Top award score in the division");
+  }
+  const young = rows.filter((row) => row.age <= 21);
+  if (player.age <= 21 && young.length > 0 && leaderBy((a, b) => b.awardScore - a.awardScore, young).isPlayer) {
+    win("young-poty", "Young Player of the Year", 250, "Best under-21 in the division");
+  }
+  const clubRows = rows.filter((row) => row.clubId === player.clubId);
+  if (clubRows.length > 1 && leaderBy((a, b) => b.awardScore - a.awardScore, clubRows).isPlayer) {
+    win("club-poty", "Club Player of the Year", 120, player.club);
+  }
+  const teamOfSeason = [...rows].sort((a, b) => b.awardScore - a.awardScore).slice(0, 11);
+  if (teamOfSeason.some((row) => row.isPlayer)) {
+    win("team-of-season", "Team of the Season", 150, "Named in the league XI");
+  }
+  return { playerAwards: awards, prestige };
 }

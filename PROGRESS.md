@@ -2542,3 +2542,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   highlight wired; 0 console errors. Pure read + UI.
 - Possible later polish: pin the player's own rank when they're outside the top 8 (so "you vs the
   field" is always visible).
+
+## 2026-06-26 - Honours & Legacy V1, Step 8: data-driven season awards
+
+- `computeSeasonAwards(game)` (worldPlayers.ts, via a shared `buildLeagueRows` also used by the
+  leaderboards): the player competes on the same list as the NPCs for Golden Boot, Assist Leader,
+  League/Young/Club Player of the Year and Team of the Season — winning only by topping the field
+  (needs >=3 apps; no free wins). Prestige per award is tier-scaled (a higher division is worth far
+  more). `addClubLegacyHonours` records wins on the active club's Club Legacy record.
+- Wired into `startNextSeasonState`: at rollover the player's awards are banked as individual
+  CabinetEntries (dynasty.cabinet), prestige is added, Club Legacy honours are recorded (climbing the
+  status), and only then is the ephemeral NPC buffer cleared.
+- Other leagues use synthetic winners (not modelled). Season-lab unaffected (it reimplements the
+  season loop, so award prestige never touches the OVR baseline) — End OVR byte-identical
+  (57.20/67.39/67.11/63.83).
+- Verified: build + smoke green; deterministic awards probe (dominant player wins 5 + prestige; a
+  stronger NPC scorer strips Golden Boot/League POTY but the player keeps the ones earned; <3 apps =
+  none); banking integration probe (rollover banks 6 cabinet entries, prestige 500->1350, +6 Club
+  Legacy honours -> Club Hero, buffer cleared, season bumped). All pass.

@@ -142,3 +142,48 @@ export function accrueClubLegacySeason(honours: HonoursState, club: ClubState, p
   });
   return changed ? { ...honours, clubLegacy } : honours;
 }
+
+// --- Status rewards (loyalty pays) ---------------------------------------------------------------
+// Club Legacy status feeds existing systems, not new mechanics: a trust floor (the club backs a hero
+// through a slump), a renewal wage bonus, and a retirement Legacy Points contribution.
+export function getActiveClubLegacy(honours: HonoursState, club: ClubState): ClubLegacyRecord | undefined {
+  const id = clubKey(club);
+  return honours.clubLegacy.find((record) => !record.frozen && record.clubId === id);
+}
+
+export function getClubLegacyTrustFloor(status?: ClubLegacyStatus): number {
+  switch (status) {
+    case "Club Legend": return 62;
+    case "Club Icon": return 52;
+    case "Club Hero": return 42;
+    case "Fan Favourite": return 28;
+    default: return 0;
+  }
+}
+
+export function getClubLegacyWageBonus(status?: ClubLegacyStatus): number {
+  switch (status) {
+    case "Club Legend": return 0.24;
+    case "Club Icon": return 0.16;
+    case "Club Hero": return 0.1;
+    case "Fan Favourite": return 0.05;
+    case "First-Team Regular": return 0.02;
+    default: return 0;
+  }
+}
+
+const STATUS_LEGACY_BONUS: Record<ClubLegacyStatus, number> = {
+  "New Arrival": 0,
+  "First-Team Regular": 0,
+  "Fan Favourite": 10,
+  "Club Hero": 35,
+  "Club Icon": 70,
+  "Club Legend": 120,
+};
+
+// Retirement payout contribution: honours won across every club + the bloodline's highest standing.
+export function getHonoursLegacyPoints(honours: HonoursState): number {
+  const honoursCount = honours.clubLegacy.reduce((sum, record) => sum + record.honours.length, 0);
+  const bestStatus = honours.clubLegacy.reduce((max, record) => Math.max(max, STATUS_LEGACY_BONUS[record.status] ?? 0), 0);
+  return Math.round(honoursCount * 6 + bestStatus);
+}

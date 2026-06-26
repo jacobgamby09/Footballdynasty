@@ -4,7 +4,7 @@ import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateCho
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
-import { accrueClubLegacyMatch } from "./honours";
+import { accrueClubLegacyMatch, getActiveClubLegacy, getClubLegacyTrustFloor } from "./honours";
 import { getFormScore } from "./formatting";
 import { getAgeAdjustedAttributes, getPlayerAgeFromSeason } from "./aging";
 import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile } from "./ovr";
@@ -75,7 +75,9 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   const restedProjection = satOut ? Math.max(projectedFitness, recoveryCeiling) : projectedFitness;
   const adjustedFitness = applyRecoveryCeiling(state.fitness, applyRecoveryFloor(state.fitness, restedProjection, recoveryFloor), recoveryCeiling);
   const totals = { ...rawTotals, fitnessDelta: adjustedFitness - state.fitness };
-  const trustAfter = clamp(state.trust + totals.trustDelta, 0, 100);
+  // Club Legacy status sets a trust floor — a club hero is backed through a bad spell.
+  const trustFloor = getClubLegacyTrustFloor(getActiveClubLegacy(state.honours, state.club)?.status);
+  const trustAfter = clamp(state.trust + totals.trustDelta, trustFloor, 100);
   const playerAppeared = didPlayerAppear(match);
   // Consistency coaching raises the rating floor — bad games hurt less (non-OVR).
   if (playerAppeared) {

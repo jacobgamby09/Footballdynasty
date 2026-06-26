@@ -2572,3 +2572,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 - Verified: build + smoke green; season-lab End OVR byte-identical; team-trophy probe (forced
   champions -> cabinet gets League Title + Promotion team entries beside the individual awards, both
   recorded in Club Legacy honours) all pass. Reveal card type-checked + CSS-only animation.
+
+## 2026-06-26 - Honours & Legacy V1, Step 10: status rewards + retirement (V1 complete)
+
+- Club Legacy status now feeds existing systems (loyalty pays), via honours.ts helpers:
+  - Trust floor in finishMatchState: a Fan Favourite+ is backed through a slump (Legend floors trust
+    at 62), so a club hero isn't dropped on one bad run.
+  - Renewal wage bonus in getClubContractOffer (+2%..+24% by status, clamped by the tier wage cap).
+  - Retirement: a new "Honours" component in getLegacyEstimate (honours won across all clubs + the
+    bloodline's highest status) raises the Legacy Points payout.
+- Balance: the season-lab reimplements the season/economy systems, so this real-game coupling never
+  touches the OVR baseline — End OVR byte-identical (57.20/67.39/67.11/63.83). Sponsor eligibility
+  coupling deferred (noted in HONOURS_LEGACY_PLAN.md). Tuning is intentionally left for later.
+- Verified: build + smoke green; lab byte-identical; deterministic probe (trust floor + wage bonus by
+  status, honours raise retirement LP 4 -> 142); full in-browser playthrough, 0 console errors.
+
+Honours & Legacy V1 is complete (Steps 1-10): regenerable NPC world + persisted ephemeral buffer,
+Club Legacy status, scaled club records, real data-driven awards + leaderboards, season Honours reveal,
+team trophies, and loyalty rewards — all OVR-neutral and reload-safe.

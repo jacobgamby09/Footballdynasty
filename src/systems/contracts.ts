@@ -4,6 +4,7 @@ import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { createClubStateFromOffer, rebuildSeasonForClub } from "./club";
 import { getAverageRating, roundToNearest } from "./formatting";
+import { getActiveClubLegacy, getClubLegacyWageBonus } from "./honours";
 import { calculateOvr, getContractLeagueTier, getLeagueTierIndex } from "./ovr";
 import { getPrestigeLeverageScore } from "./prestige";
 import { getCurrentFixture } from "./seasonState";
@@ -238,7 +239,9 @@ export function getClubContractOffer(game: GameState, lastMatch?: LastMatchSumma
   const formBonus = Math.max(0, averageRating - 6.2) * 26;
   const outputBonus = Math.min(80, game.seasonStats.goals * 3 + game.seasonStats.assists * 2);
   const selectionWage = 34 + selection.score * 0.55 + ovr * 0.55 + formBonus + outputBonus;
-  const rawWage = Math.max(current.weeklyWage + (expiringSoon ? 20 : 0), roleBase[rolePromise], selectionWage);
+  // Club Legacy status makes the club pay to keep its hero (better renewal terms).
+  const legacyWageBonus = getClubLegacyWageBonus(getActiveClubLegacy(game.honours, game.club)?.status);
+  const rawWage = Math.max(current.weeklyWage + (expiringSoon ? 20 : 0), roleBase[rolePromise], selectionWage) * (1 + legacyWageBonus);
   const contractTier = getContractLeagueTier(current);
   const weeklyWage = roundToNearest(clamp(rawWage * getContractLeverage(agentLevel, careerBreakthroughs), contractTier.wageRange[0], getTierWageCap(contractTier, rolePromise)), 5);
   const meaningfulUpgrade = weeklyWage >= current.weeklyWage + 15 || rolePromise !== current.rolePromise;

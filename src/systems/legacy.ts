@@ -3,6 +3,7 @@ import { getPositionModule } from "../positionRoles";
 import { calculateOvr } from "./ovr";
 import { getAverageRating } from "./formatting";
 import { createDynastySeasonSnapshot } from "./season";
+import { getHonoursLegacyPoints } from "./honours";
 import { getAgingProfile } from "./support";
 import type { DynastySeason, GameState, LeagueTierId } from "../types";
 
@@ -70,6 +71,11 @@ export function getLegacyEstimate(game: GameState): LegacyEstimate {
       label: "Prestige",
       value: `${game.prestige}`,
       points: Math.sqrt(game.prestige) * 1.2,
+    },
+    {
+      label: "Honours",
+      value: `${game.honours.clubLegacy.reduce((sum, record) => sum + record.honours.length, 0)}`,
+      points: getHonoursLegacyPoints(game.honours),
     },
   ].map((component) => ({ ...component, points: Math.round(component.points) }));
 

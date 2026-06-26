@@ -1,5 +1,5 @@
 import { getPositionModule } from "../positionRoles";
-import type { Attribute, ClubState, Contract, DynastyState, DynastyUpgradeId, GameState, LastMatchSummary, SavePayload, SupportUpgradeId, TrainingSummary, World } from "../types";
+import type { Attribute, ClubState, Contract, DynastyState, DynastyUpgradeId, GameState, HonoursState, LastMatchSummary, SavePayload, SupportUpgradeId, TrainingSummary, World } from "../types";
 import { initialAttributes } from "../data/attributes";
 import { initialDynastyUpgrades, dynastyUpgradeMap } from "../data/dynastyUpgrades";
 import { contractMarketClubs, initialClub, leagueTiers } from "../data/leagues";
@@ -52,8 +52,9 @@ export function cloneGameState(state: GameState): GameState {
     },
     club: { ...state.club },
     world: cloneWorld(state.world),
-    dynasty: { ...state.dynasty, upgrades: { ...(state.dynasty.upgrades ?? initialDynastyUpgrades) } },
+    dynasty: { ...state.dynasty, upgrades: { ...(state.dynasty.upgrades ?? initialDynastyUpgrades) }, cabinet: { entries: (state.dynasty.cabinet?.entries ?? []).map((entry) => ({ ...entry })) } },
     dynastyHistory: state.dynastyHistory.map((season) => ({ ...season })),
+    honours: cloneHonours(state.honours),
     contract: { ...state.contract },
     sponsor: state.sponsor ? cloneSponsorDeal(state.sponsor) : undefined,
     contractOffer: state.contractOffer ? { ...state.contractOffer } : undefined,
@@ -166,6 +167,7 @@ export function normalizeSavedGame(saved: GameState): GameState {
     club: savedClub,
     dynasty: normalizeDynasty(saved.dynasty, fallback.dynasty),
     dynastyHistory: saved.dynastyHistory?.map((season) => ({ ...season })) ?? [],
+    honours: normalizeHonours(saved.honours, fallback.honours),
     contract: { ...fallback.contract, ...(saved.contract ?? {}) },
     sponsor: saved.sponsor ? cloneSponsorDeal(saved.sponsor) : undefined,
     contractOffer: saved.contractOffer ? { ...saved.contractOffer } : undefined,
@@ -288,6 +290,27 @@ function normalizeDynasty(savedDynasty: DynastyState | undefined, fallbackDynast
     familyName: savedDynasty?.familyName ?? fallbackDynasty.familyName,
     nationality: savedDynasty?.nationality ?? fallbackDynasty.nationality,
     upgrades: normalizeDynastyUpgrades(savedDynasty?.upgrades as Partial<Record<string, number>> | undefined),
+    cabinet: { entries: (savedDynasty?.cabinet?.entries ?? fallbackDynasty.cabinet.entries).map((entry) => ({ ...entry })) },
+  };
+}
+
+function cloneHonours(honours: HonoursState | undefined): HonoursState {
+  const safe = honours ?? { clubLegacy: [], clubRecords: {}, leagueSeasonStats: [] };
+  return {
+    clubLegacy: safe.clubLegacy.map((record) => ({ ...record, honours: [...record.honours], recordsHeld: [...record.recordsHeld] })),
+    clubRecords: Object.fromEntries(Object.entries(safe.clubRecords).map(([id, set]) => [id, { ...set }])),
+    leagueSeasonStats: safe.leagueSeasonStats.map((stat) => ({ ...stat })),
+  };
+}
+
+function normalizeHonours(saved: HonoursState | undefined, fallback: HonoursState): HonoursState {
+  if (!saved) {
+    return cloneHonours(fallback);
+  }
+  return {
+    clubLegacy: (saved.clubLegacy ?? []).map((record) => ({ ...record, honours: [...(record.honours ?? [])], recordsHeld: [...(record.recordsHeld ?? [])] })),
+    clubRecords: Object.fromEntries(Object.entries(saved.clubRecords ?? {}).map(([id, set]) => [id, { ...set }])),
+    leagueSeasonStats: (saved.leagueSeasonStats ?? []).map((stat) => ({ ...stat })),
   };
 }
 

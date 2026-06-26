@@ -2437,3 +2437,18 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 - UX note: per-moment dopamine (payoff stamp + count-ups, P1) lands from the very first moment;
   heat (P2) and defining moments (P3) are *earned/situational* and ramp in for starters/established
   players and big games — they stay quiet for early prospects who get ~1 moment/match.
+
+## 2026-06-26 - Honours & Legacy V1, Step 1: types + state scaffolding
+
+- Added the Honours & Legacy data model (types only, no behaviour): ClubLegacyStatus,
+  ClubLegacyRecord, ClubRecordKey/Entry/Set, CabinetEntry, DynastyCabinet, LeaguePlayerSeasonStats,
+  HonoursState. `GameState.honours` (current-career: clubLegacy + clubRecords + ephemeral
+  leagueSeasonStats buffer) and `DynastyState.cabinet` (dynasty-wide, carried across generations via
+  the heir spread).
+- Defaults: `initialDynasty.cabinet = { entries: [] }`; fresh careers get an empty `honours` slice.
+  save.ts clones + normalizes both (deep-cloned; old saves default-fill, new saves round-trip).
+- No `SAVE_VERSION` bump (deliberate): the change is purely additive + optional, and the normalize
+  layer default-fills, so existing v25 careers load intact instead of being wiped.
+- Verified: build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
+  deterministic save probe (old-save default-fill, new-save preserve, deep-clone no-leak) all pass;
+  app boots on the existing v25 save with honours/cabinet defaulted, 0 console errors.

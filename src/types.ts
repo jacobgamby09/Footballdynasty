@@ -240,6 +240,80 @@ export type DynastyState = {
   // head start — the late-career "spend on yourself vs. set up your child" choice.
   estate: number;
   upgrades: Record<DynastyUpgradeId, number>;
+  // Dynasty-wide trophy/award cabinet — persists across generations (carried via the heir spread).
+  cabinet: DynastyCabinet;
+};
+
+// --- Honours & Legacy (see GDD -> Honours & Legacy System + HONOURS_LEGACY_PLAN.md) ---
+// Status/presentation layer only: it grants Prestige, Club Legacy status and (at retirement) Legacy
+// Points, but never alters goals/assists/XP, so the OVR development curve is unchanged.
+
+export type ClubLegacyStatus =
+  | "New Arrival"
+  | "First-Team Regular"
+  | "Fan Favourite"
+  | "Club Hero"
+  | "Club Icon"
+  | "Club Legend";
+
+// The current player's standing at one club. Frozen (kept, never deleted) once the player leaves.
+export type ClubLegacyRecord = {
+  clubId: ClubId;
+  clubName: string;
+  seasons: number;
+  appearances: number;
+  starts: number;
+  goals: number;
+  assists: number;
+  ratingTotal: number;
+  ratingCount: number;
+  promotions: number;
+  honours: string[]; // CabinetEntry ids won at this club
+  recordsHeld: ClubRecordKey[]; // club records the player currently holds here
+  legacyScore: number;
+  status: ClubLegacyStatus;
+  frozen: boolean;
+};
+
+export type ClubRecordKey = "appearances" | "goalsAllTime" | "assistsAllTime" | "goalsInSeason" | "bestSeasonRating";
+export type ClubRecordEntry = { value: number; holder: "club-legend" | "you" };
+export type ClubRecordSet = Record<ClubRecordKey, ClubRecordEntry>;
+
+export type CabinetEntry = {
+  id: string;
+  kind: "team" | "individual";
+  label: string;
+  season: number;
+  generation: number;
+  clubId?: ClubId;
+  detail?: string;
+};
+
+export type DynastyCabinet = {
+  entries: CabinetEntry[]; // all generations; the UI filters by current / generation / dynasty
+};
+
+// EPHEMERAL mid-season working buffer for the player's active league. Never permanent history:
+// holds at most one season, rebuilt as the season plays, wiped at every rollover. See the
+// persistence contract in HONOURS_LEGACY_PLAN.md.
+export type LeaguePlayerSeasonStats = {
+  playerId: string;
+  clubId: ClubId;
+  apps: number;
+  starts: number;
+  minutes: number;
+  goals: number;
+  assists: number;
+  ratingTotal: number;
+  ratingCount: number;
+};
+
+// Current-career honours state. clubLegacy/clubRecords reset with each generation; the dynasty-wide
+// cabinet lives on DynastyState. leagueSeasonStats is the ephemeral per-season buffer.
+export type HonoursState = {
+  clubLegacy: ClubLegacyRecord[];
+  clubRecords: Record<ClubId, ClubRecordSet>;
+  leagueSeasonStats: LeaguePlayerSeasonStats[];
 };
 
 export type ClubProfile = {
@@ -456,6 +530,7 @@ export type GameState = {
   world: World;
   dynasty: DynastyState;
   dynastyHistory: DynastySeason[];
+  honours: HonoursState;
   contract: Contract;
   sponsor?: SponsorDeal;
   supportUpgrades: Record<SupportUpgradeId, number>;

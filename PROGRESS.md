@@ -2501,3 +2501,16 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   matches (Fredericia Colts apps 2) and the Dynasty Club Legacy card shows it; 0 console errors.
 - Blocks A+B of the V1 plan (Steps 1-4: state + hub + records + Club Legacy) are now done; the NPC
   award race (Blocks C+D, Steps 5-10) is next.
+
+## 2026-06-26 - Honours & Legacy V1, Step 5: NPC squad regeneration
+
+- New `systems/worldPlayers.ts` + `WorldPlayer` type. `regenerateSquad(club)` builds a deterministic
+  ~18-player outfield squad (name from a compact pool, age 18-35, positionGroup, overall spread around
+  the club's strength) from `seededNoise(squad-<clubId>-...)`. Pure, no persistence, reproducible per
+  club — the backbone of the upcoming award race (identities regenerate; only season stats persist).
+- Goalkeepers aren't a PositionGroup in this sim, so squads are outfield-only (where top scorer /
+  assists / rating awards are decided anyway).
+- Not wired into game flow yet (Step 6 distributes matchweek events into these squads), so this is
+  purely additive. Build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
+  deterministic probe (18 players, reproducible, distinct clubs differ, elite squad > mid, ages/ids
+  stable) all pass.

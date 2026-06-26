@@ -316,6 +316,17 @@ export type HonoursState = {
   leagueSeasonStats: LeaguePlayerSeasonStats[];
 };
 
+// A lightweight NPC competitor. Identity + attributes are regenerated deterministically from the seed
+// (never persisted); only their accumulated season stats (LeaguePlayerSeasonStats) are stored.
+export type WorldPlayer = {
+  id: string;
+  name: string;
+  age: number;
+  clubId: ClubId;
+  positionGroup: PositionGroup;
+  overall: number;
+};
+
 export type ClubProfile = {
   club: WorldClub;
   country: Country;

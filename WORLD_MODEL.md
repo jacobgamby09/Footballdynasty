@@ -10,6 +10,15 @@ dynasty hand-off later. Built in stages so the game stays playable at every step
 > Status: **Stage 3 complete** on branch `feature/transfers` (Stages 1-2 merged to
 > `main`). See "Build log". This doc is the source of truth for the design and the
 > hand-off to Codex.
+>
+> **NPC-player layer added (2026-06-26, for Honours & Legacy V1):** the club-level world now also
+> supports lightweight NPC players. `systems/worldPlayers.ts → regenerateSquad(club)` builds a
+> deterministic ~18-player squad from the seed (never persisted), and `accrueLeagueSeasonStats`
+> distributes each matchweek's per-club `goalsFor` (from `advanceWorldMatchweek`, which now returns
+> `{ world, weekResults }`) into goals/assists/ratings. These accumulate in an **ephemeral**
+> `GameState.honours.leagueSeasonStats` buffer (the player's league only, persisted during the season,
+> wiped at rollover) that powers the real award race + leaderboards. Consistent with this doc's
+> principle: regenerate identities from seed, persist only outcomes. See `HONOURS_LEGACY_PLAN.md`.
 
 ---
 

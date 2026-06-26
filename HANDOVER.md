@@ -5,9 +5,9 @@ This is a working handover for whoever picks the project up next. It captures
 **where to go next**. The deep design lives in the other docs — this file is the
 map, not the territory.
 
-_Last updated: 2026-06-25 (through percentage-based match-choice outcomes).
-Branch `main`; the latest outcome-preview work is currently uncommitted.
-`SAVE_VERSION` **25**._
+_Last updated: 2026-06-26 (through Honours & Legacy V1 + match-moment dopamine).
+Branch `main`, all committed and pushed. `SAVE_VERSION` **25** (unchanged — the
+Honours work is additive + default-filled on load, so old saves load intact)._
 
 **Current onboarding note:** new games start with Create Dynasty before country
 selection (first name, family/dynasty last name, nationality, position — Striker
@@ -20,7 +20,46 @@ weakest. The remaining Gen-2 gap is offer-driven heir start logic.
 
 ---
 
-## 0. Latest session — match agency + The Feed screen + per-career variety
+## 0. Latest session — match-moment dopamine + Honours & Legacy V1
+
+All on `main`, committed and pushed. `SAVE_VERSION` unchanged at **25** (the Honours work is additive
++ default-filled on load, so old saves load intact — no bump, no wipe). Per-step "Shipped" detail in
+`PROGRESS.md`; Honours design is canon in `GDD.md → Honours & Legacy System`, built per
+`HONOURS_LEGACY_PLAN.md` (now marked V1 COMPLETE).
+
+**A. Match-moment dopamine layer** (3 commits): a visible payoff ladder + a rare **screamer** upgrade
+on decisive goals, reveal **count-ups** (rating sweep / trust) via a reusable `useCountUp`; an in-match
+**heat** meter (Cold→On Fire) that amplifies felt reward; **defining moments** (late + tight scoreline /
+cup) with a banner + amplified swing. All presentation/reward only — never goals/assists/XP — so the
+season-lab OVR baseline stays byte-identical.
+
+**B. 2D pitch experiment — BUILT then FULLY REVERTED.** A flagged FM-style 2D pitch for one moment
+(illustrative, rAF-animated) was built + redesigned, then rolled back at the user's call (over-scope).
+History was scrubbed (reset + force-push), so **there is no `PitchMoment.tsx` / `devFlags.ts`** — don't
+look for them.
+
+**C. Honours & Legacy V1 — COMPLETE (10 steps).** The dynasty's long-term museum / achievement engine:
+- **Regenerable NPC world** (`systems/worldPlayers.ts`): deterministic squads + per-matchweek goal/
+  assist/rating distribution into an **ephemeral** `honours.leagueSeasonStats` buffer (persisted during
+  the season, wiped at rollover — reload-safe; identities regenerate from seed, never persisted).
+- **Club Legacy** (`systems/honours.ts`): per-club record, status New Arrival → Club Legend,
+  freeze-on-transfer; seeded/scaled club records; status rewards (trust floor, renewal wage bonus,
+  retirement Legacy Points).
+- **Awards**: real data-driven Golden Boot / Assist / League·Young·Club POTY / Team of Season (player
+  competes vs the NPCs) + league leaderboards; team trophies; a season Honours reveal sequence.
+- **Dynasty tab** rebuilt into a 6-section hub (Overview / Cabinet / Records / Club Legacy / Bloodline /
+  Upgrades) + a Player-screen "Career honours" teaser.
+- **OVR-neutral throughout**: the season-lab reimplements the season/economy systems, so the real-game
+  coupling never moves the baseline (57.20/67.39/67.11/63.83 byte-identical after every step).
+- Deferred to V2+ (see `HONOURS_LEGACY_PLAN.md`): sponsor-eligibility coupling, leaderboard "pin your
+  rank", real award races in other leagues + IndexedDB. Balance tuning left for later.
+
+**D. UI fixes**: Dynasty 6-section sub-nav → 3×2 grid (no overflow at 360px); action buttons inside
+cards get consistent 12px spacing via a `.card:has(> .*-action)` rule.
+
+---
+
+## 0.1 Earlier this cycle — match agency + The Feed screen + per-career variety
 
 All on `main`, committed and pushed (`60d4b09` → `273e4d2`). Per-step detail with
 "Shipped" notes lives in `MATCH_AGENCY_PLAN.md`; dated entries in `PROGRESS.md`.

@@ -16,6 +16,20 @@ Hvis spilleren bliver bedre, skal kampen foeles anderledes. Hvis modstanderen er
 - Engine-data skal kunne bruges af UI: pre-match, live moments, post-match, XP og readiness.
 - Foerste robuste version skal vaere striker-first, men strukturen skal kunne udvides til andre positioner.
 
+## Match-moment dopamine layer (shipped 2026-06)
+
+A presentation/reward layer on top of resolution — it never changes the outcome, the odds, or
+goals/assists/XP, so the OVR balance curve is untouched (season-lab byte-identical).
+
+- **Payoff ladder + screamer**: every resolved moment gets a quality stamp; a rare seeded `screamer`
+  upgrades a decisive goal (rating/copy/flair only). `getPayoffStamp` + the screamer roll in
+  `systems/match.ts → createMatchResult`.
+- **Reveal count-ups**: rating sweeps / trust counts on the result popup via `useCountUp`.
+- **In-match heat** (`getHeatTier`/`getHeatGain`/`applyHeatReward`): a Cold→On Fire meter that amplifies
+  the *felt* reward (rating/trust), not the odds. Resets each match; tracked on `MatchState.heat`.
+- **Defining moments** (`isDefiningMoment`): late + tight scoreline / cup tie → a banner + amplified
+  rating/trust swing + extra heat.
+
 ## Relative Ability Model
 
 Match engine maa ikke behandle en raw 18 OVR spiller ens i alle ligaer. Den skal foerst forstaa kampens niveau.

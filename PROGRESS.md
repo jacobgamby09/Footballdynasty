@@ -2590,3 +2590,12 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
 Honours & Legacy V1 is complete (Steps 1-10): regenerable NPC world + persisted ephemeral buffer,
 Club Legacy status, scaled club records, real data-driven awards + leaderboards, season Honours reveal,
 team trophies, and loyalty rewards — all OVR-neutral and reload-safe.
+
+## 2026-06-26 - Dynasty hub UI fixes
+
+- Dynasty 6-section sub-nav was a horizontal-scroll row that ran off-screen (Bloodline/Upgrades cut
+  off). Switched to a 3-col grid -> two even rows, all six visible; verified no overflow at 360px/390px.
+- Action buttons inside cards (Review Retirement, Invest, New Career, ...) sat flush against the
+  content above (cards were display:block so their gap was inert; measured 0px). Added one app-wide
+  rule: `.card:has(> .primary/.secondary/.danger-action)` becomes a 12px-gap grid. Verified 12px above
+  the button across the affected cards. CSS-only; 0 console errors.

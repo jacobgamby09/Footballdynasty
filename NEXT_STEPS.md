@@ -1,5 +1,23 @@
 # Next Steps
 
+## Current State (2026-06-26)
+
+Shipped on `main` (see `HANDOVER.md` section 0 + `PROGRESS.md`): the match engine + Feed + per-career
+variety, a **match-moment dopamine layer** (payoff ladder + screamer, reveal count-ups, in-match heat,
+defining moments), and **Honours & Legacy V1 complete** (regenerable NPC award world, Club Legacy
+status, data-driven awards + leaderboards, season Honours reveal, redesigned 6-section Dynasty hub).
+All OVR-neutral (season-lab End OVR byte-identical 57.20/67.39/67.11/63.83). A 2D-pitch moment
+experiment was built then fully reverted (history scrubbed).
+
+**Next candidates:**
+- Balance tuning pass now that the dopamine + Honours layers are in (screamer rate, heat thresholds,
+  Club Legacy status thresholds, the tier-capped renewal wage bonus). New baselines as needed.
+- Honours & Legacy V2: real award races in more leagues + rivalry/Feed hooks; leaderboard "pin your
+  rank"; sponsor-eligibility coupling. V3: all ~38 leagues → IndexedDB.
+- Gen-2 offer-driven heir start (the long-standing dynasty gap).
+
+The older direction below predates the above and is kept for reference.
+
 ## Current Build Direction
 
 Match engine er nu det vigtigste build focus. Den nuvaerende prototype beviser flowet, men naeste lag skal goere kampene mere realistiske, stats-drevne og forklarbare. Se `MATCH_ENGINE.md` for den samlede engine-retning.
@@ -35,7 +53,7 @@ Senest implementeret:
 - match engine V2 foundation module med opponent profiles, Forward highlight taxonomy, chance quality og explanation tags
 - position role data layer i `src/positionRoles.ts` med Forward, Winger, Midfielder, Fullback og Centerback uden målmand
 - position modules styrer nu key attributes, OVR weights, manager instructions, tactical focus og let match tendency bias
-- f�rste position moment libraries for Forward, Winger, Midfielder, Fullback, Centerback og Shared
+- f�rste position moment libraries for Forward, Winger, Midfielder, Fullback, Centerback og Shared
 - position-aware rating/XP V1 med performance weights og key-attribute XP bias
 - position-aware post-match Performance Breakdown med rating, role fit og XP drivers
 

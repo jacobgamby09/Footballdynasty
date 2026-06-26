@@ -3,6 +3,15 @@
 Design canon lives in `GDD.md → Honours & Legacy System`. This file is the concrete build plan.
 Scope here is **V1**; V2/V3 are summarized at the end.
 
+> **STATUS: V1 COMPLETE** (2026-06-26) — all 10 steps shipped on `main`, each build + smoke green,
+> season-lab End OVR byte-identical (57.20/67.39/67.11/63.83), deterministic probes passing.
+> `SAVE_VERSION` was NOT bumped (additive + default-filled on load). Per-step detail in `PROGRESS.md`.
+>
+> Deferred to V2+: sponsor-eligibility coupling; leaderboard "pin your rank when outside the top 8";
+> the real award race in leagues beyond the player's own (synthetic winners today) + the IndexedDB
+> migration. Balance tuning (e.g. the renewal wage bonus is clamped by the tier cap at low tiers,
+> status thresholds) is intentionally left for later.
+
 > Revision: V1 now ships a **real player-league award race** (not a seeded threshold), and persists a
 > compact per-season stats table for the player's league. Both changes resolve points raised in review
 > (a threshold award is hollow + would be thrown away; in-memory NPC stats are lost on a mid-season

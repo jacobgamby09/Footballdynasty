@@ -2483,3 +2483,21 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   deterministic probe (all > 0, scales with tier, reproducible, holder = club-legend, rating in band);
   in-browser the card renders for the current club (e.g. Northbridge FC 0/288 apps … 0.0/7.5 rating),
   0 console errors. Pure UI + pure function — no engine/balance change.
+
+## 2026-06-26 - Honours & Legacy V1, Step 4: Club Legacy accrual + status
+
+- `systems/honours.ts` gains the accrual layer: `accrueClubLegacyMatch` (per match: apps/starts/goals/
+  assists/rating into the active club's record), `accrueClubLegacySeason` (rollover: +1 season, +1
+  promotion if the club went up), `getClubLegacyScore` (milestones dominate; routine apps move it
+  slowly), `getClubLegacyStatus` (New Arrival -> First-Team Regular -> Fan Favourite -> Club Hero ->
+  Club Icon -> Club Legend), and lazy freeze-on-move (the first match at a new club freezes the prior
+  active record, keeping its stats).
+- Wired into `finishMatchState` (per match) and `startNextSeasonState` (per season, with promotion
+  detection from the existing old/new tier compare). Touches only honours state — never goals/assists/
+  XP — so OVR development is unchanged.
+- Verified: build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
+  deterministic probe (11 checks: apps/goals/rating accrue, status climbs, score<->status, season +
+  promotion, freeze-on-move keeps stats); end-to-end in-browser the club record accrues from real
+  matches (Fredericia Colts apps 2) and the Dynasty Club Legacy card shows it; 0 console errors.
+- Blocks A+B of the V1 plan (Steps 1-4: state + hub + records + Club Legacy) are now done; the NPC
+  award race (Blocks C+D, Steps 5-10) is next.

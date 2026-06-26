@@ -3,6 +3,7 @@ import { getPositionModule } from "../positionRoles";
 import { createLeagueTeams, createSeasonFixturesFromWorld } from "./club";
 import { contractFromOffer, getContractOfferSummary, getPromisedRole } from "./contracts";
 import { getAverageRating, roundToNearest } from "./formatting";
+import { accrueClubLegacySeason } from "./honours";
 import { calculateOvr, getClubLeagueTier, getContractLeagueTier } from "./ovr";
 import { getPrestigeLeverageScore, getSeasonPrestigeReward } from "./prestige";
 import { getCurrentFixture, getSeasonGoals, getSeasonRecord } from "./seasonState";
@@ -81,6 +82,7 @@ export function startNextSeasonState(state: GameState): GameState {
     },
     club: syncedClub,
     world: newWorld,
+    honours: accrueClubLegacySeason(state.honours, state.club, newTier.averageOvr > oldTier.averageOvr),
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,

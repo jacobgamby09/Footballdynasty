@@ -4,6 +4,7 @@ import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateCho
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
+import { accrueClubLegacyMatch } from "./honours";
 import { getFormScore } from "./formatting";
 import { getAgeAdjustedAttributes, getPlayerAgeFromSeason } from "./aging";
 import { calculateOvr, getAttributeValue, getClubLeagueTier, getContextualAbilityScore, getLeagueAdjustedAttributeValueMap, getLeagueAdjustedOpponentProfile } from "./ovr";
@@ -186,6 +187,13 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     seasonStats: updatedSeasonStats,
     season: updatedSeason,
     world: updatedWorld,
+    honours: accrueClubLegacyMatch(state.honours, state.club, {
+      appeared: playerAppeared,
+      started: Boolean(playerAppeared && match && isStartingRole(match.playerRole)),
+      goals: totals.goals,
+      assists: totals.assists,
+      rating: totals.rating,
+    }),
   };
   const transferWindow = state.transferWindow ?? createTransferWindowState(stateForOffer, lastMatch);
   let contractOffer = transferWindow ? undefined : state.contractOffer;

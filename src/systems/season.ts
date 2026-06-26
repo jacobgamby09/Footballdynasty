@@ -55,21 +55,30 @@ export function startNextSeasonState(state: GameState): GameState {
   const oldTier = getClubLeagueTier(state.club);
   const newTier = getClubLeagueTier(syncedClub);
   const promoted = newTier.averageOvr > oldTier.averageOvr;
-  // Bank the season's player awards (computed from the season that just ended, before the buffer clear).
+  // Bank the season's honours (computed before the buffer clear): individual awards + team trophies
+  // (league title, promotion) derived from the season just ended.
   const awards = computeSeasonAwards(state);
-  const awardEntries = awards.playerAwards.map((award) => ({
-    id: `g${state.dynasty.generation}-s${state.season.season}-${award.id}`,
-    kind: "individual" as const,
-    label: award.label,
+  const teamTrophies = [
+    ...(review.tablePosition === 1 ? [{ id: "league-title", label: "League Title", detail: `${syncedClub.name} champions` }] : []),
+    ...(promoted ? [{ id: "promotion", label: "Promotion", detail: `Up to ${newTier.name}` }] : []),
+  ];
+  const makeEntry = (id: string, label: string, detail: string, kind: "team" | "individual") => ({
+    id: `g${state.dynasty.generation}-s${state.season.season}-${id}`,
+    kind,
+    label,
     season: state.season.season,
     generation: state.dynasty.generation,
     clubId: state.club.clubId,
-    detail: award.detail,
-  }));
+    detail,
+  });
+  const honourEntries = [
+    ...awards.playerAwards.map((award) => makeEntry(award.id, award.label, award.detail, "individual")),
+    ...teamTrophies.map((trophy) => makeEntry(trophy.id, trophy.label, trophy.detail, "team")),
+  ];
   const rolledHonours = addClubLegacyHonours(
     accrueClubLegacySeason(state.honours, state.club, promoted),
     state.club,
-    awards.playerAwards.map((award) => award.id),
+    [...awards.playerAwards.map((award) => award.id), ...teamTrophies.map((trophy) => trophy.id)],
   );
   const moveNote =
     newTier.averageOvr > oldTier.averageOvr
@@ -103,7 +112,7 @@ export function startNextSeasonState(state: GameState): GameState {
     // Club Legacy (seasons/promotions + banked award honours), then wipe the ephemeral per-season
     // NPC stats buffer now that this season's awards have been computed.
     honours: { ...rolledHonours, leagueSeasonStats: [] },
-    dynasty: { ...state.dynasty, cabinet: { entries: [...state.dynasty.cabinet.entries, ...awardEntries] } },
+    dynasty: { ...state.dynasty, cabinet: { entries: [...state.dynasty.cabinet.entries, ...honourEntries] } },
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,

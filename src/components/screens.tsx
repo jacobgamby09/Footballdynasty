@@ -10,7 +10,7 @@ import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
 import { CLUB_RECORD_ROWS, seedClubRecords } from "../systems/honours";
-import { getLeagueLeaderboards } from "../systems/worldPlayers";
+import { computeSeasonAwards, getLeagueLeaderboards } from "../systems/worldPlayers";
 import type { LeaderboardEntry } from "../systems/worldPlayers";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
@@ -1362,6 +1362,10 @@ export function SeasonReviewScreen({ game, onOpenClub }: { game: GameState; onOp
   const goalDifference = goals.for - goals.against;
   const prestigeAfterReward = getPrestigeStatus(game.prestige + review.prestigeReward);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+  const seasonHonours = [
+    ...(review.tablePosition === 1 ? [{ id: "league-title", label: "League Title", detail: `${game.club.name} champions`, team: true }] : []),
+    ...computeSeasonAwards(game).playerAwards.map((award) => ({ ...award, team: false })),
+  ];
 
   return (
     <section className="simple-screen season-review-screen">
@@ -1384,6 +1388,26 @@ export function SeasonReviewScreen({ game, onOpenClub }: { game: GameState; onOp
           <span>{review.verdict.title}</span>
         </div>
       </div>
+
+      {seasonHonours.length > 0 && (
+        <div className="card season-honours-card">
+          <div className="section-heading">
+            <div>
+              <span className="metric-label">Season honours</span>
+              <h2>{seasonHonours.length} {seasonHonours.length === 1 ? "honour" : "honours"} won</h2>
+            </div>
+            <Trophy size={19} />
+          </div>
+          <div className="season-honours-list">
+            {seasonHonours.map((honour, index) => (
+              <div className="season-honour-row" key={honour.id} style={{ "--honour-delay": `${index * 0.12}s` } as CSSProperties}>
+                <span className="season-honour-icon" aria-hidden="true">{honour.team ? <Trophy size={16} /> : <Star size={16} />}</span>
+                <div><strong>{honour.label}</strong><small>{honour.detail}</small></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <span className="metric-label">Club campaign</span>

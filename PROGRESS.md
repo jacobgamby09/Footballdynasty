@@ -2560,3 +2560,15 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   stronger NPC scorer strips Golden Boot/League POTY but the player keeps the ones earned; <3 apps =
   none); banking integration probe (rollover banks 6 cabinet entries, prestige 500->1350, +6 Club
   Legacy honours -> Club Hero, buffer cleared, season bumped). All pass.
+
+## 2026-06-26 - Honours & Legacy V1, Step 9: season Honours reveal + team trophies
+
+- Team trophies derived from the season just ended (League Title when tablePosition === 1, Promotion
+  when the club went up) are banked at rollover as `team` CabinetEntries alongside the individual
+  awards, and added to Club Legacy honours.
+- Season Review screen gains a "Season honours" reveal card: the honours won this season (individual
+  awards via computeSeasonAwards + League Title) appear with a staggered gold pop-in (reduced-motion
+  safe). Computed read-only on the review screen; banked deterministically at rollover (same source).
+- Verified: build + smoke green; season-lab End OVR byte-identical; team-trophy probe (forced
+  champions -> cabinet gets League Title + Promotion team entries beside the individual awards, both
+  recorded in Club Legacy honours) all pass. Reveal card type-checked + CSS-only animation.

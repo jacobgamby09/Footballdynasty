@@ -2469,3 +2469,17 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   graceful empty states. Kept under Home (bottom nav stays the locked four + center).
 - Pure UI — no engine/balance change. Build + smoke green; season-lab End OVR byte-identical
   (57.20/67.39/67.11/63.83); all 6 sections render with correct tokens; 0 console errors.
+
+## 2026-06-26 - Honours & Legacy V1, Step 3: club records seeding
+
+- New `systems/honours.ts` with `seedClubRecords(club, tier)`: deterministic, credible all-time records
+  (appearances, all-time goals/assists, best season goals, best season rating) scaled by league tier +
+  club reputation, each held by a "club-legend" — never starting at 0, so there's a real target. Pure
+  (seededNoise only), reproducible per club, so untouched clubs regenerate on demand (no persistence).
+- Club profile shows a read-only "Club records" card: each record as `you / record` with a lime
+  progress bar. The player's standing is their current club-legacy record if present, else (current
+  club) their season tally, else 0. Contextual note distinguishes current vs other clubs.
+- Verified: build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
+  deterministic probe (all > 0, scales with tier, reproducible, holder = club-legend, rating in band);
+  in-browser the card renders for the current club (e.g. Northbridge FC 0/288 apps … 0.0/7.5 rating),
+  0 console errors. Pure UI + pure function — no engine/balance change.

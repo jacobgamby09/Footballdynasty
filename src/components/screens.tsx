@@ -9,6 +9,7 @@ import { calculateOvr, getClubLeagueTier, getXpPercent } from "../systems/ovr";
 import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
+import { CLUB_RECORD_ROWS, seedClubRecords } from "../systems/honours";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
@@ -23,7 +24,7 @@ import { ClubLink, CountryFlag, DetailHeader, FixtureStatusBadge, Header, InfoRo
 import { Activity, ArrowRightLeft, Award, BadgeDollarSign, BarChart3, CalendarDays, Check, ChevronRight, Coins, Crown, Dumbbell, Flame, Home, Landmark, Newspaper, ShieldCheck, Sparkles, Star, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, CabinetEntry, ChoiceOutcomePreview, ClubId, ClubLegacyRecord, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
+import type { Attribute, CabinetEntry, ChoiceOutcomePreview, ClubId, ClubLegacyRecord, ClubRecordKey, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties, ReactNode } from "react";
 
 export function PlayerScreen({ game, onOpenClub, onOpenDynasty }: { game: GameState; onOpenClub?: (identity: string) => void; onOpenDynasty?: () => void }) {
@@ -2609,6 +2610,28 @@ export function ClubProfileScreen({
 
   const isCurrentClub = profile.club.id === game.club.clubId || profile.club.shortCode === game.club.shortCode;
 
+  const clubRecords = seedClubRecords(profile.club, profile.tier);
+  const existingLegacy = game.honours.clubLegacy.find((record) => record.clubId === profile.club.id);
+  const seasonRatings = game.seasonStats.ratings;
+  const avgRating = seasonRatings.length ? seasonRatings.reduce((sum, value) => sum + value, 0) / seasonRatings.length : 0;
+  const clubStanding: Record<ClubRecordKey, number> = existingLegacy
+    ? {
+        appearances: existingLegacy.appearances,
+        goalsAllTime: existingLegacy.goals,
+        assistsAllTime: existingLegacy.assists,
+        goalsInSeason: 0,
+        bestSeasonRating: existingLegacy.ratingCount ? existingLegacy.ratingTotal / existingLegacy.ratingCount : 0,
+      }
+    : isCurrentClub
+      ? {
+          appearances: game.seasonStats.apps,
+          goalsAllTime: game.seasonStats.goals,
+          assistsAllTime: game.seasonStats.assists,
+          goalsInSeason: game.seasonStats.goals,
+          bestSeasonRating: avgRating,
+        }
+      : { appearances: 0, goalsAllTime: 0, assistsAllTime: 0, goalsInSeason: 0, bestSeasonRating: 0 };
+
   return (
     <section className="simple-screen club-profile-screen">
       <DetailHeader
@@ -2663,6 +2686,34 @@ export function ClubProfileScreen({
           <InfoTile label="Clean sheets" value={`${profile.cleanSheets}`} />
           <InfoTile label="Facilities" value={profile.facilityLabel} />
         </div>
+      </div>
+
+      <div className="card club-records-card">
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Club records</span>
+            <h2>All-time marks</h2>
+          </div>
+          <Award size={19} />
+        </div>
+        <div className="club-records-list">
+          {CLUB_RECORD_ROWS.map((row) => {
+            const record = clubRecords[row.key];
+            const you = clubStanding[row.key];
+            const pct = record.value > 0 ? clamp((you / record.value) * 100, 0, 100) : 0;
+            const fmt = (value: number) => (row.decimals ? value.toFixed(row.decimals) : `${Math.round(value)}`);
+            return (
+              <div className="club-record-row" key={row.key}>
+                <span className="club-record-label">{row.label}</span>
+                <span className="club-record-bar"><span style={{ width: `${pct}%` }} /></span>
+                <span className="club-record-vals"><strong>{fmt(you)}</strong> / {fmt(record.value)}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="club-records-note">
+          {isCurrentClub ? "Your standing at this club versus its all-time records." : "All-time records held by club legends."}
+        </p>
       </div>
 
       <div className="card club-style-card">

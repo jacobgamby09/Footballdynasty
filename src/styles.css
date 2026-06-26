@@ -1561,6 +1561,62 @@ button {
   color: var(--muted);
 }
 
+.club-records-card {
+  display: grid;
+  gap: 10px;
+}
+
+.club-records-list {
+  display: grid;
+  gap: 9px;
+}
+
+.club-record-row {
+  display: grid;
+  grid-template-columns: 1fr 60px auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.club-record-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.club-record-bar {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.club-record-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--lime);
+}
+
+.club-record-vals {
+  font-size: 12px;
+  color: var(--subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.club-record-vals strong {
+  color: var(--lime);
+  font-weight: 900;
+}
+
+.club-records-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--subtle);
+}
+
 .club-legacy-card {
   display: grid;
   gap: 11px;

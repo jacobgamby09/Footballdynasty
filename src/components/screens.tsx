@@ -10,6 +10,8 @@ import { getLegacyEstimate, getPlayerAge } from "../systems/legacy";
 import { getEstateCost, getEstateHeirCash } from "../systems/estate";
 import { getPrestigeStatus } from "../systems/prestige";
 import { CLUB_RECORD_ROWS, seedClubRecords } from "../systems/honours";
+import { getLeagueLeaderboards } from "../systems/worldPlayers";
+import type { LeaderboardEntry } from "../systems/worldPlayers";
 import { createDynastySeasonSnapshot, getDynastyTotals, getLeagueTable, getSeasonContractOffer, getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonGoals, getSeasonRecord, getTeamFormScore, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch } from "../systems/selection";
@@ -2038,6 +2040,26 @@ function ClubLegacyCard({ record, onOpenClub }: { record: ClubLegacyRecord; onOp
   );
 }
 
+function LeaderboardCard({ label, icon, entries, decimals }: { label: string; icon: ReactNode; entries: LeaderboardEntry[]; decimals?: number }) {
+  return (
+    <div className="card leaderboard-card">
+      <div className="section-heading">
+        <div><span className="metric-label">League</span><h2>{label}</h2></div>
+        {icon}
+      </div>
+      <div className="leaderboard-list">
+        {entries.map((entry, index) => (
+          <div className={`leaderboard-row ${entry.isPlayer ? "is-player" : ""}`} key={entry.id}>
+            <span className="leaderboard-rank">{index + 1}</span>
+            <span className="leaderboard-name">{entry.name}<small>{entry.club}</small></span>
+            <strong>{decimals ? entry.value.toFixed(decimals) : entry.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DynastyView({
   game,
   onBuyDynastyUpgrade,
@@ -2069,6 +2091,7 @@ export function DynastyView({
   const cabinetEntries = cabinetFilter === "player"
     ? cabinet.filter((entry) => entry.generation === game.dynasty.generation)
     : cabinet;
+  const leaderboards = getLeagueLeaderboards(game);
 
   return (
     <div className="dynasty-view">
@@ -2150,6 +2173,15 @@ export function DynastyView({
 
       {section === "records" && (
         <>
+          {leaderboards && leaderboards.topScorers.some((entry) => entry.value > 0) && (
+            <>
+              <LeaderboardCard label="Top scorers" icon={<Trophy size={19} />} entries={leaderboards.topScorers} />
+              <LeaderboardCard label="Assist leaders" icon={<Sparkles size={19} />} entries={leaderboards.assistLeaders} />
+              {leaderboards.topRated.length > 0 && (
+                <LeaderboardCard label="Top rated" icon={<Star size={19} />} entries={leaderboards.topRated} decimals={2} />
+              )}
+            </>
+          )}
           <div className="card">
             <div className="section-heading">
               <div><span className="metric-label">Career bests</span><h2>Personal milestones</h2></div>

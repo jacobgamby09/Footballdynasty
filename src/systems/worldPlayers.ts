@@ -1,7 +1,8 @@
 import { seededNoise } from "../engine/matchEngineCore";
 import { clamp } from "../utils";
 import type { PositionGroup } from "../positionRoles";
-import type { HonoursState, LeaguePlayerSeasonStats, World, WorldClub, WorldPlayer } from "../types";
+import type { GameState, HonoursState, LeaguePlayerSeasonStats, World, WorldClub, WorldPlayer } from "../types";
+import { findLeagueByClubShortCode } from "./world";
 
 // Lightweight, deterministic NPC competitors for the award race. A club's squad is regenerated from
 // its id on demand (never persisted); only the players' accumulated season stats are stored. Pure:
@@ -129,4 +130,62 @@ export function accrueLeagueSeasonStats(
   }
 
   return { ...honours, leagueSeasonStats: [...byId.values()] };
+}
+
+// --- League leaderboards -------------------------------------------------------------------------
+// Real top-scorer / assist / rating tables for the player's league, combining the NPC buffer with the
+// player's own season tally so they compete on the same list. Names come from regenerated squads.
+export type LeaderboardEntry = { id: string; name: string; club: string; value: number; isPlayer: boolean };
+export type LeagueLeaderboards = { topScorers: LeaderboardEntry[]; assistLeaders: LeaderboardEntry[]; topRated: LeaderboardEntry[] };
+
+const RATING_MIN_APPS = 5;
+const LEADERBOARD_SIZE = 8;
+
+export function getLeagueLeaderboards(game: GameState): LeagueLeaderboards | undefined {
+  const league = findLeagueByClubShortCode(game.world, game.club.shortCode);
+  if (!league) {
+    return undefined;
+  }
+  const clubName: Record<string, string> = {};
+  const nameById = new Map<string, WorldPlayer>();
+  for (const clubId of league.clubIds) {
+    const club = game.world.clubs[clubId];
+    if (!club) continue;
+    clubName[clubId] = club.name;
+    for (const player of regenerateSquad(club)) nameById.set(player.id, player);
+  }
+
+  type Row = { id: string; name: string; club: string; goals: number; assists: number; apps: number; avg: number; isPlayer: boolean };
+  const rows: Row[] = game.honours.leagueSeasonStats
+    .filter((stat) => clubName[stat.clubId] !== undefined)
+    .map((stat) => ({
+      id: stat.playerId,
+      name: nameById.get(stat.playerId)?.name ?? "Unknown",
+      club: clubName[stat.clubId] ?? "",
+      goals: stat.goals,
+      assists: stat.assists,
+      apps: stat.apps,
+      avg: stat.ratingCount > 0 ? stat.ratingTotal / stat.ratingCount : 0,
+      isPlayer: false,
+    }));
+
+  const ratings = game.seasonStats.ratings;
+  rows.push({
+    id: "you",
+    name: `${game.player.firstName} ${game.player.lastName}`,
+    club: game.club.name,
+    goals: game.seasonStats.goals,
+    assists: game.seasonStats.assists,
+    apps: game.seasonStats.apps,
+    avg: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : 0,
+    isPlayer: true,
+  });
+
+  const toEntry = (row: Row, value: number): LeaderboardEntry => ({ id: row.id, name: row.name, club: row.club, value, isPlayer: row.isPlayer });
+
+  return {
+    topScorers: [...rows].sort((a, b) => b.goals - a.goals || b.assists - a.assists).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, row.goals)),
+    assistLeaders: [...rows].sort((a, b) => b.assists - a.assists || b.goals - a.goals).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, row.assists)),
+    topRated: [...rows].filter((row) => row.apps >= RATING_MIN_APPS).sort((a, b) => b.avg - a.avg).slice(0, LEADERBOARD_SIZE).map((row) => toEntry(row, Number(row.avg.toFixed(2)))),
+  };
 }

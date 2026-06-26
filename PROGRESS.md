@@ -2528,3 +2528,17 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   deterministic probe (distributed goals sum exactly to club goalsFor, reproducible, top scorer is an
   attacker, ratings populated); end-to-end the buffer fills from real play (191 NPC entries, 29 goals)
   and is reload-safe (byte-identical after reload). 0 console errors.
+
+## 2026-06-26 - Honours & Legacy V1, Step 7: league leaderboards
+
+- `getLeagueLeaderboards(game)` (worldPlayers.ts): combines the NPC season buffer with the player's
+  own season tally into ranked Top scorers / Assist leaders / Top rated (min 5 apps) lists for the
+  player's league. NPC names/clubs come from the regenerated squads; the player competes on the same
+  list and is flagged.
+- Dynasty -> Records renders the three leaderboards (LeaderboardCard) above career bests, with the
+  player's row highlighted in lime. Top rated appears once NPCs reach the apps threshold.
+- Verified: build + smoke green; season-lab End OVR byte-identical; in-browser the lists render with
+  real NPC names + clubs from the player's league (e.g. Ruben Wagner / Viborg Reserves), player
+  highlight wired; 0 console errors. Pure read + UI.
+- Possible later polish: pin the player's own rank when they're outside the top 8 (so "you vs the
+  field" is always visible).

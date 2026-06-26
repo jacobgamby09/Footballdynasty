@@ -288,6 +288,15 @@ button {
   border-radius: var(--radius);
 }
 
+/* Any card that holds an action button stacks its children with consistent spacing, so the button
+   never sits flush against the stats/grid above it. */
+.card:has(> .primary-action),
+.card:has(> .secondary-action),
+.card:has(> .danger-action) {
+  display: grid;
+  gap: 12px;
+}
+
 .career-card {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);

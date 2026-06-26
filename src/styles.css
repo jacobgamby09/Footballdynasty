@@ -1354,22 +1354,15 @@ button {
 }
 
 .dynasty-subnav {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  overflow-x: auto;
   margin-top: 2px;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-
-.dynasty-subnav::-webkit-scrollbar {
-  display: none;
 }
 
 .dynasty-subnav button {
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 13px;
+  min-height: 34px;
+  padding: 0 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--muted);
@@ -1377,6 +1370,8 @@ button {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }

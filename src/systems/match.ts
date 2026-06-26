@@ -15,7 +15,8 @@ import { getObjectiveResultLine, getSponsorMatchObjective } from "./matchObjecti
 import { advanceSponsorWeek, getSponsorPayout } from "./sponsors";
 import { applyRecoveryCeiling, applyRecoveryFloor, getAgingProfile, getConsistencyRatingFloor, getEliteConditioningCeilingBonus, getMarqueeBonus, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getWeeklySupportRecoveryBonus } from "./support";
 import { addAttributeXp, getDevelopmentEnvironment } from "./training";
-import { advanceWorldMatchweek } from "./world";
+import { advanceWorldMatchweek, findLeagueByClubShortCode } from "./world";
+import { accrueLeagueSeasonStats } from "./worldPlayers";
 import { createTransferWindowState } from "./transferWindow";
 import { generateWeeklyFeed } from "./feed";
 import type { AttributeKey, PositionModule } from "../positionRoles";
@@ -164,14 +165,27 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     : state.season;
   // Advance the persistent world by one matchweek: the player's club takes its real
   // result, every other club gets a deterministic light-sim result (see WORLD_MODEL.md).
-  const updatedWorld = fixtureResult
+  const matchweek = fixtureResult
     ? advanceWorldMatchweek(
         state.world,
         state.club.shortCode,
         { outcome: fixtureResult.outcome, goalsFor: fixtureResult.teamGoals, goalsAgainst: fixtureResult.opponentGoals },
         state.season.results.length,
       )
-    : state.world;
+    : undefined;
+  const updatedWorld = matchweek?.world ?? state.world;
+  const honoursAfterMatch = accrueClubLegacyMatch(state.honours, state.club, {
+    appeared: playerAppeared,
+    started: Boolean(playerAppeared && match && isStartingRole(match.playerRole)),
+    goals: totals.goals,
+    assists: totals.assists,
+    rating: totals.rating,
+  });
+  // Distribute this matchweek's results across the player's league NPC squads (ephemeral buffer).
+  const playerLeague = matchweek ? findLeagueByClubShortCode(state.world, state.club.shortCode) : undefined;
+  const updatedHonours = matchweek && playerLeague
+    ? accrueLeagueSeasonStats(honoursAfterMatch, state.world, playerLeague.id, matchweek.weekResults, state.season.results.length)
+    : honoursAfterMatch;
   const stateForOffer: GameState = {
     ...state,
     week: state.week + 1,
@@ -187,13 +201,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     seasonStats: updatedSeasonStats,
     season: updatedSeason,
     world: updatedWorld,
-    honours: accrueClubLegacyMatch(state.honours, state.club, {
-      appeared: playerAppeared,
-      started: Boolean(playerAppeared && match && isStartingRole(match.playerRole)),
-      goals: totals.goals,
-      assists: totals.assists,
-      rating: totals.rating,
-    }),
+    honours: updatedHonours,
   };
   const transferWindow = state.transferWindow ?? createTransferWindowState(stateForOffer, lastMatch);
   let contractOffer = transferWindow ? undefined : state.contractOffer;

@@ -2514,3 +2514,17 @@ in-match objective-progress widget, and Step 3b (transient mid-match manager ask
   purely additive. Build + smoke green; season-lab End OVR byte-identical (57.20/67.39/67.11/63.83);
   deterministic probe (18 players, reproducible, distinct clubs differ, elite squad > mid, ages/ids
   stable) all pass.
+
+## 2026-06-26 - Honours & Legacy V1, Step 6: matchweek distribution into NPC squads
+
+- `advanceWorldMatchweek` now returns `{ world, weekResults }` (per-club ClubWeekResult for the week);
+  the single caller (finishMatchState) destructures it.
+- New `accrueLeagueSeasonStats` (worldPlayers.ts): for the player's league, distributes each club's
+  weekly goalsFor across its regenerated squad as goals (position + overall weighted), derives assists
+  (~65%), and gives the starting XI an appearance + a seeded rating — accumulating into the ephemeral
+  `honours.leagueSeasonStats` buffer. Deterministic (seeded per club per week). Wired into
+  finishMatchState; the buffer is wiped at season rollover (season.ts).
+- Verified: build + smoke green; season-lab End OVR byte-identical (only honours touched);
+  deterministic probe (distributed goals sum exactly to club goalsFor, reproducible, top scorer is an
+  attacker, ratings populated); end-to-end the buffer fills from real play (191 NPC entries, 29 goals)
+  and is reload-safe (byte-identical after reload). 0 console errors.

@@ -97,8 +97,9 @@ export function advanceWorldMatchweek(
   playerShortCode: string,
   playerResult: ClubWeekResult,
   weekIndex: number,
-): World {
+): { world: World; weekResults: Record<string, ClubWeekResult> } {
   const leagueSeasons = { ...world.leagueSeasons };
+  const weekResults: Record<string, ClubWeekResult> = {};
 
   for (const league of Object.values(world.leagues)) {
     const tier = leagueTiers[league.tierId];
@@ -112,13 +113,14 @@ export function advanceWorldMatchweek(
         club.shortCode === playerShortCode
           ? playerResult
           : simClubWeek(club.strength - tier.averageOvr, club.shortCode, weekIndex, world.seasonNumber);
+      weekResults[clubId] = result;
       records[clubId] = addResult(base, result);
     }
 
     leagueSeasons[league.id] = { leagueId: league.id, records };
   }
 
-  return { ...world, leagueSeasons };
+  return { world: { ...world, leagueSeasons }, weekResults };
 }
 
 function freshLeagueSeasons(leagues: Record<string, WorldLeague>): World["leagueSeasons"] {

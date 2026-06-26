@@ -82,7 +82,9 @@ export function startNextSeasonState(state: GameState): GameState {
     },
     club: syncedClub,
     world: newWorld,
-    honours: accrueClubLegacySeason(state.honours, state.club, newTier.averageOvr > oldTier.averageOvr),
+    // Bump Club Legacy seasons/promotions, then wipe the ephemeral per-season NPC stats buffer
+    // (awards/records are banked from it at rollover in a later step before this clear).
+    honours: { ...accrueClubLegacySeason(state.honours, state.club, newTier.averageOvr > oldTier.averageOvr), leagueSeasonStats: [] },
     dynastyHistory: [...state.dynastyHistory, dynastySeason],
     lastTraining: undefined,
     contractOffer: undefined,

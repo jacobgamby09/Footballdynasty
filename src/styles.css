@@ -4486,6 +4486,40 @@ button {
   gap: 7px;
 }
 
+/* Promotion / relegation cut lines in the full league table (#17) */
+.table-cut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 1px 2px;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.table-cut::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+}
+
+.table-cut-promo {
+  color: var(--lime);
+}
+
+.table-cut-promo::after {
+  background: linear-gradient(90deg, rgba(200, 243, 95, 0.55), transparent);
+}
+
+.table-cut-releg {
+  color: var(--orange);
+}
+
+.table-cut-releg::after {
+  background: linear-gradient(90deg, rgba(241, 138, 54, 0.55), transparent);
+}
+
 .fixture-row,
 .table-row,
 .table-header {

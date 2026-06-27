@@ -19,7 +19,7 @@ import { getFitnessAvailability, getNextRole, getRoleThreshold, getUpcomingMatch
 import { getAvailableSponsorDeals } from "../systems/sponsors";
 import { getSupportUpgradeTotal } from "../systems/support";
 import { getAttributeGrowthDetail, getCurrentTrainingFocuses, getTrainingFocusCapacity, getTrainingFocusUnlockLabel, getTrainingFocusWeight, getTrainingProjection } from "../systems/training";
-import { getCountryForClub } from "../systems/world";
+import { findLeagueByClubShortCode, getCountryForClub } from "../systems/world";
 import { getClubProfile } from "../systems/clubProfile";
 import { clamp } from "../utils";
 import { CareerCard, ContractMarketCard, DynastySeasonRow, DynastyTrackCard, EquipmentFacilitiesCard, FixturePreviewList, LastMatchCard, LeagueTablePreview, MatchStatsCard, PrestigeStatusCard, ReadinessStrip, RelationshipsCard, SeasonContextCard, SeasonSnapshot, SelectionBriefingCard, SupportTrackCard } from "./cards";
@@ -540,15 +540,24 @@ function formatObjectiveReward(reward: MatchObjective["reward"]): string {
 }
 
 export function PreMatchScreen({
+  game,
   match,
   onOpenClub,
 }: {
+  game: GameState;
   match: MatchState;
   onOpenClub?: (identity: string) => void;
 }) {
   const matchupDelta = match.teamStrength - match.opponentStrength;
   const matchupTone = matchupDelta >= 4 ? "good" : matchupDelta <= -4 ? "warn" : undefined;
   const entryPlan = getPreMatchEntryPlan(match);
+  // League standing for both clubs (#11) — context for the match. Player is always in their league
+  // table; the opponent is matched by name (unique by generation), so a cup opponent simply shows "—".
+  const leagueTable = getLeagueTable(game);
+  const playerPos = leagueTable.findIndex((row) => row.short === game.club.shortCode);
+  const opponentPos = leagueTable.findIndex((row) => row.name === match.opponent || row.short === match.opponent);
+  const ordinal = (n: number) =>
+    `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
 
   return (
     <section className="simple-screen pre-match-screen">
@@ -579,6 +588,17 @@ export function PreMatchScreen({
           <InfoTile label="Selection" value={`${match.selectionScore}/100`} tone={match.selectionScore >= 60 ? "good" : undefined} />
         </div>
       </div>
+
+      {playerPos >= 0 && (
+        <div className="card pre-match-standing-card">
+          <span className="metric-label">League standing</span>
+          <div className="next-grid">
+            <InfoTile label="You" value={ordinal(playerPos + 1)} tone="gold" />
+            <InfoTile label="Opponent" value={opponentPos >= 0 ? ordinal(opponentPos + 1) : "—"} />
+            <InfoTile label="League" value={`${leagueTable.length} teams`} />
+          </div>
+        </div>
+      )}
 
       <div className="card pre-match-brief-card">
         <span className="metric-label">Manager brief</span>
@@ -2048,6 +2068,10 @@ export function ClubFixturesView({ game, onBack, onOpenClub }: { game: GameState
 export function ClubTableView({ game, onBack, onOpenClub }: { game: GameState; onBack: () => void; onOpenClub?: (identity: string) => void }) {
   const table = getLeagueTable(game);
   const country = getCountryForClub(game.world, game.club.clubId, game.club.shortCode);
+  // Promotion / relegation cut lines (#17) from the league's slots — top N promote, bottom N relegate.
+  const league = findLeagueByClubShortCode(game.world, game.club.shortCode);
+  const promoCut = league?.promotionSlots ?? 0;
+  const relegCut = league && league.relegationSlots > 0 ? table.length - league.relegationSlots : -1;
 
   return (
     <section className="simple-screen club-detail-screen">
@@ -2061,9 +2085,18 @@ export function ClubTableView({ game, onBack, onOpenClub }: { game: GameState; o
           <span>Pts</span>
         </div>
         <div className="league-table">
-          {table.map((row) => (
-            <LeagueTableRowView key={row.short} row={row} playerClubShort={game.club.shortCode} onOpenClub={onOpenClub} />
-          ))}
+          {table.flatMap((row, index) => {
+            const elements = [
+              <LeagueTableRowView key={row.short} row={row} playerClubShort={game.club.shortCode} onOpenClub={onOpenClub} />,
+            ];
+            if (promoCut > 0 && index === promoCut - 1 && index < table.length - 1) {
+              elements.push(<div className="table-cut table-cut-promo" key={`${row.short}-promo`}><span>Promotion</span></div>);
+            }
+            if (relegCut > 0 && index === relegCut - 1) {
+              elements.push(<div className="table-cut table-cut-releg" key={`${row.short}-releg`}><span>Relegation</span></div>);
+            }
+            return elements;
+          })}
         </div>
       </div>
     </section>

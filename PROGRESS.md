@@ -2698,3 +2698,21 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   retirement). None of that screen routing is covered by the smoke (which tests the systems functions, not
   App flow), so it needs a full-season playthrough to verify safely — best done as its own focused step.
 - Verified: build green, play-session smoke exit 0, season-lab engine-only (unaffected).
+
+## 2026-06-27 - UX clarity: demotion wording, club-view reset, pre-match standings, table cut lines (#10, #18, #11, #17)
+
+- **#10 demotion wording**: a role drop always read "win the shirt back," implying a form/effort failure
+  even when the cause was match fitness (the playtest showed a 7.4 game with 2 goals demoted
+  Starter→Impact Sub). `getManagerMatchBrief` now detects a fitness-driven drop (fatigue tag or a decent
+  rating) and says so ("that's match fitness, not your form — get sharp and the shirt's yours again").
+- **#18 club-view reset**: re-entering the Club tab kept whatever subview/table you'd left on. `navigate()`
+  now resets `clubView` to "overview", so Club always opens on its default view.
+- **#11 pre-match league standings**: `PreMatchScreen` (now passed `game`) shows a "League standing" card
+  — You / Opponent position + league size — for league matches; a cup opponent not in the table shows "—".
+  Opponent row matched by name OR short (robust to either field).
+- **#17 promotion/relegation lines**: the full league table (`ClubTableView`) now draws Promotion and
+  Relegation cut lines from the league's `promotionSlots`/`relegationSlots` (bottom tier has none).
+- Display/UX only; no save change. Build green, smoke exit 0, season-lab engine-only.
+- Remaining ⚪ UX items for a follow-up: tappable prestige detail (#21), top-scorer placement + NPC
+  rating correlation (#13/#16), season-start brief (#12), training-slot UX (#3/#4). #27 (season-end
+  order) still deferred (needs a full-season playthrough to verify safely).

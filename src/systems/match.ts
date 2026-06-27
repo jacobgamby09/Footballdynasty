@@ -939,7 +939,14 @@ export function getManagerMatchBrief(summary: LastMatchSummary): {
   if (afterRank > beforeRank) {
     praise.push(`You've played your way up to ${summary.roleAfter}.`);
   } else if (afterRank < beforeRank) {
-    concerns.push(`You've slipped to ${summary.roleAfter} — win the shirt back.`);
+    // Don't imply a form/effort failure when the drop is really about match fitness / availability —
+    // a decent rating but a lower role almost always means the legs, not the performance (#10).
+    const fitnessDriven = tags.has("fatigue_limited_action") || (played && summary.rating >= 6.8);
+    concerns.push(
+      fitnessDriven
+        ? `You dropped to ${summary.roleAfter} — that's match fitness, not your form. Get sharp and the shirt's yours again.`
+        : `You've slipped to ${summary.roleAfter} — win the shirt back.`,
+    );
   } else if (played && summary.selectionAfter > summary.selectionBefore && summary.pointsToNextRole > 0 && summary.pointsToNextRole <= 8) {
     const next = BRIEF_NEXT_ROLE[summary.roleAfter];
     if (next) praise.push(`${summary.pointsToNextRole} more selection points and a ${next} role is yours.`);

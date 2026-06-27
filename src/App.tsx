@@ -728,6 +728,7 @@ function App() {
 
   function navigate(nav: NavKey) {
     setSelectedClubId(undefined);
+    setClubView("overview"); // re-entering Club always starts on the default view (#18)
     setActiveScreen(nav);
   }
 
@@ -806,6 +807,7 @@ function App() {
           )}
           {activeScreen === "pre-match" && game.activeMatch && (
             <PreMatchScreen
+              game={game}
               match={game.activeMatch}
               onOpenClub={openClubProfile}
             />

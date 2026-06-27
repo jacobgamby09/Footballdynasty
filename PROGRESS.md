@@ -2803,3 +2803,38 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   thread it into in-match fitness decay, match-minute cost, late-match action quality, and rest/selection
   risk, but keep it gentle above ~60 fitness so it isn't mandatory for every archetype. Today Stamina feeds
   nothing in `getMatchFitnessDelta`/`getLiveMatchReadiness` (minutes + action load only).
+
+## 2026-06-27 - Balance: Stamina as an availability/sharpness stat (#9 part 2)
+
+- Part 1 made Stamina visible in OVR but mechanically inert (a "tax stat" risk). Part 2 gives it real value
+  WITHOUT making it an output stat: a single engine source `getStaminaFitnessLoadMultiplier(stamina,
+  minutesElapsed, startFitness?)` (matchEngineCore) multiplies the (negative) fitness load — neutral at the
+  reference Stamina 55, >1 below (burns faster), <1 above (holds longer). Imported by the app (`match.ts`),
+  the season-lab AND a new probe — ONE truth for the stamina math (the model we want everywhere; see the
+  OVR red flag below).
+- Two channels, both consuming the one multiplier:
+  - **Post-match decay** (`getMatchFitnessDelta`): freshness-damped (floor 0.3 at >=~85 fitness, ramping to
+    1.25 when already tired) → a single fresh match barely differs; the bite COMPOUNDS across a congested
+    run as fitness drops. Captures "weak when fresh / >=60 not punishing / train-hard + play a lot."
+  - **Live readiness** (`getLiveMatchReadiness`): minute-ramped (negligible <60', climbing through the
+    closing half hour) → low Stamina fades late regardless of how fresh you kicked off; and since readiness
+    already feeds moment resolution, that softens late-match action quality with NO new output coupling.
+  - `MatchState.stamina` carries the (age-adjusted) kickoff Stamina; read sites fall back to 55 for
+    pre-stamina saves (additive, no SAVE_VERSION bump).
+- Probe (`scripts/stamina-fitness-probe.mjs`, imports the engine fn) hits every target: one fresh match
+  low-vs-high gap **2** (washed out by weekly recovery), late readiness gap **0 to 60', 3 by 90'**, a
+  6-match fixture pile-up **low 54 (role capped) / mid 62 / high 68 (gap 14, low crosses selection but is
+  NOT benched → penalized, not useless)**. mid(55) is exactly neutral (x1.000), so an average striker is
+  unaffected.
+- **Season-lab End OVR moved (deliberate — the lab now models stamina decay for its Stamina-10 striker):
+  `57.01/67.59/67.08/63.77` → `57.01/67.49/67.07/63.69`** (−0.10/−0.01/−0.08; scenario 1 unchanged). Tiny,
+  because a normal weekly rhythm rarely drains below ~75 — exactly the point: gentle in normal play, bites
+  under congestion/late-match (which the lab doesn't stress). **New guardrail: `57.01/67.49/67.07/63.69`.**
+  Match-lab output IDENTICAL (2.54/3.15/2.56 goals) — the lab never touches the fitness path, so
+  output-neutrality is structural. Build green, smoke exit 0.
+- **OVR red flag logged (the "two OVR truths").** The labs reimplement OVR with their OWN weights
+  (`Finishing 1.25` vs the app's `1.35`, and no Pace/Stamina) — a pre-existing divergence part 1 widened.
+  New `scripts/app-ovr-probe.mjs` quantifies it: lab-OVR reads **+4 to +7** above the player's app-OVR for
+  stamina-light builds. Not acute (the guardrail tracks progression SHAPE, not the headline number), but
+  the fix is on the list: extract the Forward weights into a plain .js the app + labs + probe all import
+  (same single-source pattern as the stamina fn).

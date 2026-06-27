@@ -4,6 +4,7 @@ import {
   createTeamMatchModel,
   chooseAutoSimChoice,
   getSimScoreAtMinute,
+  getStaminaFitnessLoadMultiplier,
   resolvePlayerChoice,
   seededNoise,
 } from "../src/engine/matchEngineCore.js";
@@ -1064,7 +1065,10 @@ function getMatchFitnessDelta(state, minutes, results) {
   const minuteLoad = -Math.max(1, Math.round(minutes / 18));
   const actionLoad = sum(results.map((result) => Math.min(0, result.fitnessDelta)));
   const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
-  return clamp(minuteLoad + scaledActionLoad + getMatchActionRecoveryRelief(matchRecoveryLevel), -12, 0);
+  // Same engine source as the app: Stamina amplifies/dampens the load (freshness-damped, compounds over
+  // a congested run). The lab striker is Stamina 10, so this is the canary for the dumped-athletics cost.
+  const staminaMultiplier = getStaminaFitnessLoadMultiplier(agedFlat(state).Stamina ?? 55, minutes, state.fitness);
+  return clamp(Math.round((minuteLoad + scaledActionLoad) * staminaMultiplier) + getMatchActionRecoveryRelief(matchRecoveryLevel), -12, 0);
 }
 
 function getSelectionReport(state, fixture, importance = "Normal") {

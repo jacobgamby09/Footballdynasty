@@ -157,6 +157,12 @@ export function aggregateMatchRating(
   simRatingDelta?: number,
 ): number;
 
+export function getStaminaFitnessLoadMultiplier(
+  stamina: number,
+  minutesElapsed?: number,
+  startFitness?: number | null,
+): number;
+
 export function seededNoise(seed: string): number;
 
 export function createSeededRandom(seed: string): () => number;

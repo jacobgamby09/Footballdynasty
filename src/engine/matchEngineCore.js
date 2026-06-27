@@ -369,6 +369,26 @@ export function aggregateMatchRating(results, simRatingDelta = 0) {
   return Math.max(5.4, Math.min(9.8, 6.2 + delta + simRatingDelta));
 }
 
+// Stamina is an availability/sharpness stat, NEVER an output stat: it shapes how fast a player burns
+// fitness, not how well an action resolves. Returns a multiplier on the (negative) fitness load — 1.0 at
+// the reference Stamina (55, ~ a fit pro), >1 below it (burns faster), <1 above it (holds the level longer).
+// Two gates keep it from being a flat tax on everyone:
+//   • late ramp — negligible before ~60', climbing through the closing half hour ("the legs go late"), so
+//     a cameo barely differs and a full 90 feels it. Drives the in-match readiness fade (call with the
+//     minutes elapsed so far, no startFitness).
+//   • freshness — when a caller passes startFitness, kicking off fit softens the cost (floor 0.3), so it
+//     does NOT punish a single fresh match; the bite compounds across a congested run as fitness drops.
+// Net: one fresh match → small gap, long match → a noticeable late fade, several loads → a large gap.
+export function getStaminaFitnessLoadMultiplier(stamina, minutesElapsed = 90, startFitness = null) {
+  const s = typeof stamina === "number" ? stamina : 55;
+  const deviation = (55 - s) / 100; // +0.45 at Sta 10, 0 at 55, -0.35 at 90
+  const lateRamp = clamp((minutesElapsed - 45) / 45, 0.1, 1.1); // ~0.1 by 45', ~0.45 by 65', 1.0 by 90'
+  // Fresh (>=~85 fitness) sits at the floor so a rested match is barely affected; the bite ramps as the
+  // player is already tired, so it COMPOUNDS across a congested run rather than punishing one fresh game.
+  const freshnessDamp = startFitness == null ? 1 : clamp((100 - startFitness) / 55, 0.3, 1.25);
+  return clamp(1 + deviation * lateRamp * freshnessDamp, 0.7, 1.6);
+}
+
 export function seededNoise(seed) {
   let hash = 2166136261;
   for (let index = 0; index < seed.length; index += 1) {

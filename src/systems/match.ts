@@ -1,6 +1,6 @@
 import { createPositionMatchPool } from "../engine/forwardMoments";
 import { canQueueDirectorFollowUp, createMatchDirectorPlan } from "../engine/matchDirector";
-import { aggregateMatchRating, chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateChoiceOutcomes, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
+import { aggregateMatchRating, chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateChoiceOutcomes, getSimScoreAtMinute, getStaminaFitnessLoadMultiplier, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
@@ -281,7 +281,10 @@ export function getMatchFitnessDelta(match: MatchState, results: MatchResult[]) 
   const actionLoad = results.reduce((sum, result) => sum + Math.min(0, result.fitnessDelta), 0);
   const scaledActionLoad = Math.round(actionLoad * Math.min(1, minutes / 60) * 0.35);
 
-  return clamp(minuteLoad + scaledActionLoad, -12, 0);
+  // Stamina shapes how much that load actually costs — freshness-damped so a single fresh match is gentle
+  // but a congested run compounds (low Stamina drops you below the selection thresholds sooner).
+  const staminaMultiplier = getStaminaFitnessLoadMultiplier(match.stamina ?? 55, minutes, match.startFitness);
+  return clamp(Math.round((minuteLoad + scaledActionLoad) * staminaMultiplier), -12, 0);
 }
 
 export function getMatchdayRecoveryBonus(match: MatchState) {
@@ -305,7 +308,11 @@ export function getLiveMatchReadiness(match: MatchState, results: MatchResult[] 
   const startMinute = clamp(match.entryMinute, 0, 90);
   const endMinute = clamp(Math.min(liveMinute, match.exitMinute ?? 90), startMinute, 90);
   const minutesPlayedSoFar = Math.max(0, endMinute - startMinute);
-  const minuteLoad = minutesPlayedSoFar <= 0 ? 0 : -Math.max(0, Math.round(minutesPlayedSoFar / 22));
+  const baseMinuteLoad = minutesPlayedSoFar <= 0 ? 0 : -Math.max(0, Math.round(minutesPlayedSoFar / 22));
+  // In-match the Stamina bite is minute-ramped (no freshness damp): the legs go in the closing stretch
+  // regardless of how fresh you kicked off, so low Stamina fades late — and since readiness feeds moment
+  // resolution, that softens late-match action quality without any new output coupling.
+  const minuteLoad = Math.round(baseMinuteLoad * getStaminaFitnessLoadMultiplier(match.stamina ?? 55, minutesPlayedSoFar));
   const actionLoad = results.reduce((sum, result) => sum + Math.min(0, result.fitnessDelta), 0);
 
   return clamp(match.startFitness + minuteLoad + actionLoad, 0, 100);
@@ -1228,6 +1235,7 @@ export function createMatch(state: GameState, context: UpcomingMatch): MatchStat
     fitnessAvailability: context.fitnessAvailability,
     isInSquad: context.isInSquad,
     startFitness: state.fitness,
+    stamina: getAttributeValue(agedAttributes, "Stamina"),
     entryMinute: appearanceWindow.entryMinute,
     exitMinute: appearanceWindow.exitMinute,
     managerInstruction: context.managerInstruction,

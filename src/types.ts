@@ -676,6 +676,9 @@ export type MatchState = {
   fitnessAvailability: FitnessAvailability;
   isInSquad: boolean;
   startFitness: number;
+  // Player's (age-adjusted) Stamina captured at kickoff — drives the fitness-decay/late-readiness curve
+  // (an availability stat, not an output stat). Optional-safe at read sites for pre-stamina saves.
+  stamina: number;
   entryMinute: number;
   exitMinute?: number;
   managerInstruction: string;

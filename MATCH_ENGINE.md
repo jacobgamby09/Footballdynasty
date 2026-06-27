@@ -70,8 +70,16 @@ players). Still open: the "Great outcomes too rare" heuristic (the `getOutcomeTi
 easing it couples with conversion, so left for a focused pass). Non-primary-stat weight (#9) part 1 is
 done — Forward OVR now carries a small Pace+Stamina share (~12% combined) so a primary-maxed striker can't
 reach a perfect rating by dumping athleticism (a real-game `calculateOvr` change; the labs reimplement OVR
-so the guardrail above is *intentionally* unmoved). Part 2 open: Stamina as an availability/sharpness stat
-(fitness decay, minute cost, late-match quality, rest/selection risk — gentle above ~60 fitness).
+so the guardrail above is *intentionally* unmoved). Part 2 done: Stamina is now an availability/sharpness
+stat (never an output stat) via one engine source `getStaminaFitnessLoadMultiplier` shared by the app, the
+season-lab and `scripts/stamina-fitness-probe.mjs`. It multiplies the fitness load on two channels —
+post-match decay (freshness-damped, compounds across a congested run) and live readiness (minute-ramped,
+fades late and softens late-match resolution since readiness feeds it). Neutral at Stamina 55, so an average
+striker is unchanged; a congested run drives a low-Stamina player to a role-capped fitness while a
+high-Stamina one holds. This moved the guardrail to **`57.01/67.49/67.07/63.69`** (the lab's Stamina-10
+striker now pays a small availability cost). Caveat — the "two OVR truths": the labs reimplement OVR with
+their own weights (no Pace/Stamina), so lab-OVR reads +4..+7 above the app's displayed OVR for stamina-light
+builds (`scripts/app-ovr-probe.mjs` quantifies it); unify via a shared-weights .js is on NEXT_STEPS.
 
 ## Relative Ability Model
 

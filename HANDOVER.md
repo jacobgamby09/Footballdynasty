@@ -39,8 +39,20 @@ this file / other docs citing 57.20/… describe pre-tuning, OVR-neutral work an
 athleticism is capped (−7 OVR at Pace/Sta ~20, −3 at ~60) rather than reaching a perfect rating — balanced
 strikers unaffected (+0). This is a `calculateOvr` (display/rating) change, NOT an engine change, so the
 season-lab guardrail above is *intentionally* byte-identical (the labs reimplement OVR and don't read
-`positionRoles.ts`). Part 2 — making Stamina an availability/sharpness stat (fitness decay, minute cost,
-late-match quality, rest/selection risk; gentle above ~60 fitness) — is the next focused step.
+`positionRoles.ts`). **Part 2 done:** Stamina is now an availability/sharpness stat (never an output stat)
+via one engine source `getStaminaFitnessLoadMultiplier` shared by app + season-lab + probe — it multiplies
+the fitness load on post-match decay (freshness-damped, compounds across a congested run) and live readiness
+(minute-ramped, fades late and softens late-match resolution). Neutral at Stamina 55 (average striker
+unchanged); a fixture pile-up drives low Stamina to a role-capped fitness, high Stamina holds. **Guardrail
+moved to `57.01/67.49/67.07/63.69`** (the lab's Stamina-10 striker now pays a small availability cost;
+match-lab output identical, build green, smoke 0).
+
+**⚠ "Two OVR truths" (tracked, not acute).** The season/match labs reimplement OVR with their OWN weights
+(`Finishing 1.25` vs the app's `1.35`, no Pace/Stamina), so the guardrail measures lab-OVR, which reads
+**+4..+7 above** the player's displayed app-OVR for stamina-light builds — `scripts/app-ovr-probe.mjs`
+quantifies it. Fine for now (the guardrail tracks progression SHAPE), but the fix is on NEXT_STEPS: extract
+the Forward weights into a plain .js the app + labs + probe all import (the single-source pattern the stamina
+fn already follows).
 
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim

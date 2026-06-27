@@ -2660,3 +2660,21 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
 - Deferred from the same playtest pass (not in this batch): chain-highlight manual step-through (#2) +
   the choice-flash on follow-up moments (#1); rating curve + goal-environment balance (#5-9, #31);
   season-end flow + award eligibility (#27-30); UX clarity + feature polish items.
+
+## 2026-06-27 - Chain-highlight feel: manual step-through + follow-up flash fix (#2, #1)
+
+- **#1 choice cards flashing behind a moment**: follow-up (chained) moments were the cause —
+  `continueMatch` inserted the follow-up and set its minute but left `currentResult` undefined, so the
+  old choice cards rendered for one tick until the auto-advance interval resolved it. Now `continueMatch`
+  wraps the follow-up state in `autoResolveMomentState`, so a chained moment reveals as a chain highlight
+  immediately (mirrors the tick + skip handlers — no flash anywhere now).
+- **#2 reveal too automatic by default**: added `GameState.matchHighlightMode` ("manual" | "auto",
+  default **manual**). Manual = tap the card / "Continue ▸" to step one beat at a time; auto = the prior
+  timed reveal. A "Skip" button reveals the rest; reduced-motion shows everything at once. A Tap/Auto
+  toggle sits in the live match controls. Optional field → no `SAVE_VERSION` bump; persists via the
+  save spread; old saves default to manual.
+- Verified in-browser (manual default): a moment auto-resolves showing only the setup beat (no timer);
+  "Continue ▸" advances exactly one beat; "Skip" reveals all 5 and surfaces "Resume Match"; Resume
+  continues to full time; zero choice cards, zero console errors. Build green, smoke exit 0, lab
+  engine-only (unaffected).
+- Docs: `MATCH_ENGINE.md` + `HANDOVER.md` reveal description updated to manual-default + toggle.

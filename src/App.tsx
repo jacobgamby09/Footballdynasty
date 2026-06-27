@@ -383,7 +383,9 @@ function App() {
           ...state.activeMatch.events.slice(nextIndex),
         ];
 
-        return {
+        // (B) The follow-up is itself a player moment — auto-resolve it in place so it reveals as a
+        // chain highlight immediately, instead of flashing the old choice cards for a tick.
+        return autoResolveMomentState({
           ...state,
           activeMatch: {
             ...state.activeMatch,
@@ -393,7 +395,7 @@ function App() {
             results,
             currentResult: undefined,
           },
-        };
+        });
       }
 
       if (nextIndex >= state.activeMatch.events.length) {
@@ -820,6 +822,8 @@ function App() {
               onSkipToFullTime={skipToFullTime}
               onOpenClub={openClubProfile}
               matchSpeed={matchSpeed}
+              revealMode={game.matchHighlightMode ?? "manual"}
+              onSetHighlightMode={(mode) => setGame((state) => ({ ...state, matchHighlightMode: mode }))}
             />
           )}
           {activeScreen === "summary" && game.lastMatch && (

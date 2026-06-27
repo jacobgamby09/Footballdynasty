@@ -655,7 +655,8 @@ function ImpactBeat({
 // Plays a resolved moment out as a short, cinematic beat-by-beat chain. Pure presentation: the result
 // (and its rating/trust/goals) is already decided — this only choreographs the reveal. The payoff
 // stamp, heat chip and screamer/goal glow stay hidden until the OUTCOME beat lands, so nothing is
-// spoiled. Tap anywhere to reveal the rest instantly; reduced-motion shows everything at once.
+// spoiled. Manual mode (default): tap to step one beat at a time. Auto mode: timed reveal. "Skip"
+// reveals the rest. Reduced-motion shows everything at once.
 function MatchResultPopup({
   result,
   selectedChoice,
@@ -664,6 +665,7 @@ function MatchResultPopup({
   onContinue,
   moment,
   seed,
+  revealMode,
 }: {
   result: MatchResult;
   selectedChoice?: MatchChoice;
@@ -672,6 +674,7 @@ function MatchResultPopup({
   onContinue: () => void;
   moment?: MatchMoment;
   seed: string;
+  revealMode: "auto" | "manual";
 }) {
   const chain = useMemo(
     () => buildHighlightChain({ result, moment, choice: selectedChoice, seed }),
@@ -687,11 +690,13 @@ function MatchResultPopup({
       return;
     }
     setRevealed(1);
+    if (revealMode !== "auto") {
+      return; // manual: the player taps to advance each beat
+    }
     let timer = 0;
     const step = (shown: number) => {
       if (shown >= chain.length) return;
       const nextKind = chain[shown]?.kind;
-      // Paced for reading — the reveal IS the interaction now that moments auto-resolve. Tap to skip.
       const delay = nextKind === "outcome" ? 1500 : nextKind === "impact" ? 1000 : 1150;
       timer = window.setTimeout(() => {
         setRevealed((current) => Math.max(current, shown + 1));
@@ -700,25 +705,32 @@ function MatchResultPopup({
     };
     step(1);
     return () => window.clearTimeout(timer);
-  }, [chain]);
+  }, [chain, revealMode]);
 
   const outcomeIndex = chain.findIndex((beat) => beat.kind === "outcome");
   const outcomeRevealed = outcomeIndex >= 0 && revealed > outcomeIndex;
   const fullyRevealed = revealed >= chain.length;
   const stamp = getPayoffStamp(result);
-  const revealAll = () => {
-    if (!fullyRevealed) setRevealed(chain.length);
+  const revealAll = () => setRevealed(chain.length);
+  const advanceOne = () => setRevealed((current) => Math.min(chain.length, current + 1));
+  // Tap the card: manual steps one beat, auto skips to the end. No-op once fully revealed.
+  const onSurfaceTap = () => {
+    if (fullyRevealed) return;
+    if (revealMode === "auto") revealAll();
+    else advanceOne();
   };
+  // Resume early once the payoff has landed (auto) / once fully stepped through (manual).
+  const canResume = revealMode === "auto" ? outcomeRevealed : fullyRevealed;
   const toneClass = outcomeRevealed ? getResultPopupTone(result) : "is-pending";
   const screamerClass = outcomeRevealed && result.screamer ? "is-screamer" : "";
 
   return (
-    <div className="result-popup-backdrop" onClick={revealAll}>
+    <div className="result-popup-backdrop" onClick={onSurfaceTap}>
       <div
         className={`card result-card result-popup highlight-popup ${toneClass} ${screamerClass}`}
         onClick={(event) => {
           event.stopPropagation();
-          revealAll();
+          onSurfaceTap();
         }}
       >
         <div className="highlight-head">
@@ -765,18 +777,44 @@ function MatchResultPopup({
           })}
         </div>
 
-        {outcomeRevealed && (
-          <button
-            className="primary-action"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onContinue();
-            }}
-          >
-            {followUpQueued ? "Continue Move" : "Resume Match"}
-          </button>
-        )}
+        <div className="highlight-actions">
+          {revealMode === "manual" && !fullyRevealed && (
+            <button
+              className="secondary-action highlight-advance"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                advanceOne();
+              }}
+            >
+              Continue ▸
+            </button>
+          )}
+          {!fullyRevealed && (
+            <button
+              className="highlight-skip"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                revealAll();
+              }}
+            >
+              Skip
+            </button>
+          )}
+          {canResume && (
+            <button
+              className="primary-action"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onContinue();
+              }}
+            >
+              {followUpQueued ? "Continue Move" : "Resume Match"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -793,6 +831,8 @@ export function MatchMomentScreen({
   onSkipToHighlight,
   onSkipToFullTime,
   onOpenClub,
+  revealMode,
+  onSetHighlightMode,
 }: {
   match: MatchState;
   matchSpeed: MatchSpeed;
@@ -804,6 +844,8 @@ export function MatchMomentScreen({
   onSkipToHighlight: () => void;
   onSkipToFullTime: () => void;
   onOpenClub?: (identity: string) => void;
+  revealMode: "auto" | "manual";
+  onSetHighlightMode: (mode: "auto" | "manual") => void;
 }) {
   const event = match.events[match.currentEventIndex];
   const isPlayerMoment = event?.type === "player_moment" && match.liveMinute >= event.minute;
@@ -896,6 +938,21 @@ export function MatchMomentScreen({
             <button type="button" onClick={onSkipToFullTime}>
               Sim Full Time
             </button>
+          </div>
+          <div className="reveal-control" aria-label="Highlight reveal">
+            <span className="metric-label">Highlights</span>
+            <div className="reveal-toggle">
+              {(["manual", "auto"] as const).map((mode) => (
+                <button
+                  className={revealMode === mode ? "is-selected" : ""}
+                  key={mode}
+                  type="button"
+                  onClick={() => onSetHighlightMode(mode)}
+                >
+                  {mode === "manual" ? "Tap" : "Auto"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -993,6 +1050,7 @@ export function MatchMomentScreen({
           onContinue={onContinue}
           moment={event?.type === "player_moment" ? event : undefined}
           seed={`${match.matchSeed}-${event?.type === "player_moment" ? event.id : "moment"}-${match.currentResult.choiceId}-${match.results.length}`}
+          revealMode={revealMode}
         />
       )}
 

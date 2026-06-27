@@ -3430,6 +3430,72 @@ button {
   }
 }
 
+.highlight-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 3px;
+}
+
+.highlight-actions .primary-action,
+.highlight-actions .highlight-advance {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.highlight-skip {
+  flex: 0 0 auto;
+  padding: 11px 15px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.highlight-skip:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+/* Reveal-mode toggle in the live match controls */
+.reveal-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.reveal-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.reveal-toggle button {
+  padding: 5px 15px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reveal-toggle button.is-selected {
+  background: var(--lime);
+  color: #0e120d;
+}
+
 .result-card h2 {
   margin: 0;
   font-size: 20px;

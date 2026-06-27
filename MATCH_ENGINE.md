@@ -46,9 +46,11 @@ training/recovery/contracts; the match simulates; in-match agency is reserved fo
   flash. The manual choice path (`resolveMatchChoice` + the choice cards) stays intact as a fallback.
 - **Chain reveal** (`systems/highlights.ts → buildHighlightChain`, pure + deterministic): an ordered
   beat list — setup → action → pressure → chance → **outcome** → impact — drama-scaled (routine 4 /
-  notable 5 / decisive·defining 6 beats). Rendered in `MatchResultPopup`: beats reveal one at a time
-  (~1.15s, ~1.5s before the payoff), the payoff stamp / heat chip / screamer glow stay hidden until the
-  outcome beat, count-ups fire on the impact beat. Tap-to-skip; reduced-motion shows everything at once.
+  notable 5 / decisive·defining 6 beats). Rendered in `MatchResultPopup`. The payoff stamp / heat chip /
+  screamer glow stay hidden until the outcome beat; count-ups fire on the impact beat. Reveal mode is a
+  player preference (`GameState.matchHighlightMode`, toggle in the live match controls): **"manual"
+  (default)** — tap to step one beat at a time; **"auto"** — timed (~1.15s/beat, ~1.5s before the
+  payoff). "Skip" reveals the rest; reduced-motion shows everything at once.
 - **Balance**: presentation only — no new persisted state, no SAVE bump. The season-lab already
   resolves moments via the auto-picker, so the real game now matches its tuned baseline
   (57.20/67.39/67.11/63.83 byte-identical).

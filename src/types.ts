@@ -534,6 +534,9 @@ export type GameState = {
   trainingFocuses: AttributeKey[];
   trainingCompletedWeek: number;
   intensity: Intensity;
+  // How match-moment chain highlights reveal: "manual" (default — tap to step through each beat) or
+  // "auto" (timed). Player preference; optional so old saves default to manual on load.
+  matchHighlightMode?: "auto" | "manual";
   // Per-career entropy, set once at creation and persisted. Gives each fresh career a different
   // starting club (among the weakest few) and different match-moment selection, while keeping
   // replay and the balance labs deterministic (they read the stored seed / omit it for a fixed one).

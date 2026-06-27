@@ -4,7 +4,7 @@ import { getPositionModule } from "../positionRoles";
 import { getContractStatusLabel } from "../systems/contracts";
 import { formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
 import { calculateOvr, calculatePotentialOvr, getOvrBreakdown } from "../systems/ovr";
-import { getPrestigeStatus } from "../systems/prestige";
+import { getPrestigeStatus, prestigeTiers } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getUpcomingMatch } from "../systems/selection";
@@ -312,6 +312,7 @@ export function ReadinessStrip({ game }: { game: GameState }) {
 
 
 export function PrestigeStatusCard({ game }: { game: GameState }) {
+  const [showDetails, setShowDetails] = useState(false);
   const prestige = getPrestigeStatus(game.prestige);
   const progressLabel = prestige.next
     ? `${prestige.points}/${prestige.next.threshold}`
@@ -322,13 +323,15 @@ export function PrestigeStatusCard({ game }: { game: GameState }) {
 
   return (
     <section className="card prestige-card">
-      <div className="section-heading">
-        <div>
-          <span className="metric-label">Prestige</span>
-          <h2>{prestige.current.label}</h2>
+      <button className="prestige-header" type="button" aria-expanded={showDetails} aria-label="Toggle prestige details" onClick={() => setShowDetails((value) => !value)}>
+        <div className="section-heading">
+          <div>
+            <span className="metric-label">Prestige</span>
+            <h2>{prestige.current.label}</h2>
+          </div>
+          <Sparkles size={19} />
         </div>
-        <Sparkles size={19} />
-      </div>
+      </button>
 
       <div className="prestige-hero">
         <strong>{prestige.points}</strong>
@@ -344,6 +347,36 @@ export function PrestigeStatusCard({ game }: { game: GameState }) {
         <InfoTile label="Sponsor" value={prestige.sponsorInterest} />
         <InfoTile label="Next unlock" value={prestige.next?.sponsorUnlock ?? "Legacy brand"} />
       </div>
+
+      {!showDetails ? (
+        <button className="prestige-toggle" type="button" onClick={() => setShowDetails(true)}>
+          What is prestige? — see all ranks
+        </button>
+      ) : (
+        <div className="prestige-details">
+          <p className="prestige-affects">
+            Prestige is your fame across the football world. It sets which <strong>sponsors</strong> will
+            deal with you and strengthens your <strong>contract leverage</strong> — you earn it from
+            ratings, goals/assists, trophies and honours.
+          </p>
+          <div className="prestige-ladder">
+            {prestigeTiers.map((tier) => {
+              const reached = game.prestige >= tier.threshold;
+              const state = tier.id === prestige.current.id ? "is-current" : reached ? "is-reached" : "is-locked";
+              return (
+                <div className={`prestige-tier ${state}`} key={tier.id}>
+                  <span className="prestige-tier-label">{tier.label}</span>
+                  <span className="prestige-tier-threshold">{tier.threshold.toLocaleString()}</span>
+                  <span className="prestige-tier-unlock">{tier.sponsorUnlock}</span>
+                </div>
+              );
+            })}
+          </div>
+          <button className="prestige-toggle" type="button" onClick={() => setShowDetails(false)}>
+            Hide
+          </button>
+        </div>
+      )}
     </section>
   );
 }

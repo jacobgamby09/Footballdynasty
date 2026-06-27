@@ -104,29 +104,44 @@ export function accrueLeagueSeasonStats(
     const squad = regenerateSquad(club);
     const noise = (key: string) => seededNoise(`lss-s${world.seasonNumber}-w${weekIndex}-${clubId}-${key}`);
 
-    const starters = [...squad].sort((a, b) => b.overall - a.overall).slice(0, 11);
-    starters.forEach((player, index) => {
-      const entry = getEntry(player);
-      entry.apps += 1;
-      entry.starts += 1;
-      entry.minutes += 90;
-      const base = result.outcome === "W" ? 6.95 : result.outcome === "L" ? 6.25 : 6.6;
-      const rating = clamp(base + (player.overall - club.strength) * 0.03 + (noise(`rate-${index}`) - 0.5) * 0.6, 5.5, 9.3);
-      entry.ratingTotal += rating;
-      entry.ratingCount += 1;
-    });
-
+    // Distribute this week's goals/assists first, tracking each player's involvement so the rating can
+    // reward it — top scorers should turn up among the top-rated, not only the top scorers (#16).
+    const weekGoals = new Map<string, number>();
+    const weekAssists = new Map<string, number>();
     const goalPool = squad.map((player) => ({ player, weight: GOAL_WEIGHT[player.positionGroup] * (player.overall / 100) }));
     for (let goal = 0; goal < result.goalsFor; goal += 1) {
       const scorer = pickWeighted(goalPool, noise(`goal-${goal}`));
       getEntry(scorer).goals += 1;
+      weekGoals.set(scorer.id, (weekGoals.get(scorer.id) ?? 0) + 1);
       if (noise(`assist-${goal}`) < 0.65) {
         const creatorPool = squad
           .filter((player) => player.id !== scorer.id)
           .map((player) => ({ player, weight: ASSIST_WEIGHT[player.positionGroup] * (player.overall / 100) }));
         const creator = pickWeighted(creatorPool, noise(`assist-pick-${goal}`));
         getEntry(creator).assists += 1;
+        weekAssists.set(creator.id, (weekAssists.get(creator.id) ?? 0) + 1);
       }
+    }
+
+    // The top 11 by overall start; any goal/assist contributor outside the XI also featured (a sub).
+    const starters = [...squad].sort((a, b) => b.overall - a.overall).slice(0, 11);
+    const appeared = new Map<string, { player: WorldPlayer; started: boolean; ratingIndex: number }>();
+    starters.forEach((player, index) => appeared.set(player.id, { player, started: true, ratingIndex: index }));
+    for (const player of squad) {
+      if (!appeared.has(player.id) && ((weekGoals.get(player.id) ?? 0) > 0 || (weekAssists.get(player.id) ?? 0) > 0)) {
+        appeared.set(player.id, { player, started: false, ratingIndex: appeared.size });
+      }
+    }
+    for (const { player, started, ratingIndex } of appeared.values()) {
+      const entry = getEntry(player);
+      entry.apps += 1;
+      if (started) entry.starts += 1;
+      entry.minutes += started ? 90 : 25;
+      const base = result.outcome === "W" ? 6.95 : result.outcome === "L" ? 6.25 : 6.6;
+      const involvement = (weekGoals.get(player.id) ?? 0) * 0.6 + (weekAssists.get(player.id) ?? 0) * 0.35;
+      const rating = clamp(base + (player.overall - club.strength) * 0.03 + (noise(`rate-${ratingIndex}`) - 0.5) * 0.6 + involvement, 5.5, 9.6);
+      entry.ratingTotal += rating;
+      entry.ratingCount += 1;
     }
   }
 

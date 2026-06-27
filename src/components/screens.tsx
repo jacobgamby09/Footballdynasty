@@ -2072,6 +2072,9 @@ export function ClubTableView({ game, onBack, onOpenClub }: { game: GameState; o
   const league = findLeagueByClubShortCode(game.world, game.club.shortCode);
   const promoCut = league?.promotionSlots ?? 0;
   const relegCut = league && league.relegationSlots > 0 ? table.length - league.relegationSlots : -1;
+  // Surface the scorer/assist/rating leaderboards here in the league view so they're easy to find when
+  // checking the league (not only under Dynasty → Records) (#13).
+  const leaderboards = getLeagueLeaderboards(game);
 
   return (
     <section className="simple-screen club-detail-screen">
@@ -2099,6 +2102,15 @@ export function ClubTableView({ game, onBack, onOpenClub }: { game: GameState; o
           })}
         </div>
       </div>
+      {leaderboards && (
+        <>
+          <LeaderboardCard label="Top scorers" icon={<Trophy size={19} />} entries={leaderboards.topScorers} />
+          <LeaderboardCard label="Assist leaders" icon={<Sparkles size={19} />} entries={leaderboards.assistLeaders} />
+          {leaderboards.topRated.length > 0 && (
+            <LeaderboardCard label="Top rated" icon={<Star size={19} />} entries={leaderboards.topRated} decimals={2} />
+          )}
+        </>
+      )}
     </section>
   );
 }

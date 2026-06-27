@@ -593,6 +593,100 @@ button {
     var(--surface);
 }
 
+/* Tappable prestige detail (#21) */
+.prestige-header {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.prestige-toggle {
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--lime-2);
+  font-size: 12px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prestige-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.prestige-details .prestige-toggle {
+  margin-top: 0;
+}
+
+.prestige-affects {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.prestige-affects strong {
+  color: var(--text);
+}
+
+.prestige-ladder {
+  display: grid;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--border);
+}
+
+.prestige-tier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  background: rgba(20, 25, 21, 0.96);
+  font-size: 11px;
+}
+
+.prestige-tier-label {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.prestige-tier-threshold {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.prestige-tier-unlock {
+  color: var(--subtle);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prestige-tier.is-current {
+  background: rgba(244, 200, 74, 0.13);
+}
+
+.prestige-tier.is-current .prestige-tier-label {
+  color: var(--gold);
+}
+
+.prestige-tier.is-locked {
+  opacity: 0.5;
+}
+
 .prestige-card .section-heading svg {
   color: var(--gold);
 }

@@ -2718,3 +2718,19 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
 - Remaining ⚪ UX items for a follow-up: tappable prestige detail (#21), top-scorer placement + NPC
   rating correlation (#13/#16), season-start brief (#12), training-slot UX (#3/#4). #27 (season-end
   order) still deferred (needs a full-season playthrough to verify safely).
+
+## 2026-06-27 - UX part 2: scorer ratings, leaderboards in league view, prestige detail (#16, #13, #21)
+
+- **#16 top scorers among the top-rated**: `accrueLeagueSeasonStats` now distributes a matchweek's
+  goals/assists first, then rates appearances with a goal-involvement bonus (+0.6/goal, +0.35/assist)
+  and lets a scorer/assister outside the XI feature as a sub. So the division's top scorers carry strong
+  ratings and show up on the Top rated list. NPC-only + deterministic (keyed noise — order-independent),
+  so no player/OVR/lab impact.
+- **#13 leaderboards in the league view**: the Top scorers / Assist leaders / Top rated cards now also
+  render in the League Table view (`ClubTableView`), so they're easy to find when checking the league —
+  not only under Dynasty → Records.
+- **#21 tappable prestige detail**: the `PrestigeStatusCard` header is now a toggle (+ a "What is
+  prestige?" link) that expands to the full rank ladder (all 8 tiers, current highlighted, thresholds +
+  sponsor unlock) plus a one-line "what prestige affects" (sponsors + contract leverage).
+- Display/data only; no save change. Build green, smoke exit 0, season-lab engine-only.
+- Remaining ⚪ UX: season-start brief (#12), training-slot UX (#3/#4). #27 still deferred.

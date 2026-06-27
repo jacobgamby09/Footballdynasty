@@ -2678,3 +2678,23 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   continues to full time; zero choice cards, zero console errors. Build green, smoke exit 0, lab
   engine-only (unaffected).
 - Docs: `MATCH_ENGINE.md` + `HANDOVER.md` reveal description updated to manual-default + toggle.
+
+## 2026-06-27 - Season flow + awards: eligibility floor + contract clarity (#29/#30, #28; #27 deferred)
+
+- **#29/#30 awards too generous after a partial season**: `computeSeasonAwards` only required ≥3 apps,
+  so a mid-season arrival (whose row is now scoped to current-league apps via `seasonStats.leagueBaseline`
+  from #14) could sweep Golden Boot / POTY / Team of the Season on a half-season. Added a participation
+  floor — the player must have played ~55% of the league fixtures (`Math.max(8, round(seasonLength*0.55))`)
+  for ANY individual award.
+- **#28 contract offer unclear**: the offer card showed a wage delta + summary but no *reason* or
+  remaining length, so a same-wage extension read as "same terms" for no clear cause. The card now leads
+  with a reason line (New club / Improved terms — your form / Early extension — N wks left / contract up)
+  and marks wage + role as "(no change)" or an explicit "X → Y" delta. Generation is unchanged — it
+  already requires a performance spike AND a meaningful upgrade for any mid-contract offer (only an
+  expiring deal yields a same-terms extension), so #28 was a display-clarity gap, not a generation bug.
+- **#27 season-end flow order — DEFERRED (not shipped this pass)**: reordering news-feed → review →
+  transfer/contract → roll touches the core season-end screen routing (`closeNewsFeed`, `startNextSeason`,
+  the accept/decline/stay handlers) across many edge cases (multi-offer, decline-all, free agency, forced
+  retirement). None of that screen routing is covered by the smoke (which tests the systems functions, not
+  App flow), so it needs a full-season playthrough to verify safely — best done as its own focused step.
+- Verified: build green, play-session smoke exit 0, season-lab engine-only (unaffected).

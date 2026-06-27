@@ -261,7 +261,12 @@ export function computeSeasonAwards(game: GameState): { playerAwards: SeasonAwar
   }
   const { rows, tierId } = built;
   const player = rows.find((row) => row.isPlayer);
-  if (!player || player.apps < 3) {
+  // Eligibility: the player must have played a real share of THIS league's season. Their row is already
+  // scoped to current-league apps (via seasonStats.leagueBaseline), so without a floor a mid-season
+  // arrival could sweep the individual awards on a half-season. Require ~55% of the league fixtures.
+  const seasonLength = game.season.fixtures.length || 30;
+  const minApps = Math.max(8, Math.round(seasonLength * 0.55));
+  if (!player || player.apps < minApps) {
     return { playerAwards: [], prestige: 0 };
   }
   const multiplier = leagueTiers[tierId as keyof typeof leagueTiers]?.prestigeMultiplier ?? 1;

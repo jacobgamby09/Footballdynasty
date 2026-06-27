@@ -287,6 +287,19 @@ function ContractOfferCard({
   onOpenClub?: (identity: string) => void;
 }) {
   const country = getCountryForClub(game.world, offer.clubId);
+  // Make the offer's intent explicit (#28): why it's on the table + how much of the current deal is
+  // left — otherwise a same-wage extension reads as "same terms" with no context.
+  const weeksLeft = current.weeksRemaining;
+  const reason =
+    offer.source === "external-club"
+      ? `New club. You have ${weeksLeft} wk${weeksLeft === 1 ? "" : "s"} left on your ${current.club} deal.`
+      : offer.title === "Improved club offer"
+        ? "Improved terms — your recent form earned a fresh deal."
+        : weeksLeft <= 1
+          ? "Your contract is up — renew to stay at the club."
+          : `Early extension — ${weeksLeft} wks still left on your current deal.`;
+  const sameWage = offer.weeklyWage === current.weeklyWage;
+  const sameRole = offer.rolePromise === current.rolePromise;
 
   return (
     <div className="card contract-offer-card">
@@ -300,14 +313,15 @@ function ContractOfferCard({
         </div>
         <BadgeDollarSign size={19} />
       </div>
+      <p className="contract-reason">{reason}</p>
       <div className="contract-hero">
         <div>
           <span>Weekly wage</span>
-          <strong>${current.weeklyWage} &rarr; ${offer.weeklyWage}</strong>
+          <strong>{sameWage ? `$${offer.weeklyWage} (no change)` : `$${current.weeklyWage} → $${offer.weeklyWage}`}</strong>
         </div>
         <div>
           <span>Role promise</span>
-          <strong>{offer.rolePromise}</strong>
+          <strong>{sameRole ? offer.rolePromise : `${current.rolePromise} → ${offer.rolePromise}`}</strong>
         </div>
       </div>
       <div className="stat-grid">

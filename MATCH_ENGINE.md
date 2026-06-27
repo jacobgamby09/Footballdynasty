@@ -63,9 +63,11 @@ that flat average over-rated 1-touch cameos (~6.9, #5) and let any miss drag a m
 for a brace, #6). Instead: a "6.2 appeared" base + cumulative credit (goal +1.15, assist +0.62, chance
 +0.32, Great +0.42, success +0.18, poor −0.2), clamped 5.4–9.8. Resulting curve: cameo ~6.4, 1 goal
 ~7.2–7.7, brace ~8.3, hat-trick ~9.7. This was a deliberate balance change and **moved the season-lab End
-OVR guardrail to `57.01/67.64/67.16/63.85`** (from 57.20/67.39/67.11/63.83). Still open (the labs warn):
-goal environment runs hot for good finishers + the Great tier is too rare (#7/#8); non-primary-stat
-weight (#9).
+OVR guardrail to `57.01/67.59/67.08/63.77`** (from 57.20/67.39/67.11/63.83 — that number also folds in a
+follow-up goal-conversion trim, #7/#8: `isDecisiveOutcome.goalRates` cut ~15% on the Great/Good/Okay tiers,
+which cleared the lab's "avg goals too high" warning for strong finishers without touching ordinary
+players). Still open: the "Great outcomes too rare" heuristic (the `getOutcomeTier` margin≥16 cutoff —
+easing it couples with conversion, so left for a focused pass) and non-primary-stat weight (#9).
 
 ## Relative Ability Model
 

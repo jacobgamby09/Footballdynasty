@@ -2766,3 +2766,19 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   here must hold `57.01/67.64/67.16/63.85`** (earlier docs/entries citing 57.20/… describe pre-tuning work).
 - Build green, smoke exit 0. Deferred next balance lever: goal environment (#7/#8 — avg goals high for
   good finishers, Great-tier too rare) + #9 non-primary-stat weight (the lab still warns on these).
+
+## 2026-06-27 - Balance: goal-conversion trim (#7/#8)
+
+- Good finishers ran hot (the match-lab warned "avg goals may be too high": team 1.96/match vs xG 1.28).
+  Trimmed `isDecisiveOutcome.goalRates` ~15% on the Great/Good/Okay tiers — the tiers a strong finisher
+  hits most (e.g. Great·Clear 0.90→0.78, Good·Clear 0.72→0.62, Okay·Clear 0.32→0.28). Engine-only; both
+  labs import `resolvePlayerChoice`, so they reflect it automatically (no mirroring).
+- Result: finisher avg goals **3.24→3.15**, team **1.96→1.86**, player goals **0.65→0.56** — the "avg
+  goals too high" warning is CLEARED. The baseline scorer is untouched (2.55→2.54), so it targets the
+  over-performers, not ordinary players.
+- OVR baseline refined (fewer goals → slightly less XP): `57.01/67.64/67.16/63.85` →
+  **`57.01/67.59/67.08/63.77`** (−0.05 to −0.08; the baseline profile is unchanged). **This is now the
+  current guardrail** (it folds in both this session's balance changes — the rating curve + this trim).
+- Build green, smoke exit 0. Still deferred: the "Great outcomes too rare" heuristic (the
+  `getOutcomeTier` margin≥16 cutoff — easing it couples with conversion, so left for a focused pass) and
+  #9 non-primary-stat weight.

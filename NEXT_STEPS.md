@@ -6,7 +6,7 @@ Shipped on `main` (see `HANDOVER.md` section 0 + `PROGRESS.md`): the match engin
 variety, a **match-moment dopamine layer** (payoff ladder + screamer, reveal count-ups, in-match heat,
 defining moments), and **Honours & Legacy V1 complete** (regenerable NPC award world, Club Legacy
 status, data-driven awards + leaderboards, season Honours reveal, redesigned 6-section Dynasty hub).
-All OVR-neutral (season-lab End OVR byte-identical 57.01/67.64/67.16/63.85 — the 2026-06-27 rating-curve
+All OVR-neutral (season-lab End OVR byte-identical 57.01/67.59/67.08/63.77 — the 2026-06-27 rating-curve
 tuning moved the guardrail here from the earlier 57.20/67.39/67.11/63.83). A 2D-pitch moment
 experiment was built then fully reverted (history scrubbed).
 

@@ -21,15 +21,17 @@ function offset(seed: string, range: number) {
 
 export function findClubByIdentity(game: GameState, identity?: string): WorldClub | undefined {
   if (!identity) return undefined;
-  return (
-    findWorldClub(game.world, identity) ??
-    Object.values(game.world.clubs).find(
-      (club) =>
-        club.shortCode === identity ||
-        club.shortName === identity ||
-        club.name === identity,
-    )
-  );
+  // Unique identifiers first (id, then shortCode) — both are guaranteed unique.
+  const unique = findWorldClub(game.world, identity, identity);
+  if (unique) return unique;
+  // Then an exact full-name match (unique by generation). Deliberately avoid the old short-name
+  // fallback that could resolve to the WRONG club when two clubs share a short name (e.g. "Lazzaro"
+  // FC vs AC) — only use short name when it identifies exactly one club.
+  const clubs = Object.values(game.world.clubs);
+  const byName = clubs.filter((club) => club.name === identity);
+  if (byName.length === 1) return byName[0];
+  const byShortName = clubs.filter((club) => club.shortName === identity);
+  return byShortName.length === 1 ? byShortName[0] : undefined;
 }
 
 export function getClubProfile(game: GameState, clubId: ClubId): ClubProfile | undefined {

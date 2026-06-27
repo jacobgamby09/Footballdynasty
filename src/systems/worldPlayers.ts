@@ -204,6 +204,20 @@ function buildLeagueRows(game: GameState): { leagueId: string; tierId: string; r
     isPlayer: true,
     awardScore: awardScoreOf(game.seasonStats.goals, game.seasonStats.assists, game.seasonStats.apps, playerAvg),
   });
+  // NPC names come from a finite pool, so the same name can recur across a league's ~360 players.
+  // Disambiguate deterministically (by row order) so a leaderboard never shows one name twice — the
+  // first keeps the plain name, later repeats get a middle initial. Display-only; stats key off id.
+  const nameSeen = new Map<string, number>();
+  for (const row of rows) {
+    const count = (nameSeen.get(row.name) ?? 0) + 1;
+    nameSeen.set(row.name, count);
+    if (!row.isPlayer && count > 1) {
+      const initial = String.fromCharCode(65 + ((count - 2) % 26));
+      const [first, ...rest] = row.name.split(" ");
+      row.name = rest.length > 0 ? `${first} ${initial}. ${rest.join(" ")}` : `${row.name} ${initial}`;
+    }
+  }
+
   return { leagueId: league.id, tierId: league.tierId, rows };
 }
 

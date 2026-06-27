@@ -839,6 +839,22 @@ export function getLiveMatchStats(match: MatchState, processedEventIndex: number
     }
   });
 
+  // The player's own moments are resolved separately from sim events, so fold them into the team's
+  // shots/on-target — otherwise a goal scored from a moment shows on the scoreboard but not in the
+  // tally, leaving On target below Goals. A scored shot is always on target.
+  match.results.forEach((result) => {
+    if (result.choiceOutcome === "goal") {
+      teamShots += 1;
+      if (result.goals > 0 || result.success || ["Saved", "Off the frame"].includes(result.title)) teamOnTarget += 1;
+      teamXg += result.goals > 0 ? 0.45 : 0.12;
+    } else if (result.choiceOutcome === "assist") {
+      teamShots += 1;
+      teamChances += 1;
+      if (result.assists > 0) teamOnTarget += 1;
+      teamXg += result.assists > 0 ? 0.3 : 0.14;
+    }
+  });
+
   // Possession leans toward the stronger side and drifts as each team creates chances.
   const possession = clamp(
     Math.round(50 + (match.teamStrength - match.opponentStrength) * 0.8 + (teamChances - oppChances) * 2),

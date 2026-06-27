@@ -159,6 +159,7 @@ export function seedWorld(): World {
   const leagues: Record<string, WorldLeague> = {};
   const leagueSeasons: Record<string, LeagueSeason> = {};
   const usedCodes = new Set<string>();
+  const usedShortNames = new Set<string>();
 
   for (const country of COUNTRIES) {
     countries[country.id] = country;
@@ -197,7 +198,12 @@ export function seedWorld(): World {
           : makeShortCode(spec.name, usedCodes);
         const strength = spec.strength ?? clamp(Math.round(lo + ((hi - lo) * slot) / (clubCount - 1)), lo, hi);
         const reputation = Math.round(tierIndex * 15 + 10 + (strength - tier.averageOvr));
-        clubs[id] = { id, name: spec.name, shortName: spec.shortName ?? shortNameOf(spec.name), shortCode, leagueId, tierId, strength, reputation };
+        // Keep short names unique across the world: when the same city recurs in another division,
+        // fall back to the (unique) full name so two clubs never share a short name (e.g. "Lazzaro").
+        let shortName = spec.shortName ?? shortNameOf(spec.name);
+        if (usedShortNames.has(shortName)) shortName = spec.name;
+        usedShortNames.add(shortName);
+        clubs[id] = { id, name: spec.name, shortName, shortCode, leagueId, tierId, strength, reputation };
         clubIds.push(id);
       });
 

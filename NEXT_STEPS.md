@@ -16,6 +16,10 @@ experiment was built then fully reverted (history scrubbed).
 - Honours & Legacy V2: real award races in more leagues + rivalry/Feed hooks; leaderboard "pin your
   rank"; sponsor-eligibility coupling. V3: all ~38 leagues → IndexedDB.
 - Gen-2 offer-driven heir start (the long-standing dynasty gap).
+- **#9 part 2 — Stamina as an availability/sharpness stat** (part 1, the Forward OVR athleticism floor,
+  shipped 2026-06-27): thread Stamina into in-match fitness decay (`getMatchFitnessDelta`/
+  `getLiveMatchReadiness`), match-minute cost, late-match action quality and rest/selection risk — but keep
+  it gentle above ~60 fitness so it's an archetype-tax, not a mandatory stat. NOT an output/goal stat.
 
 The older direction below predates the above and is kept for reference.
 

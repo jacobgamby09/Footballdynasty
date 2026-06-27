@@ -133,7 +133,7 @@ Det betyder:
 
 OVR is not a raw average of every attribute. OVR is the player's current ability for the active position/role.
 
-Each position defines its own weighted attribute profile. For example, a Forward OVR is driven by striker-relevant attributes such as Finishing, Off Ball, Composure, First Touch, Acceleration, Heading, Strength and Work Rate. Attributes outside that position profile can still matter in specific match moments, but they should not inflate the headline OVR.
+Each position defines its own weighted attribute profile. For example, a Forward OVR is driven mostly (~88%) by striker-relevant attributes such as Finishing, Off Ball, Composure, First Touch, Acceleration, Heading, Strength and Work Rate, with a small athleticism floor (~12% combined) from Pace and Stamina so a striker can't reach a perfect OVR by maxing finishing while dumping athleticism. Attributes outside that profile can still matter in specific match moments, but they should not inflate the headline OVR.
 
 Core rule:
 

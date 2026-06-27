@@ -2782,3 +2782,24 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
 - Build green, smoke exit 0. Still deferred: the "Great outcomes too rare" heuristic (the
   `getOutcomeTier` margin≥16 cutoff — easing it couples with conversion, so left for a focused pass) and
   #9 non-primary-stat weight.
+
+## 2026-06-27 - Balance: athleticism floor for Forward OVR (#9 part 1)
+
+- A primary-maxed striker could dump Pace/Stamina to ~10 and still reach a "perfect" OVR — those stats
+  carried ZERO OVR weight (Forward `ovrWeights` credited only Finishing/Off Ball/Composure/First Touch/
+  Acceleration/Heading/Strength/Work Rate). Per the design call (option 1: a *light* athleticism floor,
+  archetypes still allowed), added small Pace (0.6) + Stamina (0.5) weights — **12.4% of OVR combined**,
+  main stats still ~87.6%. NOT Long Shots (deferred to a future "Complete Forward"/"Shooter" role).
+  `src/positionRoles.ts` only, Forward module.
+- Effect (probe — `calculateOvr` is a weighted average, so a balanced player averages to itself): complete/
+  athletic striker **+0** (77→77), balanced prospect **+0** (60→60), but primary-maxed with **dumped** Pace
+  24/Sta 22 **−7** (80→73) and with decent Pace 62/Sta 60 **−3** (80→77). A poacher who ignores athleticism
+  stays a strong specialist but can no longer reach a perfect striker rating.
+- **Season-lab End OVR guardrail UNCHANGED at `57.01/67.59/67.08/63.77` — and that is correct.** The labs
+  reimplement OVR from `engine/*.js` and don't read `positionRoles.ts`, so this real-game-only display/
+  rating change is invisible to them (the guardrail's job here was to confirm the engine didn't move — it
+  didn't). Build green, smoke exit 0.
+- **#9 part 2 still open (next):** make Stamina an *availability/sharpness* stat (NOT an output stat) —
+  thread it into in-match fitness decay, match-minute cost, late-match action quality, and rest/selection
+  risk, but keep it gentle above ~60 fitness so it isn't mandatory for every archetype. Today Stamina feeds
+  nothing in `getMatchFitnessDelta`/`getLiveMatchReadiness` (minutes + action load only).

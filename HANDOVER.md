@@ -34,6 +34,14 @@ guardrail from `57.20/67.39/67.11/63.83` → **`57.01/67.59/67.08/63.77`** (tiny
 nets out over a career). **OVR-neutral changes from here must hold the NEW numbers.** Older statements in
 this file / other docs citing 57.20/… describe pre-tuning, OVR-neutral work and are historically correct.
 
+**#9 athleticism floor (newest, real-game-only).** Forward OVR now carries a small Pace+Stamina share
+(~12% combined; `src/positionRoles.ts` Forward `ovrWeights`) so a primary-maxed striker who dumps
+athleticism is capped (−7 OVR at Pace/Sta ~20, −3 at ~60) rather than reaching a perfect rating — balanced
+strikers unaffected (+0). This is a `calculateOvr` (display/rating) change, NOT an engine change, so the
+season-lab guardrail above is *intentionally* byte-identical (the labs reimplement OVR and don't read
+`positionRoles.ts`). Part 2 — making Stamina an availability/sharpness stat (fitness decay, minute cost,
+late-match quality, rest/selection risk; gentle above ~60 fitness) — is the next focused step.
+
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim
 auto-picks the contextually-best action (`chooseAutoSimChoice` — the same deterministic picker the

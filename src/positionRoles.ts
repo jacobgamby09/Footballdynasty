@@ -79,9 +79,14 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       Composure: 1.15,
       "First Touch": 1.05,
       Acceleration: 0.9,
+      "Work Rate": 0.8,
       Heading: 0.7,
       Strength: 0.65,
-      "Work Rate": 0.8,
+      // Athleticism floor (#9): Pace + Stamina carry a small share of OVR (~12% combined) so a striker
+      // can't reach a perfect rating on finishing alone — but they stay non-key, so a poacher who dumps
+      // them is still a strong specialist, just capped. NOT a "goal stat" — Stamina's bite is on fitness.
+      Pace: 0.6,
+      Stamina: 0.5,
     },
     momentPools: ["forward", "shared"],
     matchTendencies: {

@@ -67,7 +67,11 @@ OVR guardrail to `57.01/67.59/67.08/63.77`** (from 57.20/67.39/67.11/63.83 — t
 follow-up goal-conversion trim, #7/#8: `isDecisiveOutcome.goalRates` cut ~15% on the Great/Good/Okay tiers,
 which cleared the lab's "avg goals too high" warning for strong finishers without touching ordinary
 players). Still open: the "Great outcomes too rare" heuristic (the `getOutcomeTier` margin≥16 cutoff —
-easing it couples with conversion, so left for a focused pass) and non-primary-stat weight (#9).
+easing it couples with conversion, so left for a focused pass). Non-primary-stat weight (#9) part 1 is
+done — Forward OVR now carries a small Pace+Stamina share (~12% combined) so a primary-maxed striker can't
+reach a perfect rating by dumping athleticism (a real-game `calculateOvr` change; the labs reimplement OVR
+so the guardrail above is *intentionally* unmoved). Part 2 open: Stamina as an availability/sharpness stat
+(fitness decay, minute cost, late-match quality, rest/selection risk — gentle above ~60 fitness).
 
 ## Relative Ability Model
 

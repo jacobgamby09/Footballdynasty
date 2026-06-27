@@ -1,4 +1,5 @@
 import {
+  aggregateMatchRating,
   createSimEvents,
   createTeamMatchModel,
   chooseAutoSimChoice,
@@ -820,7 +821,7 @@ function simulateMatch(state, context, matchSeed) {
     playerAssists,
     chancesCreated,
     playerMomentCount: playerResults.length,
-    rating: Number(clamp(playerRating + simRatingDelta, 5.4, 9.6).toFixed(1)),
+    rating: Number(aggregateMatchRating(playerResults, simRatingDelta).toFixed(1)),
     trustDelta: sum(playerResults.map((result) => result.trustDelta)),
     fitnessDelta: getMatchFitnessDelta(state, minutes, playerResults),
     xp,

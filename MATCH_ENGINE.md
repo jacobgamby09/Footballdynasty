@@ -52,8 +52,20 @@ training/recovery/contracts; the match simulates; in-match agency is reserved fo
   (default)** — tap to step one beat at a time; **"auto"** — timed (~1.15s/beat, ~1.5s before the
   payoff). "Skip" reveals the rest; reduced-motion shows everything at once.
 - **Balance**: presentation only — no new persisted state, no SAVE bump. The season-lab already
-  resolves moments via the auto-picker, so the real game now matches its tuned baseline
-  (57.20/67.39/67.11/63.83 byte-identical).
+  resolves moments via the auto-picker, so the real game matched its tuned baseline byte-identical (the
+  baseline at that point was 57.20/67.39/67.11/63.83; later moved by the rating-curve tuning below).
+
+## Match rating curve (tuned 2026-06-27)
+
+The player's match rating is `aggregateMatchRating(results, simRatingDelta)` (`matchEngineCore`, the single
+source shared by `summarizeMatchResults` + both balance labs). It is NOT an average of moment ratings —
+that flat average over-rated 1-touch cameos (~6.9, #5) and let any miss drag a multi-goal game down (~7.6
+for a brace, #6). Instead: a "6.2 appeared" base + cumulative credit (goal +1.15, assist +0.62, chance
++0.32, Great +0.42, success +0.18, poor −0.2), clamped 5.4–9.8. Resulting curve: cameo ~6.4, 1 goal
+~7.2–7.7, brace ~8.3, hat-trick ~9.7. This was a deliberate balance change and **moved the season-lab End
+OVR guardrail to `57.01/67.64/67.16/63.85`** (from 57.20/67.39/67.11/63.83). Still open (the labs warn):
+goal environment runs hot for good finishers + the Great tier is too rare (#7/#8); non-primary-stat
+weight (#9).
 
 ## Relative Ability Model
 

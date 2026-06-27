@@ -27,6 +27,13 @@ presentation-only, so old saves load intact — no bump, no wipe). Per-step "Shi
 `PROGRESS.md`; Honours design is canon in `GDD.md → Honours & Legacy System`, built per
 `HONOURS_LEGACY_PLAN.md` (now marked V1 COMPLETE).
 
+**⚠ BALANCE GUARDRAIL UPDATED (2026-06-27).** The match-rating curve was deliberately reshaped
+(`aggregateMatchRating` in `matchEngineCore` — base + cumulative goal/assist credit, replacing the flat
+average; cameos down ~6.4, big games up — brace 8.3, hat-trick 9.7). This moved the season-lab End OVR
+guardrail from `57.20/67.39/67.11/63.83` → **`57.01/67.64/67.16/63.85`** (tiny drift; the redistribution
+nets out over a career). **OVR-neutral changes from here must hold the NEW numbers.** Older statements in
+this file / other docs citing 57.20/… describe pre-tuning, OVR-neutral work and are historically correct.
+
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim
 auto-picks the contextually-best action (`chooseAutoSimChoice` — the same deterministic picker the

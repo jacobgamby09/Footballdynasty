@@ -2749,3 +2749,20 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
 - Display/UX only; no save change. Build green, smoke exit 0, season-lab engine-only.
 - This completes the ⚪ UX clarity batch (#3,4,10,11,12,13,16,17,18,21). Remaining playtest lanes:
   🔵 balance sim (#5-9, #31), ⚫ features (#22-25), ⏸️ #27 (season-end order, needs a playtest).
+
+## 2026-06-27 - Balance: match-rating curve reshaped (#5/#6) + new OVR baseline
+
+- The match rating was a flat AVERAGE of moment ratings, so a 1-touch cameo rated ~6.9 (#5) and a
+  multi-goal game was dragged down by any miss (~7.6 for a brace, #6). Replaced it with one shared
+  `aggregateMatchRating(results, simRatingDelta)` in `matchEngineCore`: a "6.2 appeared" base + cumulative
+  credit (goal +1.15, assist +0.62, chance +0.32, Great +0.42, success +0.18, poor −0.2), clamped 5.4–9.8.
+  Used by `summarizeMatchResults` AND both balance labs — one source of truth (also removed the prior
+  engine/lab discrepancy in how the sim rating delta was applied).
+- New curve (verified by probe): cameo **6.4**, involved-no-goal 6.8, 1 goal 7.2–7.7, **brace 8.3**,
+  hat-trick 9.7. Match-lab avg ratings shifted accordingly: cameo profile 6.87→6.47, finisher 7.02→7.42.
+- **OVR baseline moved (expected for a deliberate balance change): `57.20/67.39/67.11/63.83` →
+  `57.01/67.64/67.16/63.85`.** Tiny drift — the redistribution (cameos down, big games up) nets out over a
+  career, so progression is essentially preserved. **This is the NEW guardrail: OVR-neutral changes from
+  here must hold `57.01/67.64/67.16/63.85`** (earlier docs/entries citing 57.20/… describe pre-tuning work).
+- Build green, smoke exit 0. Deferred next balance lever: goal environment (#7/#8 — avg goals high for
+  good finishers, Great-tier too rare) + #9 non-primary-stat weight (the lab still warns on these).

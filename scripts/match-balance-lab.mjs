@@ -1,4 +1,5 @@
 import {
+  aggregateMatchRating,
   createSimEvents,
   createTeamMatchModel,
   chooseAutoSimChoice,
@@ -214,7 +215,7 @@ function simulateMatch(state, context, matchSeed) {
     chainRoutes: selectedMoments.flatMap((moment) => moment.chainRoutes ?? []),
     teamXg: teamMatchModel.teamXg,
     opponentXg: teamMatchModel.opponentXg,
-    rating: Number((playerRating + simEvents.reduce((sum, event) => sum + event.ratingDelta, 0)).toFixed(2)),
+    rating: Number(aggregateMatchRating(playerResults, simEvents.reduce((sum, event) => sum + event.ratingDelta, 0)).toFixed(2)),
     role: context.playerRole,
     fixture: context.opponent,
   };

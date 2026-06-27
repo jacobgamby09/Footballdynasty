@@ -152,6 +152,11 @@ export function estimateChoiceOutcomes(input: {
   }>;
 };
 
+export function aggregateMatchRating(
+  results: Array<{ goals: number; assists: number; chancesCreated: number; outcomeTier: string; success: boolean }>,
+  simRatingDelta?: number,
+): number;
+
 export function seededNoise(seed: string): number;
 
 export function createSeededRandom(seed: string): () => number;

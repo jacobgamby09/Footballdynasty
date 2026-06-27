@@ -340,6 +340,35 @@ function getReadinessResolutionModifier(fitness) {
   return -8;
 }
 
+// Aggregate a player's match rating from their resolved moments + the sim's rating swing. Volume-aware
+// by design: a modest "appeared" base plus cumulative credit for goals/assists/chances (and a small
+// penalty for poor moments). Being additive rather than an average, it rewards big games and dampens a
+// 1-touch cameo — the single source of truth shared by the engine summary and the balance labs.
+export function aggregateMatchRating(results, simRatingDelta = 0) {
+  if (!results || results.length === 0) {
+    return Math.max(5.4, Math.min(7.4, 6 + simRatingDelta));
+  }
+  let delta = 0;
+  for (const result of results) {
+    if (result.goals > 0) {
+      delta += 1.15 * result.goals;
+    } else if (result.assists > 0) {
+      delta += 0.62 * result.assists;
+    } else if (result.chancesCreated > 0) {
+      delta += 0.32;
+    } else if (result.outcomeTier === "Great") {
+      delta += 0.42;
+    } else if (result.outcomeTier === "Good" || result.success) {
+      delta += 0.18;
+    } else if (result.outcomeTier === "Poor") {
+      delta -= 0.2;
+    } else {
+      delta -= 0.1;
+    }
+  }
+  return Math.max(5.4, Math.min(9.8, 6.2 + delta + simRatingDelta));
+}
+
 export function seededNoise(seed) {
   let hash = 2166136261;
   for (let index = 0; index < seed.length; index += 1) {

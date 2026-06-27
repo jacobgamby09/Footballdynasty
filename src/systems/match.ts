@@ -1,6 +1,6 @@
 import { createPositionMatchPool } from "../engine/forwardMoments";
 import { canQueueDirectorFollowUp, createMatchDirectorPlan } from "../engine/matchDirector";
-import { chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateChoiceOutcomes, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
+import { aggregateMatchRating, chooseAutoSimChoice, createSimEvents, createTeamMatchModel, estimateChoiceOutcomes, getSimScoreAtMinute, resolvePlayerChoice, seededNoise } from "../engine/matchEngineCore";
 import { getPositionModule } from "../positionRoles";
 import { clamp } from "../utils";
 import { advanceContractWeek, getClubContractOffer, getMatchContractEarnings, getTransferMarketOffers } from "./contracts";
@@ -416,7 +416,7 @@ export function summarizeMatchResults(results: MatchResult[], simTotals = create
   if (results.length === 0) {
     return {
       ...emptySummary,
-      rating: Number(clamp(emptySummary.rating, 5.4, 7.4).toFixed(1)),
+      rating: Number(aggregateMatchRating(results, simTotals.ratingDelta).toFixed(1)),
     };
   }
 
@@ -451,7 +451,7 @@ export function summarizeMatchResults(results: MatchResult[], simTotals = create
   return {
     ...totals,
     teamGoals: totals.teamGoals + getPlayerTeamGoalContributions(totals),
-    rating: Number(clamp(totals.rating / results.length, 5.4, 9.6).toFixed(1)),
+    rating: Number(aggregateMatchRating(results, simTotals.ratingDelta).toFixed(1)),
   };
 }
 

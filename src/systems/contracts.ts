@@ -11,6 +11,7 @@ import { getCurrentFixture } from "./seasonState";
 import { getPlayerMatchRole, getRoleThreshold, getSelectionReport } from "./selection";
 import { getAgentSigningBonusLeverage, getAgentWageLeverage, getSupportLevel, getSupportTrackBreakthroughCount } from "./support";
 import { getInterestedWorldClubs, worldClubToClubState } from "./transfers";
+import { findLeagueByClubShortCode } from "./world";
 import type { MatchRole } from "../positionRoles";
 import type { Contract, ContractOffer, GameState, LastMatchSummary, LeagueTier, MatchTotals, WorldClub } from "../types";
 
@@ -111,11 +112,31 @@ export function acceptContractOfferState(state: GameState, chosen?: ContractOffe
         : createClubStateFromOffer(offer, state.club)
       : state.club;
 
+  // A mid-season move to a DIFFERENT league must not carry the player's old-league goals into the new
+  // league's leaderboard/awards — snapshot the season tally so the new competition counts from zero.
+  // Same-league moves keep their tally; end-season moves are cleared at rollover anyway.
+  const oldLeagueId = findLeagueByClubShortCode(state.world, state.club.shortCode)?.id;
+  const newLeagueId =
+    worldClub?.leagueId ?? (nextClub.shortCode ? findLeagueByClubShortCode(state.world, nextClub.shortCode)?.id : undefined);
+  const crossLeague = offer.source === "external-club" && newLeagueId !== oldLeagueId;
+  const seasonStats = crossLeague
+    ? {
+        ...state.seasonStats,
+        leagueBaseline: {
+          goals: state.seasonStats.goals,
+          assists: state.seasonStats.assists,
+          apps: state.seasonStats.apps,
+          ratingCount: state.seasonStats.ratings.length,
+        },
+      }
+    : state.seasonStats;
+
   return {
     ...state,
     cash: state.cash + offer.signingBonus,
     club: nextClub,
     season: offer.source === "external-club" ? rebuildSeasonForClub(state.season, nextClub, state.world) : state.season,
+    seasonStats,
     contract: contractFromOffer(offer),
     contractOffer: undefined,
     contractOffers: undefined,

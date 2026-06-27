@@ -188,21 +188,27 @@ function buildLeagueRows(game: GameState): { leagueId: string; tierId: string; r
         awardScore: awardScoreOf(stat.goals, stat.assists, stat.apps, avg),
       };
     });
-  const ratings = game.seasonStats.ratings;
+  // Scope the player's row to the CURRENT league: if they moved leagues mid-season, subtract the
+  // snapshot taken at the move so old-league goals never show in this league's table/awards.
+  const baseline = game.seasonStats.leagueBaseline;
+  const playerGoals = Math.max(0, game.seasonStats.goals - (baseline?.goals ?? 0));
+  const playerAssists = Math.max(0, game.seasonStats.assists - (baseline?.assists ?? 0));
+  const playerApps = Math.max(0, game.seasonStats.apps - (baseline?.apps ?? 0));
+  const ratings = game.seasonStats.ratings.slice(baseline?.ratingCount ?? 0);
   const playerAvg = ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : 0;
   rows.push({
     id: "you",
     name: `${game.player.firstName} ${game.player.lastName}`,
     club: game.club.name,
     clubId: game.club.clubId ?? game.club.shortCode ?? game.club.name,
-    goals: game.seasonStats.goals,
-    assists: game.seasonStats.assists,
-    apps: game.seasonStats.apps,
+    goals: playerGoals,
+    assists: playerAssists,
+    apps: playerApps,
     avg: playerAvg,
     age: 15 + game.season.season,
     positionGroup: game.positionGroup,
     isPlayer: true,
-    awardScore: awardScoreOf(game.seasonStats.goals, game.seasonStats.assists, game.seasonStats.apps, playerAvg),
+    awardScore: awardScoreOf(playerGoals, playerAssists, playerApps, playerAvg),
   });
   // NPC names come from a finite pool, so the same name can recur across a league's ~360 players.
   // Disambiguate deterministically (by row order) so a leaderboard never shows one name twice — the

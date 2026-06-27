@@ -58,6 +58,10 @@ export type SeasonStats = {
   goals: number;
   assists: number;
   ratings: number[];
+  // Snapshot taken when the player moves to a DIFFERENT league mid-season, so league
+  // leaderboards/awards count only output produced in the current league (not goals carried over from
+  // the old one). Undefined until a cross-league move; cleared each season at rollover.
+  leagueBaseline?: { goals: number; assists: number; apps: number; ratingCount: number };
 };
 
 export type DynastySeason = {

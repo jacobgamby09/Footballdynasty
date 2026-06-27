@@ -2629,3 +2629,34 @@ team trophies, and loyalty rewards — all OVR-neutral and reload-safe.
   console errors. Reveal pacing confirmed readable; tap-to-skip works.
 - Docs: `MATCH_ENGINE.md` ("Chain-highlight match moments" section), `MATCH_AGENCY_PLAN.md` (superseded
   note), `HANDOVER.md` (section 0).
+
+## 2026-06-27 - Playtest correctness bugs (#7, #15, #20, #14)
+
+From a playtest-notes pass. Four data/world correctness bugs; display + resolution only, no engine math.
+
+- **#7 shots-on-target < goals** (`getLiveMatchStats`): only sim `team_goal` events fed the team's
+  shots/on-target tally, so a goal the player scored from a moment showed on the scoreboard but not in
+  On target — leaving On target below Goals. Now folds the player's own moment shots/goals into the
+  team tally (a scored shot is always on target). Commit 7895fbe.
+- **#15 duplicate players on leaderboards** (`buildLeagueRows`): the finite NPC name pool (40x40) makes
+  name collisions inevitable across a league's ~360 players, so the same name appeared twice. Added a
+  deterministic disambiguation pass (later repeats get a middle initial). Display-only; stats key off
+  id. Commit 7895fbe.
+- **#20 feed link opened the wrong club** ("Lazzaro FC" vs "Lazzaro AC"): generated club short names
+  collided (`shortNameOf` stripped only an English suffix list, so Italian "AC" survived and both
+  reduced to "Lazzaro"), and `findClubByIdentity` fell back to matching by short name → first match
+  wins → wrong club. Now (a) generated short names are unique across the world (a city reused in
+  another division keeps its full name), and (b) resolution uses only unique id/shortCode/exact-name —
+  a shared short name resolves to nothing rather than the wrong club. Commit 7895fbe.
+- **#14 cross-league stat leak**: a mid-season transfer to a different league carried the player's
+  old-league goals into the new league's top-scorer table + POTY race (the player row used whole-season
+  `seasonStats`). Added an optional `SeasonStats.leagueBaseline` snapshot, set in
+  `acceptContractOfferState` only when the new club's league differs from the current; `buildLeagueRows`
+  subtracts it for the player row. Reload-safe (save spreads seasonStats); cleared each season at
+  rollover; no `SAVE_VERSION` bump (additive optional).
+- Verified: build green, play-session smoke exit 0, season-lab End OVR byte-identical
+  (57.20/67.39/67.11/63.83 — all four touch only display/world/resolution, never engine math). #14's
+  cross-league path is best confirmed in-game (hard to auto-reproduce).
+- Deferred from the same playtest pass (not in this batch): chain-highlight manual step-through (#2) +
+  the choice-flash on follow-up moments (#1); rating curve + goal-environment balance (#5-9, #31);
+  season-end flow + award eligibility (#27-30); UX clarity + feature polish items.

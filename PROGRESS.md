@@ -2681,11 +2681,13 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
 
 ## 2026-06-27 - Season flow + awards: eligibility floor + contract clarity (#29/#30, #28; #27 deferred)
 
-- **#29/#30 awards too generous after a partial season**: `computeSeasonAwards` only required ≥3 apps,
-  so a mid-season arrival (whose row is now scoped to current-league apps via `seasonStats.leagueBaseline`
-  from #14) could sweep Golden Boot / POTY / Team of the Season on a half-season. Added a participation
-  floor — the player must have played ~55% of the league fixtures (`Math.max(8, round(seasonLength*0.55))`)
-  for ANY individual award.
+- **#29/#30 awards after a partial season**: the real fix is #14's current-league scoping — a mid-season
+  arrival is judged only on their NEW club's output. Awards are then decided by REAL performance, not a
+  participation quota: Golden Boot / Assist go to the division's top scorer / assister (black and white,
+  counting new-club goals); POTY goes to the top `awardScore` vs the field. (An earlier ~55%-of-fixtures
+  floor was tried and then removed at the user's call — it blocked legitimate winners; and since NPC
+  tallies accumulate over a full season, a few-game cameo can't top the metrics anyway. Only a "featured
+  in this league" guard remains.)
 - **#28 contract offer unclear**: the offer card showed a wage delta + summary but no *reason* or
   remaining length, so a same-wage extension read as "same terms" for no clear cause. The card now leads
   with a reason line (New club / Improved terms — your form / Early extension — N wks left / contract up)

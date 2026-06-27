@@ -261,12 +261,12 @@ export function computeSeasonAwards(game: GameState): { playerAwards: SeasonAwar
   }
   const { rows, tierId } = built;
   const player = rows.find((row) => row.isPlayer);
-  // Eligibility: the player must have played a real share of THIS league's season. Their row is already
-  // scoped to current-league apps (via seasonStats.leagueBaseline), so without a floor a mid-season
-  // arrival could sweep the individual awards on a half-season. Require ~55% of the league fixtures.
-  const seasonLength = game.season.fixtures.length || 30;
-  const minApps = Math.max(8, Math.round(seasonLength * 0.55));
-  if (!player || player.apps < minApps) {
+  // No participation quota — awards are decided by REAL performance vs. the field. The player's row is
+  // scoped to current-league output (via seasonStats.leagueBaseline), so a mid-season arrival is judged
+  // on their NEW club only: they keep the Golden Boot if they're the division's top scorer (black and
+  // white), and can take POTY if their record genuinely leads it. NPC tallies accumulate over the full
+  // season, so a few-game cameo can't top the metrics anyway. We only require that the player featured.
+  if (!player || player.apps < 1) {
     return { playerAwards: [], prestige: 0 };
   }
   const multiplier = leagueTiers[tierId as keyof typeof leagueTiers]?.prestigeMultiplier ?? 1;

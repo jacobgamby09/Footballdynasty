@@ -938,6 +938,13 @@ button {
   margin-top: 12px;
 }
 
+.soft-chip.is-levelup {
+  color: #0e120d;
+  background: var(--lime);
+  border-color: var(--lime);
+  font-weight: 850;
+}
+
 .soft-chip {
   padding: 7px 9px;
   border: 1px solid var(--border);
@@ -2150,6 +2157,40 @@ button {
 .specialist-button.is-active span,
 .specialist-button.is-active strong {
   color: var(--lime);
+}
+
+.stat-focus-slot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  border-radius: 5px;
+  background: var(--lime);
+  color: #0e120d;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.season-brief-card p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.season-brief-card p:last-child {
+  margin-bottom: 0;
+}
+
+.season-brief-card strong {
+  color: var(--text);
+}
+
+.season-brief-card .season-brief-target {
+  color: var(--lime-2);
+  font-weight: 650;
 }
 
 .stat-focus-button {

@@ -30,11 +30,47 @@ import type { AttributeKey } from "../positionRoles";
 import type { Attribute, CabinetEntry, ChoiceOutcomePreview, ClubId, ClubLegacyRecord, ClubRecordKey, ClubView, Contract, ContractOffer, Country, CountryId, DynastyUpgradeId, FeedTextPart, GameState, HomeView, Intensity, LastMatchSummary, MatchChoice, MatchMoment, MatchObjective, MatchResult, MatchSpeed, MatchState, NewCareerSetup, PlayerMatchEvent, SupportUpgradeId, TrainingSummary, TransferWindowState, Venue } from "../types";
 import type { CSSProperties, ReactNode } from "react";
 
+// Season-start brief (#12): sets the fantasy — who this club is, what's expected, and your own target.
+// Shown only before the season's first match (season.results empty), so it frames each fresh campaign.
+function SeasonBriefCard({ game }: { game: GameState }) {
+  const tier = getClubLeagueTier(game.club);
+  const diff = game.club.strength - tier.averageOvr;
+  const standing =
+    diff >= 6 ? "one of the stronger sides" : diff >= -2 ? "a mid-table side" : diff >= -8 ? "one of the smaller sides" : "among the minnows";
+  const clubAim =
+    diff >= 6 ? "challenge near the top" : diff >= -2 ? "consolidate in mid-table" : diff >= -8 ? "steer clear of the drop" : "scrap for every point";
+  const role = game.contract.rolePromise;
+  const playerAim =
+    role === "Starter"
+      ? "hold down your starting spot"
+      : role === "Rotation Starter"
+        ? "nail down a regular start"
+        : role === "Impact Sub"
+          ? "force your way into the first XI"
+          : "break into the matchday squad";
+  return (
+    <div className="card season-brief-card">
+      <div className="section-heading">
+        <div>
+          <span className="metric-label">Season {game.season.season} brief</span>
+          <h2>The road ahead</h2>
+        </div>
+        <Newspaper size={19} />
+      </div>
+      <p>
+        <strong>{game.club.name}</strong> are {standing} in the {tier.name}. The board expect the team to {clubAim} this season.
+      </p>
+      <p className="season-brief-target">Your job: {playerAim} and make your name.</p>
+    </div>
+  );
+}
+
 export function PlayerScreen({ game, onOpenClub, onOpenDynasty }: { game: GameState; onOpenClub?: (identity: string) => void; onOpenDynasty?: () => void }) {
   return (
     <>
       <Header game={game} onOpenClub={onOpenClub} />
       <CareerCard game={game} />
+      {game.season.results.length === 0 && <SeasonBriefCard game={game} />}
       <ReadinessStrip game={game} />
       <PrestigeStatusCard game={game} />
       <CareerHonoursTeaser game={game} onOpenDynasty={onOpenDynasty} />
@@ -443,6 +479,7 @@ export function TrainingScreen({
                 }}
               >
                 <span className="stat-focus-name">
+                  {isFocused && <span className="stat-focus-slot-badge" aria-label={`Focus slot ${focusIndex + 1}`}>{focusIndex + 1}</span>}
                   {attribute.label}
                   {isKeyAttribute && <Star className="stat-focus-key-mark" size={11} aria-label="Key attribute" />}
                 </span>
@@ -1836,11 +1873,14 @@ export function TrainingSummaryScreen({
         <div className="chip-row">
           <span className="soft-chip">{summary.intensity} intensity</span>
           <span className="soft-chip">{summary.qualityLabel}</span>
-          {summary.focuses.map((focus) => (
-            <span className="soft-chip" key={`${focus}-actual`}>
-              {focus} +{summary.xp[focus] ?? 0} XP
-            </span>
-          ))}
+          {summary.focuses.map((focus) => {
+            const focusLevelUp = summary.levelUps.find((item) => item.attribute === focus);
+            return (
+              <span className={`soft-chip ${focusLevelUp ? "is-levelup" : ""}`} key={`${focus}-actual`}>
+                {focus} +{summary.xp[focus] ?? 0} XP{focusLevelUp ? ` · Lv ${focusLevelUp.before}→${focusLevelUp.after}` : ""}
+              </span>
+            );
+          })}
         </div>
       </div>
 

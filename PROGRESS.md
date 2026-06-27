@@ -2734,3 +2734,18 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   sponsor unlock) plus a one-line "what prestige affects" (sponsors + contract leverage).
 - Display/data only; no save change. Build green, smoke exit 0, season-lab engine-only.
 - Remaining ⚪ UX: season-start brief (#12), training-slot UX (#3/#4). #27 still deferred.
+
+## 2026-06-27 - UX part 3: season-start brief + training-slot UX (#12, #3, #4)
+
+- **#12 season-start brief**: a "Season brief" card on the player screen before the season's first match
+  (`season.results` empty) — frames the club's standing + the board's expectation (from club strength vs
+  league average) and your personal target (from your role). Establishes the "small club, make your name"
+  fantasy at the start of each campaign.
+- **#3 training focus selection**: when both focus slots were full, tapping a new stat was silently
+  dropped (`.slice(0, capacity)` discarded it). It now rotates — the oldest focus drops out so a new pick
+  always takes a slot — and selected stats show their slot number (1/2) in the grid.
+- **#4 secondary-slot development**: the Development Summary's per-focus chips now show each slot's
+  level-up (Lv X→Y), so slot 2's progress is clear, not just the primary focus's meter.
+- Display/UX only; no save change. Build green, smoke exit 0, season-lab engine-only.
+- This completes the ⚪ UX clarity batch (#3,4,10,11,12,13,16,17,18,21). Remaining playtest lanes:
+  🔵 balance sim (#5-9, #31), ⚫ features (#22-25), ⏸️ #27 (season-end order, needs a playtest).

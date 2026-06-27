@@ -200,7 +200,9 @@ function App() {
           : currentFocuses
         : capacity <= 1
           ? [focus]
-          : [...currentFocuses, focus].slice(0, capacity);
+          : currentFocuses.length < capacity
+            ? [...currentFocuses, focus]
+            : [...currentFocuses.slice(1), focus]; // slots full → rotate the oldest out so a new pick always takes effect (#3)
 
       return {
         ...state,

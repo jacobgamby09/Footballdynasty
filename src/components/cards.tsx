@@ -1,5 +1,4 @@
 import { dynastyUpgradeMap } from "../data/dynastyUpgrades";
-import { supportUpgradeMap } from "../data/support";
 import { getPositionModule } from "../positionRoles";
 import { getContractStatusLabel } from "../systems/contracts";
 import { formatSigned, getAverageRating, getFormLabel, getFormScore, getTrustStatus } from "../systems/formatting";
@@ -8,9 +7,8 @@ import { getPrestigeStatus, prestigeTiers } from "../systems/prestige";
 import { getSeasonReview } from "../systems/season";
 import { getCurrentFixture, getRecentFormText, getSeasonRecord, getUpcomingFixtures, hasPlayableFixture, isSeasonComplete } from "../systems/seasonState";
 import { getFitnessAvailability, getUpcomingMatch } from "../systems/selection";
-import { getSupportTrackProgress, getSupportUpgradeCost, getSupportUpgradeLockReason } from "../systems/support";
 import { getDynastyInvestmentImpactLine, getDynastyTrackCurrentBonusLines, getDynastyTrackProgress, getDynastyUpgradeCost, getDynastyUpgradeLockReason } from "../systems/dynastyUpgrades";
-import { getCurrentTrainingFocuses, getSupportInvestmentImpactLine, getSupportTrackCurrentBonusLines, getTrainingProjection } from "../systems/training";
+import { getCurrentTrainingFocuses, getInvestTrackView, getTrainingProjection } from "../systems/training";
 import { getCountryForClub } from "../systems/world";
 import { getClubFitStatus, getNextTransferWindowLabel } from "../systems/transferWindow";
 import { clamp } from "../utils";
@@ -829,6 +827,8 @@ function UpgradeTrackCard({
   );
 }
 
+// Beginner-friendly Invest card: leads with the problem + the player's current numbers (always visible),
+// and on expand offers each upgrade as a plain before -> after with a "best if…" line — no system jargon.
 export function SupportTrackCard({
   cash,
   game,
@@ -840,37 +840,77 @@ export function SupportTrackCard({
   track: SupportTrackDefinition;
   onBuySupportUpgrade: (upgradeId: SupportUpgradeId) => void;
 }) {
-  const progress = getSupportTrackProgress(game, track);
-  const items: UpgradeTrackItemView[] = track.upgradeIds.map((upgradeId) => {
-    const upgrade = supportUpgradeMap[upgradeId];
-    const level = game.supportUpgrades[upgradeId] ?? 0;
-    const cost = getSupportUpgradeCost(upgrade, level);
-    const lockReason = getSupportUpgradeLockReason(game, upgrade);
-    const maxed = level >= upgrade.maxLevel;
-    return {
-      id: upgrade.id,
-      name: upgrade.name,
-      effect: upgrade.effect,
-      level,
-      maxLevel: upgrade.maxLevel,
-      cost,
-      lockReason,
-      maxed,
-      canBuy: !lockReason && !maxed && cash >= cost,
-      nextEffect: maxed ? "Complete" : lockReason ? `Locked: ${lockReason}` : getSupportInvestmentImpactLine(game, track, upgradeId),
-    };
-  });
+  const [expanded, setExpanded] = useState(false);
+  const view = getInvestTrackView(game, track);
+  const allDone = view.upgrades.every((upgrade) => upgrade.maxed);
+  const cheapest = view.upgrades.filter((upgrade) => !upgrade.maxed && !upgrade.lockReason).sort((a, b) => a.cost - b.cost)[0];
+  const status = allDone
+    ? { tone: "done", label: "Maxed" }
+    : cheapest
+      ? cash >= cheapest.cost
+        ? { tone: "buy", label: `Invest $${cheapest.cost}` }
+        : { tone: "wait", label: `$${cheapest.cost}` }
+      : { tone: "locked", label: "Locked" };
 
   return (
-    <UpgradeTrackCard
-      name={track.name}
-      effect={track.effect}
-      progress={progress}
-      currentBonuses={getSupportTrackCurrentBonusLines(game, track)}
-      items={items}
-      formatCost={(cost) => `$${cost}`}
-      onBuy={(id) => onBuySupportUpgrade(id as SupportUpgradeId)}
-    />
+    <div className={`card upgrade-track ${allDone ? "is-complete" : ""}`}>
+      <button type="button" className="upgrade-track-head" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+        <span className="upgrade-track-title">
+          <strong>{track.name}</strong>
+          <small>{view.problem}</small>
+        </span>
+        <span className="upgrade-track-meta">
+          <span className={`upgrade-chip chip-${status.tone}`}>{status.label}</span>
+          <ChevronRight size={16} className="upgrade-track-chevron" />
+        </span>
+      </button>
+
+      {view.nowLines.length > 0 && (
+        <div className="invest-now">
+          {view.nowLines.map((line) => (
+            <div className="invest-now-line" key={line.label}>
+              <span>{line.label}</span>
+              <strong>{line.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="upgrade-track-body">
+          <p className="invest-choose">Choose what to improve</p>
+          <div className="upgrade-item-list">
+            {view.upgrades.map((item) => {
+              const canBuy = !item.lockReason && !item.maxed && cash >= item.cost;
+              return (
+                <div className={`upgrade-item ${item.maxed ? "is-done" : item.lockReason ? "is-locked" : canBuy ? "is-buyable" : ""}`} key={item.id}>
+                  <div className="upgrade-item-info">
+                    <strong>{item.name}</strong>
+                    <span className="invest-ba">{item.changeLabel}</span>
+                    <small>{item.whenUseful}</small>
+                    {item.pendingNote && <small className="invest-pending">{item.pendingNote}</small>}
+                  </div>
+                  {item.maxed ? (
+                    <span className="upgrade-item-done"><Check size={14} /> Done</span>
+                  ) : (
+                    <button type="button" disabled={!canBuy} onClick={() => onBuySupportUpgrade(item.id)}>
+                      {item.lockReason ? "Locked" : `$${item.cost}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {view.milestone && (
+            <div className="invest-milestone">
+              <span className="invest-milestone-label">Next milestone</span>
+              <strong>{view.milestone.name}</strong>
+              <small>{view.milestone.current}/{view.milestone.required} upgrades · {view.milestone.reward}</small>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

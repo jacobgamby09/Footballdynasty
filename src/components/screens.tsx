@@ -2193,7 +2193,7 @@ export function HomeScreen({
           Base
         </button>
         <button className={view === "support" ? "is-active" : ""} type="button" onClick={() => onViewChange("support")}>
-          Support
+          Invest
         </button>
         <button className={view === "feed" ? "is-active" : ""} type="button" onClick={() => onViewChange("feed")}>
           Feed
@@ -2772,18 +2772,18 @@ export function SupportShopView({
       <div className="card">
         <div className="section-heading">
           <div>
-            <span className="metric-label">In-run economy</span>
-            <h2>Player support</h2>
+            <span className="metric-label">This career</span>
+            <h2>Invest</h2>
           </div>
           <BadgeDollarSign size={19} />
         </div>
         <div className="next-grid">
           <InfoTile label="Cash" value={`$${game.cash}`} tone="good" />
-          <InfoTile label="Owned levels" value={`${totalLevels}`} />
+          <InfoTile label="Upgrades owned" value={`${totalLevels}`} />
         </div>
         <div className="match-hint">
           <Activity size={16} />
-          <span>Cash upgrades help this player now and do not become permanent dynasty power.</span>
+          <span>Cash upgrades improve this player only. They reset when you retire.</span>
         </div>
       </div>
 

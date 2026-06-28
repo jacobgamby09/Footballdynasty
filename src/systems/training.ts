@@ -7,9 +7,10 @@ import { formatPercentDelta, formatSigned } from "./formatting";
 import { getClubLeagueTier, getXpPercent } from "./ovr";
 import { getCurrentFixture } from "./seasonState";
 import { getSelectionReport } from "./selection";
-import { applyRecoveryCeiling, applyRecoveryFloor, getAgentSigningBonusLeverage, getAgentWageLeverage, getFocusSlot2Efficiency, getFocusSlot3Efficiency, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getRecoverySessionBonus, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus, isFocusSlot2Unlocked, isFocusSlot3Unlocked } from "./support";
+import { applyRecoveryCeiling, applyRecoveryFloor, getAgentSigningBonusLeverage, getAgentWageLeverage, getAgingProfile, getConsistencyRatingFloor, getEliteConditioningCeilingBonus, getFocusSlot2Efficiency, getFocusSlot3Efficiency, getMarqueeBonus, getMatchActionRecoveryRelief, getRecoveryFitnessCeiling, getRecoveryFitnessFloor, getRecoverySessionBonus, getSponsorAppealBonus, getSupportLevel, getSupportTrackBreakthroughCount, getSupportTrackProgress, getSupportUpgradeCost, getSupportUpgradeLockReason, getTrainingFatigueRelief, getTrainingXpCeilingBonus, getTrainingXpFloorBonus, getWeeklySupportRecoveryBonus, isFocusSlot2Unlocked, isFocusSlot3Unlocked } from "./support";
+import { supportUpgradeMap } from "../data/support";
 import type { AttributeKey } from "../positionRoles";
-import type { Attribute, AttributeLevelUp, DevelopmentEnvironment, GameState, Intensity, LeagueTier, SupportTrackDefinition, SupportUpgradeId, TrainingQuality, TrainingQualityProfile, TrainingSummary } from "../types";
+import type { Attribute, AttributeLevelUp, DevelopmentEnvironment, GameState, Intensity, LeagueTier, SupportTrackDefinition, SupportTrackId, SupportUpgradeId, TrainingQuality, TrainingQualityProfile, TrainingSummary } from "../types";
 
 export function getSupportInvestmentImpactLine(state: GameState, track: SupportTrackDefinition, upgradeId: SupportUpgradeId) {
   const currentLevel = getSupportLevel(state, upgradeId);
@@ -78,6 +79,315 @@ export function getSupportTrackCurrentBonusLines(state: GameState, track: Suppor
   }
 
   return ["No active bonus yet"];
+}
+
+
+// ── Beginner-friendly "Invest" views ─────────────────────────────────────────────────────────
+// The Invest shop leads with the problem, the player's current number, the number after a purchase, and
+// when the upgrade helps — all built from the REAL formulas above, never hardcoded. (Invest UX clarity pass)
+
+export type InvestNowLine = { label: string; value: string };
+export type InvestUpgradeView = {
+  id: SupportUpgradeId;
+  name: string;
+  changeLabel: string;
+  whenUseful: string;
+  pendingNote?: string;
+  cost: number;
+  level: number;
+  maxLevel: number;
+  lockReason?: string;
+  maxed: boolean;
+};
+export type InvestMilestoneView = { name: string; current: number; required: number; reward: string } | null;
+export type InvestTrackView = {
+  problem: string;
+  nowLines: InvestNowLine[];
+  upgrades: InvestUpgradeView[];
+  milestone: InvestMilestoneView;
+};
+
+const INVEST_TRACK_PROBLEM: Record<SupportTrackId, string> = {
+  training: "Grow your attributes faster every week.",
+  recovery: "Stay fit so you can play more matches.",
+  career: "Earn more from contracts and sponsors.",
+  longevity: "Stay at your peak — and keep playing — for longer.",
+  talent: "Raise how high this player can ever grow.",
+  elite: "Status perks that polish a finished player.",
+};
+
+const INVEST_WHEN_USEFUL: Record<SupportUpgradeId, string> = {
+  xpFloor: "Best if you hate weeks with tiny XP gains.",
+  xpCeiling: "Best if you want bigger high-roll weeks.",
+  focusSlot2Unlock: "Best to train two skills at once.",
+  focusSlot2Efficiency: "Best once you lean on a second focus.",
+  focusSlot3Unlock: "Best to train three skills at once.",
+  focusSlot3Efficiency: "Best once you lean on a third focus.",
+  trainingLoad: "Best if you train hard often.",
+  matchRecovery: "Best if you play heavy minutes.",
+  recoveryBaseline: "Best if you often start weeks tired.",
+  agentNegotiation: "Best when negotiating your next contract.",
+  sponsorshipAppeal: "Best once you have prestige for sponsor deals.",
+  longevity: "Best if you want a long career past your prime.",
+  potential: "Best mid-career to unlock more growth.",
+  consistency: "Best to stop off-days tanking your rating.",
+  eliteConditioning: "Best to stay fresh deep into seasons.",
+  marquee: "Best to snowball fame and money.",
+};
+
+const INVEST_MILESTONE_REWARD: Record<SupportTrackId, string> = {
+  training: "Unlocks an extra weekly training focus.",
+  recovery: "Better recovery floor and ceiling.",
+  career: "Stronger contract and sponsor leverage.",
+  longevity: "Pushes your peak age and retirement later.",
+  talent: "A higher growth ceiling on key skills.",
+  elite: "Status recognition.",
+};
+
+// Smallest number of extra levels until a ROUNDED effect actually moves, so we can say "in N more upgrades"
+// honestly instead of showing a no-op before/after.
+function upgradesUntilEffectChange(level: number, effect: (lvl: number) => number, cap = 20): number {
+  const base = effect(level);
+  for (let step = 1; step <= cap; step += 1) {
+    if (effect(level + step) !== base) return step;
+  }
+  return 0;
+}
+
+function projectedWeeklyXpRange(state: GameState): { min: number; max: number } | null {
+  const ranges = getTrainingProjection(state).ranges;
+  const keys = Object.keys(ranges) as AttributeKey[];
+  if (keys.length === 0) {
+    return null;
+  }
+  let min = 0;
+  let max = 0;
+  for (const key of keys) {
+    min += ranges[key]?.min ?? 0;
+    max += ranges[key]?.max ?? 0;
+  }
+  return { min, max };
+}
+
+function withSupportLevel(state: GameState, upgradeId: SupportUpgradeId, level: number): GameState {
+  return { ...state, supportUpgrades: { ...state.supportUpgrades, [upgradeId]: level } };
+}
+
+// A representative "busy match" (~90', ~6 involvements) so Match recovery shows a real, moving fitness cost.
+// Match recovery eases the ACTION fatigue (getMatchActionRecoveryRelief), never the pure minute load, so the
+// number bottoms out at the minute floor — honest about what the upgrade can and can't do.
+function representativeMatchFitnessCost(matchRecoveryEffectiveLevel: number): number {
+  const relief = getMatchActionRecoveryRelief(matchRecoveryEffectiveLevel);
+  const rawActionLoad = 6 * Math.min(0, -3 + relief);
+  const scaledActionLoad = Math.round(rawActionLoad * 0.35);
+  const minuteLoad = -5; // ~90 minutes: -round(90 / 18)
+  return clamp(minuteLoad + scaledActionLoad, -12, 0);
+}
+
+export function getInvestTrackNowLines(state: GameState, track: SupportTrackDefinition): InvestNowLine[] {
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const breakthroughs = getSupportTrackBreakthroughCount(state, track.id);
+
+  if (track.id === "training") {
+    const range = projectedWeeklyXpRange(state);
+    return [
+      { label: "Weekly XP", value: range ? `${range.min}–${range.max}` : "Recovering" },
+      { label: "Training focuses", value: `${getTrainingFocusCapacity(state)}` },
+    ];
+  }
+
+  if (track.id === "recovery") {
+    const hardCost = Math.min(0, -10 + getTrainingFatigueRelief(getSupportLevel(state, "trainingLoad") * environment.supportEfficiency));
+    const matchCost = representativeMatchFitnessCost(getSupportLevel(state, "matchRecovery") * environment.supportEfficiency);
+    const ceiling = getRecoveryFitnessCeiling(getSupportLevel(state, "recoveryBaseline") * environment.supportEfficiency, breakthroughs);
+    return [
+      { label: "Hard week", value: `costs ${-hardCost} fitness` },
+      { label: "Busy match", value: `costs ~${-matchCost} fitness` },
+      { label: "Weekly recovery", value: `up to ${ceiling}` },
+    ];
+  }
+
+  if (track.id === "career") {
+    return [
+      { label: "Contract wage", value: `+${Math.round(getAgentWageLeverage(getSupportLevel(state, "agentNegotiation")) * 100)}%` },
+      { label: "Signing bonus", value: `+${Math.round(getAgentSigningBonusLeverage(getSupportLevel(state, "agentNegotiation")) * 100)}%` },
+      { label: "Sponsor income", value: `+${Math.round(getSponsorAppealBonus(getSupportLevel(state, "sponsorshipAppeal")) * 100)}%` },
+    ];
+  }
+
+  if (track.id === "longevity") {
+    const aging = getAgingProfile(state);
+    return [
+      { label: "Peak age", value: `${aging.peakAge}` },
+      { label: "Can play until", value: `${aging.hardRetirementAge}` },
+    ];
+  }
+
+  if (track.id === "talent") {
+    const level = getSupportLevel(state, "potential");
+    return [{ label: "Growth ceiling", value: level > 0 ? `+${level} on key skills` : "Not raised yet" }];
+  }
+
+  if (track.id === "elite") {
+    return [
+      { label: "Bad-game floor", value: `+${getConsistencyRatingFloor(state).toFixed(2)}` },
+      { label: "Fitness ceiling", value: `+${getEliteConditioningCeilingBonus(state)}` },
+      { label: "Name value", value: `+${Math.round(getMarqueeBonus(state) * 100)}%` },
+    ];
+  }
+
+  return [];
+}
+
+export function getInvestUpgradeView(state: GameState, upgradeId: SupportUpgradeId): InvestUpgradeView {
+  const upgrade = supportUpgradeMap[upgradeId];
+  const level = getSupportLevel(state, upgradeId);
+  const maxLevel = upgrade.maxLevel;
+  const lockReason = getSupportUpgradeLockReason(state, upgrade);
+  const environment = getDevelopmentEnvironment(getClubLeagueTier(state.club));
+  const base = {
+    id: upgradeId,
+    name: upgrade.name,
+    whenUseful: INVEST_WHEN_USEFUL[upgradeId],
+    cost: getSupportUpgradeCost(upgrade, level),
+    level,
+    maxLevel,
+    lockReason,
+    maxed: level >= maxLevel,
+  };
+
+  // Locked upgrades can't be previewed meaningfully — say what unlocks them and stop.
+  if (lockReason) {
+    return { ...base, changeLabel: `Unlocks with ${lockReason}` };
+  }
+
+  const plural = (n: number) => (n > 1 ? "s" : "");
+
+  if (upgradeId === "xpFloor" || upgradeId === "xpCeiling") {
+    const isFloor = upgradeId === "xpFloor";
+    const noun = isFloor ? "Lowest weekly XP" : "Highest weekly XP";
+    const before = projectedWeeklyXpRange(state);
+    const after = projectedWeeklyXpRange(withSupportLevel(state, upgradeId, level + 1));
+    if (before && after) {
+      const b = isFloor ? before.min : before.max;
+      const a = isFloor ? after.min : after.max;
+      return a !== b
+        ? { ...base, changeLabel: `${noun}: ${b} → ${a}` }
+        : { ...base, changeLabel: `${noun}: ${b}`, pendingNote: "Builds up over a few levels." };
+    }
+    return { ...base, changeLabel: `Raises your ${isFloor ? "lowest" : "highest"} weekly XP` };
+  }
+
+  if (upgradeId === "focusSlot2Unlock" || upgradeId === "focusSlot3Unlock") {
+    const which = upgradeId === "focusSlot2Unlock" ? "second" : "third";
+    return {
+      ...base,
+      changeLabel: `Unlocks a ${which} weekly training focus`,
+      pendingNote: base.maxed ? undefined : level + 1 >= maxLevel ? "Unlocks with this upgrade." : `Unlocks when full — ${level}/${maxLevel}.`,
+    };
+  }
+
+  if (upgradeId === "focusSlot2Efficiency" || upgradeId === "focusSlot3Efficiency") {
+    const slot = upgradeId === "focusSlot2Efficiency" ? "Second" : "Third";
+    const eff = (lvl: number) =>
+      Math.round(
+        (upgradeId === "focusSlot2Efficiency"
+          ? getFocusSlot2Efficiency(withSupportLevel(state, upgradeId, lvl))
+          : getFocusSlot3Efficiency(withSupportLevel(state, upgradeId, lvl))) * 100,
+      );
+    const b = eff(level);
+    const a = eff(level + 1);
+    return a !== b
+      ? { ...base, changeLabel: `${slot} focus power: ${b}% → ${a}%` }
+      : { ...base, changeLabel: `${slot} focus power: ${b}%`, pendingNote: "Improves each level." };
+  }
+
+  if (upgradeId === "trainingLoad") {
+    const eff = (lvl: number) => Math.min(0, -10 + getTrainingFatigueRelief(lvl * environment.supportEfficiency));
+    const b = eff(level);
+    const a = eff(level + 1);
+    if (a !== b) {
+      return { ...base, changeLabel: `Hard week: ${b} → ${a} fitness` };
+    }
+    const n = upgradesUntilEffectChange(level, eff);
+    return { ...base, changeLabel: `Hard week: ${b} fitness`, pendingNote: n ? `Eases hard weeks in ${n} more upgrade${plural(n)}.` : "Already at the limit." };
+  }
+
+  if (upgradeId === "matchRecovery") {
+    const eff = (lvl: number) => representativeMatchFitnessCost(lvl * environment.supportEfficiency);
+    const b = eff(level);
+    const a = eff(level + 1);
+    if (a !== b) {
+      return { ...base, changeLabel: `Busy match: ${b} → ${a} fitness` };
+    }
+    const n = upgradesUntilEffectChange(level, eff);
+    return { ...base, changeLabel: `Busy match: ${b} fitness`, pendingNote: n ? `Eases match fatigue in ${n} more upgrade${plural(n)}.` : "Minute fatigue can't be removed." };
+  }
+
+  if (upgradeId === "recoveryBaseline") {
+    const breakthroughs = getSupportTrackBreakthroughCount(state, "recovery");
+    const eff = (lvl: number) => getRecoveryFitnessCeiling(lvl * environment.supportEfficiency, breakthroughs);
+    const b = eff(level);
+    const a = eff(level + 1);
+    if (a !== b) {
+      return { ...base, changeLabel: `Weekly recovery cap: ${b} → ${a}` };
+    }
+    const n = upgradesUntilEffectChange(level, eff);
+    return { ...base, changeLabel: `Weekly recovery cap: ${b}`, pendingNote: n ? `Raises the cap in ${n} more upgrade${plural(n)}.` : "At the cap." };
+  }
+
+  if (upgradeId === "agentNegotiation") {
+    const wb = Math.round(getAgentWageLeverage(level) * 100);
+    const wa = Math.round(getAgentWageLeverage(level + 1) * 100);
+    const sb = Math.round(getAgentSigningBonusLeverage(level) * 100);
+    const sa = Math.round(getAgentSigningBonusLeverage(level + 1) * 100);
+    return { ...base, changeLabel: `Wage +${wb}→${wa}% · signing +${sb}→${sa}%` };
+  }
+
+  if (upgradeId === "sponsorshipAppeal") {
+    const b = Math.round(getSponsorAppealBonus(level) * 100);
+    const a = Math.round(getSponsorAppealBonus(level + 1) * 100);
+    return { ...base, changeLabel: `Sponsor income: +${b}% → +${a}%` };
+  }
+
+  if (upgradeId === "longevity") {
+    return { ...base, changeLabel: "Pushes peak age & retirement later", pendingNote: "Biggest gains arrive at each milestone." };
+  }
+
+  if (upgradeId === "potential") {
+    return { ...base, changeLabel: "Key-skill ceiling: +1 potential each level" };
+  }
+
+  if (upgradeId === "consistency") {
+    return { ...base, changeLabel: `Bad-game floor: +${getConsistencyRatingFloor(state).toFixed(2)} → +${((level + 1) * 0.08).toFixed(2)} rating` };
+  }
+
+  if (upgradeId === "eliteConditioning") {
+    return { ...base, changeLabel: `Fitness ceiling: +${getEliteConditioningCeilingBonus(state)} → +${level + 1}` };
+  }
+
+  if (upgradeId === "marquee") {
+    return { ...base, changeLabel: `Prestige & sponsor income: +${Math.round(getMarqueeBonus(state) * 100)}% → +${Math.round((level + 1) * 0.05 * 100)}%` };
+  }
+
+  return { ...base, changeLabel: upgrade.effect };
+}
+
+export function getInvestMilestone(state: GameState, track: SupportTrackDefinition): InvestMilestoneView {
+  const progress = getSupportTrackProgress(state, track);
+  if (progress.maxed) {
+    return null;
+  }
+  return { name: progress.nextName, current: progress.current, required: progress.required, reward: INVEST_MILESTONE_REWARD[track.id] };
+}
+
+export function getInvestTrackView(state: GameState, track: SupportTrackDefinition): InvestTrackView {
+  return {
+    problem: INVEST_TRACK_PROBLEM[track.id],
+    nowLines: getInvestTrackNowLines(state, track),
+    upgrades: track.upgradeIds.map((upgradeId) => getInvestUpgradeView(state, upgradeId)),
+    milestone: getInvestMilestone(state, track),
+  };
 }
 
 

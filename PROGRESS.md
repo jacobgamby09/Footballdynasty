@@ -2838,3 +2838,25 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   stamina-light builds. Not acute (the guardrail tracks progression SHAPE, not the headline number), but
   the fix is on the list: extract the Forward weights into a plain .js the app + labs + probe all import
   (same single-source pattern as the stamina fn).
+
+## 2026-06-28 - UX: Invest (was "Support") shop redesigned for beginners
+
+- The cash-upgrade shop led with system jargon ("Stable load 0/6", "+0 training relief", "34-70 fitness
+  band", "Owned levels") a new player can't parse. Rebuilt as a practical shop: every track leads with the
+  PROBLEM + the player's CURRENT numbers (always visible, even collapsed), and each upgrade reads as a plain
+  before → after with a "Best if…" line. Milestones/breakthroughs are now secondary. Renamed Support →
+  Invest (subtab + header; header now "Cash upgrades improve this player only. They reset when you retire.").
+  UI/copy only — no mechanic changes.
+- Every number comes from the REAL formulas via new view builders in `systems/training.ts`
+  (`getInvestTrackView` → problem, now-lines, per-upgrade before/after, milestone). Recovery shows "Hard
+  week costs 10 fitness", "Busy match costs ~11 fitness", "Weekly recovery up to 70"; buying Match recovery
+  moves "Busy match: -11 → -9 fitness". Stepped upgrades that don't move a rounded value yet say so honestly
+  ("Eases hard weeks in 3 more upgrades") — computed by simulating until the value changes, never hardcoded.
+  XP floor/ceiling show the projected weekly min/max XP for the player's actual focus setup; locked perks
+  read "Unlocks with …".
+- New `SupportTrackCard` renders the layout reusing existing card/chip/upgrade-item styles (mobile-first,
+  compact); the shared `UpgradeTrackCard` (still used by the Dynasty LP shop) is untouched. Added `.invest-*`
+  CSS only. The old `getSupportInvestmentImpactLine`/`getSupportTrackCurrentBonusLines` copy fns are now
+  unused by the UI (left in place; safe to prune later).
+- Season-lab End OVR byte-identical (`57.01/67.49/67.07/63.69`) — confirms zero mechanic change. Build green,
+  smoke exit 0. Verified the fresh-state copy via a formula trace (matches the spec format).

@@ -58,6 +58,8 @@ export type SeasonStats = {
   goals: number;
   assists: number;
   ratings: number[];
+  // Man of the Match awards won this season (rating-based, MotM V1). Resets at season rollover.
+  manOfTheMatch: number;
   // Snapshot taken when the player moves to a DIFFERENT league mid-season, so league
   // leaderboards/awards count only output produced in the current league (not goals carried over from
   // the old one). Undefined until a cross-league move; cleared each season at rollover.
@@ -246,6 +248,8 @@ export type DynastyState = {
   upgrades: Record<DynastyUpgradeId, number>;
   // Dynasty-wide trophy/award cabinet — persists across generations (carried via the heir spread).
   cabinet: DynastyCabinet;
+  // All-time Man of the Match awards across the whole dynasty (every generation). MotM V1.
+  manOfTheMatch: number;
 };
 
 // --- Honours & Legacy (see GDD -> Honours & Legacy System + HONOURS_LEGACY_PLAN.md) ---
@@ -812,6 +816,7 @@ export type LastMatchSummary = MatchTotals & {
   pointsToNextRole: number;
   careerImpact: string[];
   objective?: MatchObjectiveResult;
+  wonMotm?: boolean;
 };
 
 export type GenerationProfile = {

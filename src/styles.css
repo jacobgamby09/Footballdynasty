@@ -1463,6 +1463,40 @@ button {
   line-height: 1.3;
 }
 
+/* Man of the Match — gold dopamine badge on the post-match summary + a ribbon on the last-match card. */
+.motm-badge-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-color: rgba(244, 200, 74, 0.4);
+  background: linear-gradient(135deg, rgba(244, 200, 74, 0.16), rgba(244, 200, 74, 0.05));
+}
+
+.motm-badge-card svg {
+  flex: 0 0 auto;
+  color: var(--gold);
+}
+
+.motm-badge-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.motm-ribbon {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--gold);
+  background: rgba(244, 200, 74, 0.14);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+
 .sponsor-offer-list {
   display: grid;
   gap: 10px;

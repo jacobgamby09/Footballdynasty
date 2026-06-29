@@ -27,6 +27,12 @@ experiment was built then fully reverted (history scrubbed).
   match-lab output unchanged, season-lab End OVR re-baselined to **`51.83/61.49/61.06/58.03`** (the current
   guardrail). The labs also now treat Pace/Stamina as "key" for start bonuses + the potential upgrade,
   matching the app's `bumpKeyAttributePotential`.
+- ~~Man of the Match (#23)~~ **DONE (2026-06-29):** rating-based V1 — eligibility guardrails (≥25' or a
+  decisive G/A in ≥20', rating ≥ 7.5) + a seeded "best-rival" bar; post-match badge, Feed story, season +
+  career counters, season-end cabinet award. V2 deferred: club-record granularity (most / in a season /
+  consecutive), MotM-by-season breakdown, a cameo "Impact award", data-driven vs real NPC ratings.
+- **Remaining playtest polish (⚫):** #24/#25 Feed + manager-message variety, #26 first-goal labelling, #19
+  Ballerup OVR. Small, bounded, low balance-risk.
 
 The older direction below predates the above and is kept for reference.
 

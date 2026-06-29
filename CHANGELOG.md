@@ -10,6 +10,13 @@ table at the bottom) before moving on. UI/copy-only changes hold that guardrail 
 
 ## 2026-06-29
 
+### Added
+- **Man of the Match (V1)** — after each match you win MotM if you're the standout: enough minutes (≥25', or
+  a decisive goal/assist in ≥20'), a rating ≥ 7.5, and a rating that clears a deterministic "best rival on the
+  pitch" bar (which rises when team-mates also scored). Rating-based and player-only aware for V1. Shown as a
+  gold post-match badge, a Last-match ribbon, a Feed story, a season-end cabinet award, and season + career
+  MotM counters. Additive (no SAVE_VERSION bump); OVR guardrail + match-lab output unchanged.
+
 ### Changed
 - **Forward OVR weights unified into one shared source** (`src/engine/ovrWeights.js`). The app
   (`positionRoles.ts`), both balance labs and the OVR probe now import the *same* weights — resolving the

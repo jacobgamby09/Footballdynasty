@@ -94,7 +94,7 @@ export function createCareerForCountry(
     intensity: "Balanced",
     careerSeed,
     attributes: createGenerationAttributes(dynasty.generation, positionModule, dynasty),
-    seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [] },
+    seasonStats: { apps: 0, starts: 0, goals: 0, assists: 0, ratings: [], manOfTheMatch: 0 },
     season: { season: 1, fixtureIndex: 0, fixtures: createSeasonFixturesFromWorld(club, world), results: [] },
     club,
     world,

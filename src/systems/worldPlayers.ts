@@ -314,5 +314,9 @@ export function computeSeasonAwards(game: GameState): { playerAwards: SeasonAwar
   if (teamOfSeason.some((row) => row.isPlayer)) {
     win("team-of-season", "Team of the Season", 150, "Named in the league XI");
   }
+  if (game.seasonStats.manOfTheMatch > 0) {
+    const count = game.seasonStats.manOfTheMatch;
+    win("motm-season", "Man of the Match", 12, `${count} time${count === 1 ? "" : "s"} this season`);
+  }
   return { playerAwards: awards, prestige };
 }

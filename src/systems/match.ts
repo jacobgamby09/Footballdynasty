@@ -49,6 +49,28 @@ export function getPreMatchEntryPlan(match: MatchState) {
 }
 
 
+export const MOTM_RATING_FLOOR = 7.5;
+
+// Man of the Match (V1): rating-based + player-only aware. You win it if you played enough (>=25', or a
+// decisive goal/assist in >=20'), rated at least 7.5, AND your rating clears a deterministic "best rival on
+// the pitch" bar that rises when team-mates also scored — we can't see NPC ratings yet, so this stands in
+// for "were you the standout?". Deterministic: the bar's wobble is seeded off the fixture, never random.
+export function didWinManOfTheMatch(match: MatchState, totals: MatchTotals, teamGoals: number, matchweek: number): boolean {
+  if (!didPlayerAppear(match)) {
+    return false;
+  }
+  const minutes = getPlayerMinutesPlayed(match);
+  const decisive = totals.goals + totals.assists >= 1;
+  const eligible = minutes >= 25 || (decisive && minutes >= 20);
+  if (!eligible || totals.rating < MOTM_RATING_FLOOR) {
+    return false;
+  }
+  const otherGoals = Math.max(0, teamGoals - totals.goals);
+  const wobble = seededNoise(`motm-${match.fixtureId}-${matchweek}`) * 0.6 - 0.3; // deterministic ±0.3
+  const bar = clamp(7.45 + 0.3 * Math.min(otherGoals, 3) + wobble, MOTM_RATING_FLOOR, 8.7);
+  return totals.rating >= bar;
+}
+
 export function finishMatchState(state: GameState, results: MatchResult[]): GameState {
   const match = state.activeMatch;
   const simTotals = match ? summarizeSimEvents(match.events, match.events.length - 1) : undefined;
@@ -83,6 +105,8 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
   if (playerAppeared) {
     totals.rating = Math.max(totals.rating, 5.4 + getConsistencyRatingFloor(state));
   }
+  const fixtureResult = match ? createFixtureResult(match, totals) : undefined;
+  const wonMotm = match && fixtureResult ? didWinManOfTheMatch(match, totals, fixtureResult.teamGoals, state.season.results.length) : false;
   const moraleDelta = playerAppeared ? (totals.rating >= 7 ? 3 : -2) : 0;
   const contractEarnings = getMatchContractEarnings(state.contract, totals, playerAppeared);
   // Marquee status boosts both sponsor income (added to the appeal bonus) and prestige gain.
@@ -148,17 +172,16 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
         selectionAfter: selectionAfter.score,
         pointsToNextRole: selectionAfter.pointsToNextRole,
         objectiveResult,
+        wonMotm,
       })
     : state.lastMatch;
-  const fixtureResult = match
-    ? createFixtureResult(match, totals)
-    : undefined;
   const updatedSeasonStats = {
     apps: state.seasonStats.apps + (playerAppeared ? 1 : 0),
     starts: state.seasonStats.starts + (playerAppeared && match && isStartingRole(match.playerRole) ? 1 : 0),
     goals: state.seasonStats.goals + totals.goals,
     assists: state.seasonStats.assists + totals.assists,
     ratings: postMatchState.seasonStats.ratings,
+    manOfTheMatch: state.seasonStats.manOfTheMatch + (wonMotm ? 1 : 0),
   };
   const nextContract = advanceContractWeek(state.contract);
   const nextSponsor = advanceSponsorWeek(state.sponsor);
@@ -204,6 +227,7 @@ export function finishMatchState(state: GameState, results: MatchResult[]): Game
     season: updatedSeason,
     world: updatedWorld,
     honours: updatedHonours,
+    dynasty: wonMotm ? { ...state.dynasty, manOfTheMatch: state.dynasty.manOfTheMatch + 1 } : state.dynasty,
   };
   const transferWindow = state.transferWindow ?? createTransferWindowState(stateForOffer, lastMatch);
   let contractOffer = transferWindow ? undefined : state.contractOffer;
@@ -341,6 +365,7 @@ export function buildLastMatchSummary({
   selectionAfter,
   pointsToNextRole,
   objectiveResult,
+  wonMotm,
 }: {
   match: MatchState;
   results: MatchResult[];
@@ -363,6 +388,7 @@ export function buildLastMatchSummary({
   selectionAfter: number;
   pointsToNextRole: number;
   objectiveResult?: MatchObjectiveResult;
+  wonMotm?: boolean;
 }): LastMatchSummary {
   return {
     ...totals,
@@ -396,6 +422,7 @@ export function buildLastMatchSummary({
     selectionAfter,
     pointsToNextRole,
     objective: objectiveResult,
+    wonMotm,
     careerImpact: [
       ...getCareerImpactLines(totals, roleBefore, roleAfter, selectionBefore, selectionAfter, pointsToNextRole),
       ...(objectiveResult ? [getObjectiveResultLine(objectiveResult)] : []),

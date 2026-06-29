@@ -90,7 +90,19 @@ function buildPlayerCandidates(before: GameState, after: GameState, match?: Last
   if (!playerClub) return [];
   const name = `${after.player.firstName} ${after.player.lastName}`;
   const result: StoryCandidate[] = [];
-  if (match.goals > 0 || match.assists > 0) {
+  if (match.wonMotm) {
+    result.push({
+      key: `player-motm-${match.matchNumber}`,
+      category: "player",
+      source: "",
+      tone: "positive",
+      importance: 98 + match.goals * 6,
+      headline: [text(`${name} named Man of the Match against `), club(findClub(after.world, match.opponent) ?? playerClub)],
+      body: [text(`A commanding ${match.rating.toFixed(1)} display earned the standout for `), club(playerClub), text(" this week's award.")],
+      clubIds: [playerClub.id],
+      playerRelated: true,
+    });
+  } else if (match.goals > 0 || match.assists > 0) {
     const output = [
       match.goals > 0 ? `${match.goals} goal${match.goals === 1 ? "" : "s"}` : "",
       match.assists > 0 ? `${match.assists} assist${match.assists === 1 ? "" : "s"}` : "",

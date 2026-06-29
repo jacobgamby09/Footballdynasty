@@ -2880,3 +2880,25 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   ~12) ≈ 6. The game (app OVR + actual career progression) is unchanged; the guardrail just became honest.
 - **New guardrail: `51.83/61.49/61.06/58.03`** — OVR-neutral changes from here must hold these. Build green,
   smoke exit 0.
+
+## 2026-06-29 - Feature: Man of the Match V1 (rating-based, #23)
+
+- After each match the player wins Man of the Match if he's the standout: eligible (>=25', or a decisive
+  goal/assist in >=20'), rated >= 7.5, AND his rating clears a deterministic "best rival on the pitch" bar
+  that rises when team-mates also scored (player-only aware — we can't see NPC ratings yet, so the bar
+  stands in for "were you the best?"). `didWinManOfTheMatch` in `match.ts`; the bar's wobble is seeded off
+  the fixture (deterministic, never random).
+- Verified (probe replicating the rule with the real `seededNoise`): a 7.5/10' cameo NEVER wins, a sub-7.5
+  game never wins, a brace/hat-trick ALWAYS wins, a decisive 7.6 cameo (goal in 22') wins ~7/8, and a 7.9
+  with no goals in a 4-0 where team-mates scored wins 0/8 (the scorers were the standouts). Matches the
+  "7.5-in-10' shouldn't win / compare cameos fairly vs starters" guardrails.
+- Persisted: `SeasonStats.manOfTheMatch` (this season, resets at rollover) + `DynastyState.manOfTheMatch`
+  (all-time across the dynasty). Additive — fallback-spread defaults in save normalize, so NO SAVE_VERSION
+  bump (old v25 saves load + default to 0; a bump would reject them under the strict version check).
+- Shown: gold post-match badge ("Man of the Match — 8.4 rating"), a ribbon on the Last-match card, a
+  high-priority Feed story, a "Man of the Match · N times this season" season-end cabinet award, a MotM tile
+  in the season-snapshot card, and a career MotM tile in Career totals.
+- Output/balance untouched: season-lab End OVR byte-identical (`51.83/61.49/61.06/58.03`); match-lab
+  unaffected (MotM never touches the engine/labs); build green, smoke exit 0.
+- Deferred to V2: club-record granularity (most MotM for club / in a season / consecutive), MotM-by-season
+  breakdown, a cameo "Impact award", and fully data-driven comparison vs real NPC ratings.

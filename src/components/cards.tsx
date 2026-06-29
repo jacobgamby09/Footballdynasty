@@ -138,6 +138,7 @@ export function LastMatchCard({ summary, onOpenClub }: { summary: LastMatchSumma
         </div>
         <Trophy size={19} />
       </div>
+      {summary.wonMotm && <div className="motm-ribbon">⭐ Man of the Match</div>}
       <div className="next-grid">
         <InfoTile label="Score" value={`${summary.teamGoals}-${summary.opponentGoals}`} tone="gold" />
         <InfoTile label="Rating" value={summary.rating.toFixed(1)} tone="gold" />
@@ -518,6 +519,7 @@ export function SeasonSnapshot({ stats }: { stats: SeasonStats }) {
         <InfoTile label="Starts" value={`${stats.starts}`} />
         <InfoTile label="Goals" value={`${stats.goals}`} tone="gold" />
         <InfoTile label="Avg rating" value={averageRating} />
+        {stats.manOfTheMatch > 0 && <InfoTile label="MotM" value={`${stats.manOfTheMatch}`} tone="gold" />}
       </div>
 
       <div className="rating-trend" aria-label="Last five match ratings">

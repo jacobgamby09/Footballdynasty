@@ -56,6 +56,13 @@ OVR is unchanged (identical numbers); the season-lab End OVR re-baselined to **`
 floor it dumps). The labs also now treat Pace/Stamina as "key" for start bonuses + the potential upgrade,
 matching the app's `bumpKeyAttributePotential`. Match-lab output unchanged; build green, smoke 0.
 
+**★ Man of the Match V1 (2026-06-29).** Rating-based MotM after each match — eligibility guardrails (>=25' or
+a decisive goal/assist in >=20', rating >= 7.5) + a deterministic seeded "best rival" bar that rises when
+team-mates scored (`didWinManOfTheMatch` in `match.ts`). New persisted counters `SeasonStats.manOfTheMatch`
++ `DynastyState.manOfTheMatch` — additive, fallback-spread defaults, **no SAVE_VERSION bump**. Surfaced via a
+gold post-match badge, Last-match ribbon, Feed story, season-end cabinet award, and season + career tiles.
+Guardrail + match-lab unchanged. V2 deferred: club records, by-season/consecutive, cameo "Impact award".
+
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim
 auto-picks the contextually-best action (`chooseAutoSimChoice` — the same deterministic picker the

@@ -100,6 +100,7 @@ export function startNextSeasonState(state: GameState): GameState {
       goals: 0,
       assists: 0,
       ratings: [],
+      manOfTheMatch: 0,
     },
     season: {
       season: nextSeason,

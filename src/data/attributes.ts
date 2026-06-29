@@ -43,6 +43,7 @@ export const initialDynasty: DynastyState = {
   estate: 0,
   upgrades: { ...initialDynastyUpgrades },
   cabinet: { entries: [] },
+  manOfTheMatch: 0,
 };
 
 export const attributeInfo: Record<

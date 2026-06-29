@@ -1226,6 +1226,15 @@ export function PostMatchSummaryScreen({ attributes, summary, onOpenClub }: { at
         </div>
       </div>
 
+      {summary.wonMotm && (
+        <div className="card motm-badge-card">
+          <Star size={22} />
+          <div>
+            <span className="metric-label">Man of the Match</span>
+            <strong>You won it — {summary.rating.toFixed(1)} rating.</strong>
+          </div>
+        </div>
+      )}
       {summary.objective && (
         <div className={`card summary-objective-card ${summary.objective.completed ? "is-complete" : "is-missed"}`}>
           <div className="objective-head">
@@ -2419,6 +2428,7 @@ export function DynastyView({
               <InfoTile label="Goals" value={`${careerTotals.goals}`} tone={careerTotals.goals > 0 ? "gold" : undefined} />
               <InfoTile label="Assists" value={`${careerTotals.assists}`} />
               <InfoTile label="Avg rating" value={careerTotals.averageRating.toFixed(1)} tone={careerTotals.averageRating >= 6.8 ? "good" : undefined} />
+              {game.dynasty.manOfTheMatch > 0 && <InfoTile label="MotM" value={`${game.dynasty.manOfTheMatch}`} tone="gold" />}
             </div>
           </div>
 

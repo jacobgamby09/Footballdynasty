@@ -859,13 +859,14 @@ export function SupportTrackCard({
       <button type="button" className="upgrade-track-head" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
         <span className="upgrade-track-title">
           <strong>{track.name}</strong>
-          <small>{view.problem}</small>
         </span>
         <span className="upgrade-track-meta">
           <span className={`upgrade-chip chip-${status.tone}`}>{status.label}</span>
           <ChevronRight size={16} className="upgrade-track-chevron" />
         </span>
       </button>
+
+      <p className="invest-problem">{view.problem}</p>
 
       {view.nowLines.length > 0 && (
         <div className="invest-now">

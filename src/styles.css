@@ -1383,6 +1383,16 @@ button {
   cursor: not-allowed;
 }
 
+/* Invest shop: the track's "what this solves" hook — full width, wraps, never truncated. */
+.invest-problem {
+  margin: 0;
+  padding: 2px 14px 11px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 /* Invest shop: always-visible "your situation now" strip + beginner-friendly before/after rows. */
 .invest-now {
   display: grid;

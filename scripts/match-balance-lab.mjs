@@ -8,6 +8,7 @@ import {
 } from "../src/engine/matchEngineCore.js";
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 import { createMatchDirectorPlan } from "../src/engine/matchDirector.js";
+import { forwardOvrWeights } from "../src/engine/ovrWeights.js";
 
 const runs = Number(process.argv.find((arg) => arg.startsWith("--runs="))?.split("=")[1] ?? 500);
 const leagueAverageOvr = 15;
@@ -48,16 +49,8 @@ const baseAttributes = {
   Positioning: 13,
 };
 
-const ovrWeights = {
-  Finishing: 1.25,
-  "Off Ball": 1.1,
-  Composure: 1,
-  "First Touch": 0.85,
-  Acceleration: 0.85,
-  Heading: 0.7,
-  Strength: 0.55,
-  "Work Rate": 0.55,
-};
+// Unified with the app via the shared single source (src/engine/ovrWeights.js).
+const ovrWeights = forwardOvrWeights;
 
 const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure"];
 const forwardPerformanceWeights = { goal: 1.2, assist: 0.95, trust: 0.85, defensive: 0.65, possession: 0.75, transition: 0.9 };

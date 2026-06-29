@@ -1,3 +1,4 @@
+import { forwardOvrWeights } from "./engine/ovrWeights";
 import type { ForwardHighlightCategory } from "./matchEngine";
 
 export type MatchRole = "Bench" | "Impact Sub" | "Rotation Starter" | "Starter";
@@ -73,21 +74,10 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
     shortCode: "ST",
     defaultArchetype: "Poacher",
     keyAttributes: ["Finishing", "Off Ball", "Composure", "First Touch", "Acceleration", "Heading", "Strength", "Work Rate"],
-    ovrWeights: {
-      Finishing: 1.35,
-      "Off Ball": 1.2,
-      Composure: 1.15,
-      "First Touch": 1.05,
-      Acceleration: 0.9,
-      "Work Rate": 0.8,
-      Heading: 0.7,
-      Strength: 0.65,
-      // Athleticism floor (#9): Pace + Stamina carry a small share of OVR (~12% combined) so a striker
-      // can't reach a perfect rating on finishing alone — but they stay non-key, so a poacher who dumps
-      // them is still a strong specialist, just capped. NOT a "goal stat" — Stamina's bite is on fitness.
-      Pace: 0.6,
-      Stamina: 0.5,
-    },
+    // Shared single source (src/engine/ovrWeights.js) so the app, both balance labs and the probe weight
+    // OVR identically — the guardrail measures the same number the player sees. Pace + Stamina carry the
+    // ~12% athleticism floor (#9 part 1); see that module for the rationale.
+    ovrWeights: forwardOvrWeights,
     momentPools: ["forward", "shared"],
     matchTendencies: {
       involvementBias: { Bench: -0.35, "Impact Sub": 0.15, "Rotation Starter": 0.35, Starter: 0.55 },

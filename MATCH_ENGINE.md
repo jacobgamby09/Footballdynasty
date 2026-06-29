@@ -77,9 +77,11 @@ post-match decay (freshness-damped, compounds across a congested run) and live r
 fades late and softens late-match resolution since readiness feeds it). Neutral at Stamina 55, so an average
 striker is unchanged; a congested run drives a low-Stamina player to a role-capped fitness while a
 high-Stamina one holds. This moved the guardrail to **`57.01/67.49/67.07/63.69`** (the lab's Stamina-10
-striker now pays a small availability cost). Caveat — the "two OVR truths": the labs reimplement OVR with
-their own weights (no Pace/Stamina), so lab-OVR reads +4..+7 above the app's displayed OVR for stamina-light
-builds (`scripts/app-ovr-probe.mjs` quantifies it); unify via a shared-weights .js is on NEXT_STEPS.
+striker now pays a small availability cost). **"Two OVR truths" — RESOLVED (2026-06-29):** the Forward weights
+now live in one shared `src/engine/ovrWeights.js` imported by the app, both balance labs and the probe, so the
+guardrail measures the same OVR the player sees. App OVR unchanged; the season-lab End OVR re-baselined to
+**`51.83/61.49/61.06/58.03`** (down ~6 — the lab's stamina-light striker now reports its real OVR rather than
+an inflated lab-only number). **That is the current guardrail.**
 
 ## Relative Ability Model
 

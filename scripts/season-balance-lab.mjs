@@ -10,6 +10,7 @@ import {
 } from "../src/engine/matchEngineCore.js";
 import { createPositionMatchPool } from "../src/engine/forwardMoments.js";
 import { createMatchDirectorPlan } from "../src/engine/matchDirector.js";
+import { forwardOvrWeights } from "../src/engine/ovrWeights.js";
 
 const seasons = Number(process.argv.find((arg) => arg.startsWith("--seasons="))?.split("=")[1] ?? 120);
 // Default to a full career (age 16 -> ~37 = 22 seasons) so the data reflects the whole arc:
@@ -74,16 +75,9 @@ const generationProfiles = [
   { generation: 6, label: "Dynasty talent", startKeyBonus: 10, startGeneralBonus: 5, potentialKeyBonus: 45, potentialGeneralBonus: 30 },
 ];
 
-const ovrWeights = {
-  Finishing: 1.25,
-  "Off Ball": 1.1,
-  Composure: 1,
-  "First Touch": 0.85,
-  Acceleration: 0.85,
-  Heading: 0.7,
-  Strength: 0.55,
-  "Work Rate": 0.55,
-};
+// Unified with the app via the shared single source (src/engine/ovrWeights.js) — the lab now weights OVR
+// (and decides "key" attributes for start bonuses + the potential upgrade) exactly like the game.
+const ovrWeights = forwardOvrWeights;
 
 const focusCycle = ["Finishing", "Off Ball", "Composure", "First Touch", "Acceleration", "Work Rate"];
 const forwardPreferredCategories = ["shot", "first_time_finish", "run_behind", "aerial_duel", "late_pressure"];

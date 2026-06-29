@@ -1,24 +1,17 @@
-// App-OVR probe (#9 + the "two OVR truths" red flag).
+// App-OVR probe — striker archetypes under the UNIFIED Forward OVR weights.
 //
-// WHY THIS EXISTS: the season/match labs reimplement OVR with their OWN weights (they're .mjs and can't
-// import the .ts position modules), so the guardrail number is the LAB's OVR, not the player's displayed
-// app-OVR. This probe measures the APP-OVR for striker archetypes and quantifies the lab↔app gap, so we
-// don't "balance by one number and show the player another."
-//
-// LIMITATION: the APP weights below are MIRRORED from src/positionRoles.ts (Forward.ovrWeights). Keep them
-// in sync by hand until the single-source extraction lands (tracked in NEXT_STEPS — move the Forward weights
-// into a plain .js the app, labs, AND this probe all import; same pattern as getStaminaFitnessLoadMultiplier).
+// The "two OVR truths" are resolved: the app (src/positionRoles.ts), both balance labs and this probe now
+// all import the SAME `forwardOvrWeights` (src/engine/ovrWeights.js), so the guardrail measures exactly the
+// OVR the player sees. This probe imports that single source directly — if anyone re-introduces a divergent
+// weight set, the numbers here move with it, by construction.
+import { forwardOvrWeights } from "../src/engine/ovrWeights.js";
 
-// MIRROR of src/positionRoles.ts Forward.ovrWeights (the real app OVR, incl. the #9 Pace/Stamina floor):
-const APP = { Finishing: 1.35, "Off Ball": 1.2, Composure: 1.15, "First Touch": 1.05, Acceleration: 0.9, "Work Rate": 0.8, Heading: 0.7, Strength: 0.65, Pace: 0.6, Stamina: 0.5 };
-// MIRROR of scripts/season-balance-lab.mjs ovrWeights (what the guardrail actually measures):
-const LAB = { Finishing: 1.25, "Off Ball": 1.1, Composure: 1, "First Touch": 0.85, Acceleration: 0.85, Heading: 0.7, Strength: 0.55, "Work Rate": 0.55 };
-
-function ovr(attrs, weights) {
-  let value = 0, weight = 0;
-  for (const [label, v] of Object.entries(attrs)) {
-    const w = weights[label] ?? 0;
-    value += v * w; weight += w;
+function ovr(attrs) {
+  let value = 0;
+  let weight = 0;
+  for (const [label, w] of Object.entries(forwardOvrWeights)) {
+    value += (attrs[label] ?? 0) * w;
+    weight += w;
   }
   return weight > 0 ? Math.round(value / weight) : 0;
 }
@@ -30,13 +23,13 @@ const archetypes = {
   "Lab striker (Stamina 10 build)":  { Finishing: 67, "Off Ball": 66, Composure: 64, "First Touch": 60, Acceleration: 62, "Work Rate": 58, Heading: 56, Strength: 54, Pace: 40, Stamina: 10 },
 };
 
-console.log("=== App-OVR probe — striker archetypes (app vs lab weights) ===\n");
-console.log(`  ${"archetype".padEnd(34)} app-OVR   lab-OVR   gap(app-lab)`);
+const sum = Object.values(forwardOvrWeights).reduce((a, b) => a + b, 0);
+const athletic = (forwardOvrWeights.Pace ?? 0) + (forwardOvrWeights.Stamina ?? 0);
+
+console.log("=== App-OVR probe — unified Forward weights (app == labs == probe) ===\n");
+console.log(`  ${"archetype".padEnd(34)} OVR`);
 for (const [name, attrs] of Object.entries(archetypes)) {
-  const a = ovr(attrs, APP), l = ovr(attrs, LAB);
-  console.log(`  ${name.padEnd(34)} ${String(a).padStart(6)}   ${String(l).padStart(6)}   ${a - l >= 0 ? "+" : ""}${a - l}`);
+  console.log(`  ${name.padEnd(34)} ${String(ovr(attrs)).padStart(3)}`);
 }
-console.log("\n  app weight sum:", Object.values(APP).reduce((x, y) => x + y, 0).toFixed(2), "| Pace+Stamina share:", (1.1 / 8.9 * 100).toFixed(1) + "%");
-console.log("  NOTE: lab weights omit Pace/Stamina and run lighter across the board, so lab-OVR reads a touch");
-console.log("  higher than the player's displayed app-OVR. Acceptable for now (guardrail tracks progression");
-console.log("  shape, not the headline number); unify via the single-source extraction — see NEXT_STEPS.");
+console.log(`\n  weight sum: ${sum.toFixed(2)} | Pace+Stamina athleticism floor: ${(athletic / sum * 100).toFixed(1)}%`);
+console.log("  Single source: src/engine/ovrWeights.js — imported by app, season-lab, match-lab and this probe.");

@@ -27,12 +27,13 @@ presentation-only, so old saves load intact — no bump, no wipe). Per-step "Shi
 `PROGRESS.md`; Honours design is canon in `GDD.md → Honours & Legacy System`, built per
 `HONOURS_LEGACY_PLAN.md` (now marked V1 COMPLETE).
 
-**⚠ BALANCE GUARDRAIL UPDATED (2026-06-27).** The match-rating curve was deliberately reshaped
-(`aggregateMatchRating` in `matchEngineCore` — base + cumulative goal/assist credit, replacing the flat
-average; cameos down ~6.4, big games up — brace 8.3, hat-trick 9.7). This moved the season-lab End OVR
-guardrail from `57.20/67.39/67.11/63.83` → **`57.01/67.59/67.08/63.77`** (tiny drift; the redistribution
-nets out over a career). **OVR-neutral changes from here must hold the NEW numbers.** Older statements in
-this file / other docs citing 57.20/… describe pre-tuning, OVR-neutral work and are historically correct.
+**⚠ BALANCE GUARDRAIL — current: `51.83/61.49/61.06/58.03`** (season-lab End OVR, 4 scenarios). **OVR-neutral
+changes from here must hold these numbers.** The number moved several times across the 26–29 June patch
+(rating curve → goal trim → stamina → OVR-weight unification — see `CHANGELOG.md` for the journey); earlier
+docs/entries citing `57.20/…`, `57.01/67.59/…` or `57.01/67.49/…` describe earlier, historically-correct
+steps. The big drop to the low-50s/60s on 2026-06-29 was **not a nerf** — it's the lab finally measuring the
+*real* app OVR (incl. the ~12% Pace/Stamina floor the lab's stamina-light striker dumps), not an inflated
+lab-only number. The game (app OVR + actual progression) is unchanged.
 
 **#9 athleticism floor (newest, real-game-only).** Forward OVR now carries a small Pace+Stamina share
 (~12% combined; `src/positionRoles.ts` Forward `ovrWeights`) so a primary-maxed striker who dumps
@@ -47,12 +48,13 @@ unchanged); a fixture pile-up drives low Stamina to a role-capped fitness, high 
 moved to `57.01/67.49/67.07/63.69`** (the lab's Stamina-10 striker now pays a small availability cost;
 match-lab output identical, build green, smoke 0).
 
-**⚠ "Two OVR truths" (tracked, not acute).** The season/match labs reimplement OVR with their OWN weights
-(`Finishing 1.25` vs the app's `1.35`, no Pace/Stamina), so the guardrail measures lab-OVR, which reads
-**+4..+7 above** the player's displayed app-OVR for stamina-light builds — `scripts/app-ovr-probe.mjs`
-quantifies it. Fine for now (the guardrail tracks progression SHAPE), but the fix is on NEXT_STEPS: extract
-the Forward weights into a plain .js the app + labs + probe all import (the single-source pattern the stamina
-fn already follows).
+**✅ "Two OVR truths" RESOLVED (2026-06-29).** The Forward OVR weights now live in one shared source,
+`src/engine/ovrWeights.js`, imported by the app (`positionRoles.ts`), BOTH balance labs and
+`scripts/app-ovr-probe.mjs` — the guardrail now measures the exact OVR the player sees. The app's displayed
+OVR is unchanged (identical numbers); the season-lab End OVR re-baselined to **`51.83/61.49/61.06/58.03`**
+(down ~6 — NOT a nerf; the lab's stamina-light striker now reports its real OVR incl. the ~12% Pace/Stamina
+floor it dumps). The labs also now treat Pace/Stamina as "key" for start bonuses + the potential upgrade,
+matching the app's `bumpKeyAttributePotential`. Match-lab output unchanged; build green, smoke 0.
 
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim

@@ -2860,3 +2860,23 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   unused by the UI (left in place; safe to prune later).
 - Season-lab End OVR byte-identical (`57.01/67.49/67.07/63.69`) — confirms zero mechanic change. Build green,
   smoke exit 0. Verified the fresh-state copy via a formula trace (matches the spec format).
+
+## 2026-06-29 - Infra: unify OVR weights across app + labs (the "two OVR truths" resolved)
+
+- The app and the balance labs each defined their OWN Forward `ovrWeights` (app: `Finishing 1.35` + Pace 0.6
+  + Stamina 0.5; labs: `Finishing 1.25`, no Pace/Stamina), so the season-lab guardrail measured an OVR
+  **+4–7 ABOVE** the number the player actually sees for stamina-light strikers — "balance by one number,
+  show the player another."
+- Extracted the Forward weights into one shared source `src/engine/ovrWeights.js` (+ `.d.ts`), imported by
+  `positionRoles.ts` (app), `season-balance-lab.mjs`, `match-balance-lab.mjs` AND `scripts/app-ovr-probe.mjs`.
+  The labs use this object for `calculateOvr` AND for the "key attribute" checks (generation start bonuses +
+  the potential upgrade), so the lab now also bumps Pace/Stamina potential exactly like the app's
+  `bumpKeyAttributePotential` — a second divergence closed.
+- **App OVR unchanged** (same weight numbers — the probe still shows 77/73/77 for the striker archetypes).
+  **Match-lab output unchanged** (2.54/3.15/2.56 goals, 6.46/7.33/6.43 ratings — OVR weights don't drive its
+  resolution). **Season-lab End OVR re-baselined `57.01/67.49/67.07/63.69` → `51.83/61.49/61.06/58.03`.**
+- The ~−6 drop is **not a nerf and not a regression**: the lab's striker dumps Pace/Stamina (11/10, never
+  focus-trained), so adding the real ~12% athleticism floor drops its *measured* OVR by ≈ 0.124 × (oldOVR −
+  ~12) ≈ 6. The game (app OVR + actual career progression) is unchanged; the guardrail just became honest.
+- **New guardrail: `51.83/61.49/61.06/58.03`** — OVR-neutral changes from here must hold these. Build green,
+  smoke exit 0.

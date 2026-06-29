@@ -8,6 +8,19 @@ table at the bottom) before moving on. UI/copy-only changes hold that guardrail 
 
 ---
 
+## 2026-06-29
+
+### Changed
+- **Forward OVR weights unified into one shared source** (`src/engine/ovrWeights.js`). The app
+  (`positionRoles.ts`), both balance labs and the OVR probe now import the *same* weights — resolving the
+  "two OVR truths" (the labs used to weight OVR differently from the game). The app's displayed OVR is
+  unchanged; the season-lab guardrail re-baselined to **51.83 / 61.49 / 61.06 / 58.03** — a ~−6 drop that is
+  **not a nerf**: the lab's stamina-light striker now reports its real OVR (incl. the ~12% Pace/Stamina floor
+  it dumps) instead of an inflated lab-only number. The labs also now treat Pace/Stamina as "key" for start
+  bonuses + the potential upgrade, matching the app. Build green, smoke exit 0.
+
+---
+
 ## 2026-06-28
 
 ### Changed
@@ -85,11 +98,13 @@ Balance changes moved the guardrail deliberately and measurably:
 | Start (before the patch) | 57.20 / 67.39 / 67.11 / 63.83 |
 | After rating curve (#5/#6) | 57.01 / 67.64 / 67.16 / 63.85 |
 | After goal trim (#7/#8) | 57.01 / 67.59 / 67.08 / 63.77 |
-| After stamina (#9 part 2) | **57.01 / 67.49 / 67.07 / 63.69** ← current |
+| After stamina (#9 part 2) | 57.01 / 67.49 / 67.07 / 63.69 |
+| After OVR-weight unification (29 Jun) | **51.83 / 61.49 / 61.06 / 58.03** ← current |
 
-> #9 part 1 (the athleticism floor) did **not** move the lab number — it is an app-only OVR change, and the
-> labs reimplement OVR with their own weights. That gap (the "two OVR truths") is tracked in `NEXT_STEPS.md`:
-> extract the Forward weights into one shared `.js` the app, both labs and the probe all import.
+> #9 part 1 (the athleticism floor) didn't move the lab number at the time — it was an app-only OVR change.
+> That gap (the "two OVR truths") was **resolved on 2026-06-29**: the Forward weights now live in one shared
+> `src/engine/ovrWeights.js` the app, both labs and the probe all import, so the guardrail measures the OVR
+> the player actually sees — the source of the final re-baseline above.
 
 ---
 

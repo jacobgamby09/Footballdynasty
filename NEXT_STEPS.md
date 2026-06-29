@@ -21,13 +21,12 @@ experiment was built then fully reverted (history scrubbed).
   multiplies the fitness load on post-match decay (freshness-damped, compounds) and live readiness
   (minute-ramped, fades late). Guardrail moved to `57.01/67.49/67.07/63.69`. Output-neutral. Later (option 3,
   deferred): let higher tiers/match tempo bite more via the moment library.
-- **Unify OVR across app and labs (the "two OVR truths" red flag).** The labs reimplement OVR with their own
-  weights (`Finishing 1.25` vs app `1.35`, no Pace/Stamina) → lab-OVR reads +4..+7 above the player's
-  displayed app-OVR for stamina-light builds (`scripts/app-ovr-probe.mjs` measures it). Fix: extract the
-  Forward `ovrWeights` into a plain `.js` data module the app (`positionRoles.ts`), both balance labs, and
-  the probe all import — same single-source pattern as `getStaminaFitnessLoadMultiplier`. This will
-  re-baseline the season-lab guardrail (measure + re-document when done). Not acute, but on the list so we
-  never balance by one number and show the player another.
+- ~~Unify OVR across app and labs (the "two OVR truths")~~ **DONE (2026-06-29):** Forward weights extracted
+  into one shared `src/engine/ovrWeights.js` (+ `.d.ts`) imported by the app (`positionRoles.ts`), both balance
+  labs and `scripts/app-ovr-probe.mjs`. The guardrail now measures the real app OVR; app OVR unchanged,
+  match-lab output unchanged, season-lab End OVR re-baselined to **`51.83/61.49/61.06/58.03`** (the current
+  guardrail). The labs also now treat Pace/Stamina as "key" for start bonuses + the potential upgrade,
+  matching the app's `bumpKeyAttributePotential`.
 
 The older direction below predates the above and is kept for reference.
 

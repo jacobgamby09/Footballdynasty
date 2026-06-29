@@ -458,10 +458,16 @@ export function TrainingScreen({
           <Star size={12} aria-hidden="true" />
           <span>Key attributes for a {getPlayerRoleLabel(game.positionGroup)}</span>
         </div>
+        <div className="training-key-legend training-support-legend">
+          <Star size={12} aria-hidden="true" />
+          <span>Supports your OVR — keeps you sharp, not a scoring stat</span>
+        </div>
         <div className="training-stat-grid">
           {game.attributes.map((attribute) => {
             const info = attributeInfo[attribute.label];
             const isKeyAttribute = positionModule.keyAttributes.includes(attribute.label);
+            // Counts toward OVR (the athleticism floor — Pace/Stamina) but isn't a primary/output stat.
+            const isSupporting = !isKeyAttribute && (positionModule.ovrWeights[attribute.label] ?? 0) > 0;
             const focusIndex = focuses.indexOf(attribute.label);
             const isFocused = focusIndex >= 0;
             return (
@@ -482,6 +488,7 @@ export function TrainingScreen({
                   {isFocused && <span className="stat-focus-slot-badge" aria-label={`Focus slot ${focusIndex + 1}`}>{focusIndex + 1}</span>}
                   {attribute.label}
                   {isKeyAttribute && <Star className="stat-focus-key-mark" size={11} aria-label="Key attribute" />}
+                  {isSupporting && <Star className="stat-focus-support-mark" size={11} aria-label="Supports your OVR" />}
                 </span>
                 <span className="stat-focus-value">{attribute.value}</span>
                 <small>{info.group}</small>

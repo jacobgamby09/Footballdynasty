@@ -33,6 +33,13 @@ experiment was built then fully reverted (history scrubbed).
   consecutive), MotM-by-season breakdown, a cameo "Impact award", data-driven vs real NPC ratings.
 - **Remaining playtest polish (⚫):** #24/#25 Feed + manager-message variety, #26 first-goal labelling, #19
   Ballerup OVR. Small, bounded, low balance-risk.
+- ~~Attribute-model cleanup (offensive-only)~~ **DONE (2026-06-29, `ATTRIBUTE_MODEL_PLAN.md`):** removed
+  Tackling/Marking (function remapped) + Fullback/Centerback positions + dead `strikerKey`; 15 active stats;
+  Work Rate stays striker-key (guardrail held `51.83/61.48/61.07/58.03`); SAVE_VERSION 26. Winger/AM defined
+  but locked.
+- **"More positions" release (the deferred follow-on):** make Winger + Attacking Midfielder playable — add
+  Crossing + per-role moment banks, a position picker at career start, lab parity + award-world tuning for
+  the new roles, and per-role OVR weights per `ATTRIBUTE_MODEL_PLAN.md` §3. A real feature, not a cleanup.
 
 The older direction below predates the above and is kept for reference.
 

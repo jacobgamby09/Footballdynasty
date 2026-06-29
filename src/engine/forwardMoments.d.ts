@@ -45,8 +45,6 @@ export function createForwardMatchPool(input: {
 export function createSharedMatchPool(input: PositionMatchPoolInput): ForwardMatchMoment[];
 export function createWingerMatchPool(input: PositionMatchPoolInput): ForwardMatchMoment[];
 export function createMidfielderMatchPool(input: PositionMatchPoolInput): ForwardMatchMoment[];
-export function createFullbackMatchPool(input: PositionMatchPoolInput): ForwardMatchMoment[];
-export function createCenterbackMatchPool(input: PositionMatchPoolInput): ForwardMatchMoment[];
 export function createPositionMatchPool(input: PositionMatchPoolInput & { momentPools?: PositionMomentPool[] }): ForwardMatchMoment[];
 
 export type PositionMatchPoolInput = {

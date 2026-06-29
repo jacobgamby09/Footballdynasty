@@ -118,7 +118,7 @@ export const forwardHighlightTaxonomy: HighlightTaxonomyItem[] = [
     id: "defensive_set_piece",
     label: "Defensive set piece",
     baseWeight: 0.45,
-    primaryAttributes: ["Marking", "Positioning", "Heading"],
+    primaryAttributes: ["Positioning", "Heading", "Strength"],
     opponentCounters: ["aerialDefense", "attack"],
     scoreStateTags: ["pressure", "late"],
   },

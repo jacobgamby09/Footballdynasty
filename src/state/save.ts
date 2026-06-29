@@ -10,7 +10,7 @@ import { cloneSponsorDeal } from "../systems/sponsors";
 import { initialState } from "./initialState";
 
 const SAVE_KEY = "football-dynasty-save";
-const SAVE_VERSION = 25;
+const SAVE_VERSION = 26;
 
 function cloneWorld(world: World): World {
   const countryDefaults = Object.fromEntries(COUNTRIES.map((country) => [country.id, country]));

@@ -2,7 +2,10 @@ import { forwardOvrWeights } from "./engine/ovrWeights";
 import type { ForwardHighlightCategory } from "./matchEngine";
 
 export type MatchRole = "Bench" | "Impact Sub" | "Rotation Starter" | "Starter";
-export type PositionGroup = "Forward" | "Winger" | "Midfielder" | "Fullback" | "Centerback";
+// Only offensive roles. Fullback/Centerback were removed with the attribute-model cleanup (see
+// ATTRIBUTE_MODEL_PLAN.md). Winger + Midfielder are defined but NOT yet player-selectable (locked until
+// each has its own moment bank); the player is a Forward.
+export type PositionGroup = "Forward" | "Winger" | "Midfielder";
 
 export type AttributeKey =
   | "Finishing"
@@ -19,11 +22,9 @@ export type AttributeKey =
   | "Heading"
   | "Strength"
   | "Work Rate"
-  | "Tackling"
-  | "Marking"
   | "Positioning";
 
-export type PositionMomentPool = "forward" | "winger" | "midfielder" | "fullback" | "centerback" | "shared";
+export type PositionMomentPool = "forward" | "winger" | "midfielder" | "shared";
 
 export type PositionMatchTendencies = {
   involvementBias: Record<MatchRole, number>;
@@ -65,7 +66,7 @@ export type PositionModule = {
   managerInstructions: Record<MatchRole, { default: string; lowService?: string }>;
 };
 
-export const positionGroups: PositionGroup[] = ["Forward", "Winger", "Midfielder", "Fullback", "Centerback"];
+export const positionGroups: PositionGroup[] = ["Forward", "Winger", "Midfielder"];
 
 export const positionModules: Record<PositionGroup, PositionModule> = {
   Forward: {
@@ -107,6 +108,7 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       Starter: { default: "Lead the line and deliver a complete striker performance." },
     },
   },
+  // NOT yet playable — defined for the model + NPC world, but locked until it has its own moment bank.
   Winger: {
     group: "Winger",
     displayName: "Winger",
@@ -149,12 +151,15 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       Starter: { default: "Drive the wide channel and create repeatable service." },
     },
   },
+  // NOT yet playable — defined for the model + NPC world, but locked until it has its own moment bank.
+  // Interim tiers; the full attacking-mid tuning (Dribbling/Off Ball key, Positioning situational) lands
+  // with the AM build (ATTRIBUTE_MODEL_PLAN.md §3).
   Midfielder: {
     group: "Midfielder",
     displayName: "Midfielder",
     shortCode: "CM",
     defaultArchetype: "Box-to-Box",
-    keyAttributes: ["Passing", "Vision", "First Touch", "Composure", "Positioning", "Work Rate", "Stamina", "Tackling"],
+    keyAttributes: ["Passing", "Vision", "First Touch", "Composure", "Positioning", "Work Rate", "Stamina", "Dribbling"],
     ovrWeights: {
       Passing: 1.25,
       Vision: 1.15,
@@ -163,7 +168,7 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       Positioning: 0.95,
       "Work Rate": 0.9,
       Stamina: 0.9,
-      Tackling: 0.8,
+      Dribbling: 0.8,
     },
     momentPools: ["midfielder", "shared"],
     matchTendencies: {
@@ -189,90 +194,6 @@ export const positionModules: Record<PositionGroup, PositionModule> = {
       "Impact Sub": { default: "Bring energy, protect the middle and move the ball early." },
       "Rotation Starter": { default: "Keep the tempo clean and compete for second balls." },
       Starter: { default: "Set the rhythm and connect both phases." },
-    },
-  },
-  Fullback: {
-    group: "Fullback",
-    displayName: "Fullback",
-    shortCode: "FB",
-    defaultArchetype: "Wingback",
-    keyAttributes: ["Pace", "Stamina", "Work Rate", "Tackling", "Positioning", "Marking", "Passing", "First Touch"],
-    ovrWeights: {
-      Pace: 1.05,
-      Stamina: 1.1,
-      "Work Rate": 1.1,
-      Tackling: 1.15,
-      Positioning: 1,
-      Marking: 0.9,
-      Passing: 0.8,
-      "First Touch": 0.75,
-    },
-    momentPools: ["fullback", "shared"],
-    matchTendencies: {
-      involvementBias: { Bench: -0.3, "Impact Sub": 0.1, "Rotation Starter": 0.35, Starter: 0.6 },
-      attacking: 0.35,
-      chanceCreation: 0.55,
-      possession: 0.55,
-      defending: 0.8,
-      transition: 0.65,
-      preferredForwardCategories: ["press", "counter", "link_up", "defensive_set_piece"],
-    },
-    performanceWeights: { goal: 0.55, assist: 1, trust: 1.1, defensive: 1.25, possession: 0.85, transition: 1 },
-    highlightCategories: ["Wide Duel", "Recovery Run", "Overlap", "Cross", "Back-post Marking", "Stop Counter"],
-    ratingFocus: ["Defensive duels", "Recoveries", "Interceptions", "Crosses", "Shape discipline"],
-    tacticalFocuses: {
-      default: "Control the flank",
-      lowService: "Support overlap",
-      movement: "Time the overlap",
-      workRate: "Recover wide",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready to protect the flank." },
-      "Impact Sub": { default: "Add legs wide and keep the defensive shape clean." },
-      "Rotation Starter": { default: "Choose overlaps carefully and recover fast." },
-      Starter: { default: "Own your channel on both sides of the ball." },
-    },
-  },
-  Centerback: {
-    group: "Centerback",
-    displayName: "Centerback",
-    shortCode: "CB",
-    defaultArchetype: "Stopper",
-    keyAttributes: ["Strength", "Heading", "Marking", "Positioning", "Tackling", "Composure", "Work Rate", "Passing"],
-    ovrWeights: {
-      Strength: 1.15,
-      Heading: 1.15,
-      Marking: 1.25,
-      Positioning: 1.2,
-      Tackling: 1.15,
-      Composure: 0.9,
-      "Work Rate": 0.75,
-      Passing: 0.65,
-    },
-    momentPools: ["centerback", "shared"],
-    matchTendencies: {
-      involvementBias: { Bench: -0.35, "Impact Sub": 0.05, "Rotation Starter": 0.3, Starter: 0.55 },
-      attacking: 0.15,
-      chanceCreation: 0.2,
-      possession: 0.45,
-      defending: 0.95,
-      transition: 0.25,
-      preferredForwardCategories: ["defensive_set_piece", "press", "aerial_duel", "hold_up"],
-    },
-    performanceWeights: { goal: 0.65, assist: 0.75, trust: 1.1, defensive: 1.35, possession: 0.8, transition: 0.65 },
-    highlightCategories: ["Aerial Clearance", "Mark Striker", "Block Shot", "Step Out", "Last-man Duel", "Set Piece"],
-    ratingFocus: ["Duels won", "Blocks", "Interceptions", "Errors avoided", "Set-piece impact"],
-    tacticalFocuses: {
-      default: "Hold the line",
-      lowService: "Play through pressure",
-      movement: "Attack set pieces",
-      workRate: "Command the box",
-    },
-    managerInstructions: {
-      Bench: { default: "Stay ready if the match needs defensive control." },
-      "Impact Sub": { default: "Bring calm defending and win the first duel." },
-      "Rotation Starter": { default: "Keep the line organized and avoid cheap risks." },
-      Starter: { default: "Lead the back line and win your duels." },
     },
   },
 };

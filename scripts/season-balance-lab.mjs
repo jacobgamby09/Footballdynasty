@@ -60,10 +60,7 @@ const baseAttributes = {
   Stamina: { value: 10, potential: 58, xp: 7 },
   Heading: { value: 8, potential: 55, xp: 5 },
   Strength: { value: 8, potential: 56, xp: 5 },
-  "Work Rate": { value: 12, potential: 62, xp: 8 },
-  Tackling: { value: 6, potential: 43, xp: 4 },
-  Marking: { value: 6, potential: 45, xp: 4 },
-  Positioning: { value: 8, potential: 52, xp: 5 },
+  "Work Rate": { value: 12, potential: 62, xp: 8 },  Positioning: { value: 8, potential: 52, xp: 5 },
 };
 
 const generationProfiles = [

@@ -63,6 +63,16 @@ team-mates scored (`didWinManOfTheMatch` in `match.ts`). New persisted counters 
 gold post-match badge, Last-match ribbon, Feed story, season-end cabinet award, and season + career tiles.
 Guardrail + match-lab unchanged. V2 deferred: club records, by-season/consecutive, cameo "Impact award".
 
+**★ Offensive-only attribute model (2026-06-29; foundation step, `ATTRIBUTE_MODEL_PLAN.md`).** Cleaned the
+stat model ahead of building more positions. Removed **Tackling + Marking** (function remapped to Work
+Rate/Positioning/Strength in the ~12 moments that used them), removed the **Fullback + Centerback** positions
+(Winger + Midfielder kept but **locked/not-playable** — the player is a Forward), dropped the dead
+`strikerKey`, regrouped Heading → Physical, recomposed the NPC award world to offensive groups. Active pool
+**15 stats** (Crossing deferred to the Winger build). Work Rate stays key for the striker → Forward OVR
+unchanged; **guardrail held `51.83/61.48/61.07/58.03`**, match-lab identical. **`SAVE_VERSION` 25 → 26 — old
+saves reset.** "More positions" (Crossing + Winger/AM moment banks + a position picker) is the deferred
+follow-on, NOT this step.
+
 **★ NEWEST — Player moments auto-resolve as cinematic chain highlights** (Codex "moment chain"
 direction). Normal play no longer shows choice cards: when the live clock reaches a moment, the sim
 auto-picks the contextually-best action (`chooseAutoSimChoice` — the same deterministic picker the

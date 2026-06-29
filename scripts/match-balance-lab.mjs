@@ -43,10 +43,7 @@ const baseAttributes = {
   Stamina: 17,
   Heading: 13,
   Strength: 12,
-  "Work Rate": 19,
-  Tackling: 8,
-  Marking: 9,
-  Positioning: 13,
+  "Work Rate": 19,  Positioning: 13,
 };
 
 // Unified with the app via the shared single source (src/engine/ovrWeights.js).

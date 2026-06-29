@@ -18,6 +18,13 @@ table at the bottom) before moving on. UI/copy-only changes hold that guardrail 
   MotM counters. Additive (no SAVE_VERSION bump); OVR guardrail + match-lab output unchanged.
 
 ### Changed
+- **Attribute model leaned to offensive careers only** (foundation step — see `ATTRIBUTE_MODEL_PLAN.md`).
+  Removed Tackling + Marking (their track-back / defensive-set-piece function remapped to
+  Work Rate/Positioning/Strength), removed the Fullback + Centerback positions (Winger + Attacking Midfielder
+  kept but **not yet playable**), dropped the dead `strikerKey` field, regrouped Heading to Physical, and
+  recomposed the NPC award world to offensive roles. 15 active stats (Crossing arrives with the Winger
+  build). Striker unchanged; guardrail held (`51.83/61.48/61.07/58.03`); match-lab output identical.
+  **SAVE_VERSION bumped to 26 — existing saves reset.**
 - **Forward OVR weights unified into one shared source** (`src/engine/ovrWeights.js`). The app
   (`positionRoles.ts`), both balance labs and the OVR probe now import the *same* weights — resolving the
   "two OVR truths" (the labs used to weight OVR differently from the game). The app's displayed OVR is

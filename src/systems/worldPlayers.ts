@@ -23,12 +23,12 @@ const LAST_NAMES = [
   "Janssen", "Visser", "Bakker", "Lindgren", "Ferreira", "Bianchi", "Marin", "Vidal", "Falk", "Stein",
 ];
 
-// ~18-player outfield squad. Goalkeepers aren't a PositionGroup in this sim, so the award race (top
-// scorer / assists / rating) runs on outfielders — which is where those awards are decided anyway.
+// ~18-player squad for the award race (top scorer / assists / rating). The sim is offensive-only, so the
+// non-scoring back line is represented as midfielders — forwards stay scarce (3/squad) so the Golden Boot
+// race the player actually contests is unchanged.
 const SQUAD_COMPOSITION: PositionGroup[] = [
-  "Centerback", "Centerback", "Centerback", "Centerback",
-  "Fullback", "Fullback", "Fullback",
-  "Midfielder", "Midfielder", "Midfielder", "Midfielder",
+  "Midfielder", "Midfielder", "Midfielder", "Midfielder", "Midfielder", "Midfielder",
+  "Midfielder", "Midfielder", "Midfielder", "Midfielder", "Midfielder",
   "Winger", "Winger", "Winger", "Winger",
   "Forward", "Forward", "Forward",
 ];
@@ -56,8 +56,8 @@ export function regenerateSquad(club: WorldClub): WorldPlayer[] {
 // Spread each club's weekly goalsFor across its regenerated squad (position + overall weighted), and
 // give the starting XI an appearance + a seeded rating, accumulating into the ephemeral per-season
 // buffer. Deterministic (seeded per club per week); runs for the player's league only.
-const GOAL_WEIGHT: Record<PositionGroup, number> = { Forward: 1, Winger: 0.6, Midfielder: 0.35, Fullback: 0.08, Centerback: 0.04 };
-const ASSIST_WEIGHT: Record<PositionGroup, number> = { Winger: 1, Midfielder: 0.8, Forward: 0.5, Fullback: 0.4, Centerback: 0.1 };
+const GOAL_WEIGHT: Record<PositionGroup, number> = { Forward: 1, Winger: 0.6, Midfielder: 0.35 };
+const ASSIST_WEIGHT: Record<PositionGroup, number> = { Winger: 1, Midfielder: 0.8, Forward: 0.5 };
 
 function emptyStats(player: WorldPlayer): LeaguePlayerSeasonStats {
   return { playerId: player.id, clubId: player.clubId, apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0, ratingTotal: 0, ratingCount: 0 };

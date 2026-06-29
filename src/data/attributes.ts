@@ -17,8 +17,6 @@ export const initialAttributes: Attribute[] = [
   { label: "Heading", value: 8, potential: 55, xp: 5 },
   { label: "Strength", value: 8, potential: 56, xp: 5 },
   { label: "Work Rate", value: 12, potential: 62, xp: 8 },
-  { label: "Tackling", value: 6, potential: 43, xp: 4 },
-  { label: "Marking", value: 6, potential: 45, xp: 4 },
   { label: "Positioning", value: 8, potential: 52, xp: 5 },
 ];
 
@@ -48,108 +46,81 @@ export const initialDynasty: DynastyState = {
 
 export const attributeInfo: Record<
   AttributeKey,
-  { group: "Technical" | "Mental" | "Physical" | "Defensive"; strikerKey: boolean; description: string; affects: string }
+  { group: "Technical" | "Mental" | "Physical"; description: string; affects: string }
 > = {
   Finishing: {
     group: "Technical",
-    strikerKey: true,
     description: "Quality when converting chances inside the box.",
     affects: "Shots, one-on-ones and loose balls near goal.",
   },
   "Long Shots": {
     group: "Technical",
-    strikerKey: false,
     description: "Threat from distance when space opens outside the area.",
     affects: "Edge-of-box shots and low-service matches.",
   },
   Passing: {
     group: "Technical",
-    strikerKey: false,
     description: "Reliability when linking play or finding a teammate.",
     affects: "Layoffs, cutbacks and safer assist choices.",
   },
   Vision: {
     group: "Mental",
-    strikerKey: false,
     description: "Ability to spot runs and choose the best final action.",
     affects: "Through balls, square passes and creative assists.",
   },
   Dribbling: {
     group: "Technical",
-    strikerKey: false,
     description: "Control when carrying the ball past pressure.",
     affects: "Taking on defenders and creating your own shot.",
   },
   "Off Ball": {
     group: "Mental",
-    strikerKey: true,
     description: "Movement that creates space before the pass arrives.",
     affects: "Runs behind, pull-away headers and chance quality.",
   },
   Composure: {
     group: "Mental",
-    strikerKey: true,
     description: "Calm execution when pressure or risk is high.",
     affects: "High-pressure shots, first touches and risky choices.",
   },
   "First Touch": {
     group: "Technical",
-    strikerKey: true,
     description: "How cleanly you control awkward or fast passes.",
     affects: "Hold-up play, cutbacks and setting up a shot.",
   },
   Acceleration: {
     group: "Physical",
-    strikerKey: true,
     description: "First steps over short distances.",
     affects: "Pressing jumps, loose balls and rounding the keeper.",
   },
   Pace: {
     group: "Physical",
-    strikerKey: false,
     description: "Top speed when sprinting into space.",
     affects: "Counterattacks and longer runs behind the line.",
   },
   Stamina: {
     group: "Physical",
-    strikerKey: false,
     description: "How well performance holds during repeated efforts.",
     affects: "Late-game actions, pressing and fatigue resistance.",
   },
   Heading: {
-    group: "Technical",
-    strikerKey: true,
+    group: "Physical",
     description: "Timing and direction when attacking aerial balls.",
-    affects: "Crosses, knockdowns and defensive set pieces.",
+    affects: "Crosses, knockdowns and near-post finishes.",
   },
   Strength: {
     group: "Physical",
-    strikerKey: true,
     description: "Physical duels, shielding and contact balance.",
     affects: "Hold-up play, aerial duels and drawing fouls.",
   },
   "Work Rate": {
     group: "Mental",
-    strikerKey: true,
     description: "Willingness to press, recover and follow instructions.",
     affects: "Manager trust, pressing and off-ball defensive work.",
   },
-  Tackling: {
-    group: "Defensive",
-    strikerKey: false,
-    description: "Ability to win the ball cleanly in defensive actions.",
-    affects: "Counter-pressing and tracking back.",
-  },
-  Marking: {
-    group: "Defensive",
-    strikerKey: false,
-    description: "Staying tight to an assignment without losing shape.",
-    affects: "Set-piece defending and tracking runners.",
-  },
   Positioning: {
     group: "Mental",
-    strikerKey: false,
     description: "Reading where to be when the game shifts.",
-    affects: "Defensive shape, rebounds and second-ball situations.",
+    affects: "Rebounds, late box arrivals and second-ball situations.",
   },
 };

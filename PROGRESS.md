@@ -2902,3 +2902,28 @@ From a playtest-notes pass. Four data/world correctness bugs; display + resoluti
   unaffected (MotM never touches the engine/labs); build green, smoke exit 0.
 - Deferred to V2: club-record granularity (most MotM for club / in a season / consecutive), MotM-by-season
   breakdown, a cameo "Impact award", and fully data-driven comparison vs real NPC ratings.
+
+## 2026-06-29 - Cleanup: offensive-only attribute model (foundation step, ATTRIBUTE_MODEL_PLAN.md)
+
+- Reviewed + approved design (`ATTRIBUTE_MODEL_PLAN.md`), then shipped steps 1–2: lean the attribute model to
+  offensive careers only, BEFORE building Winger/AM as real roles.
+- **Removed Tackling + Marking** ("dead for the fantasy" — no offensive player wants to train them). They
+  carried 0 striker OVR weight but lived in ~12 forward/expansion moments + the `defensive_set_piece`
+  taxonomy, so their FUNCTION was remapped, not deleted: Tackling → Work Rate/Strength, Marking →
+  Positioning/Work Rate (offensive players still track back + defend set pieces, via effort/reading). Active
+  pool now **15 stats** (16-target; Crossing deferred to the Winger build so it isn't a dead stat).
+- **Removed Fullback + Centerback** modules + their moment pools + the `.d.ts` exports (offensive roles
+  only). Winger + Midfielder ("Offensive midfielder") kept but **locked/not-playable** (defined for the model
+  + NPC world; the player stays a Forward) until each has its own moment bank. Midfielder's Tackling
+  key/weight swapped to Dribbling (interim; full AM tiers at the AM build).
+- **Removed the dead `strikerKey`** field from `attributeInfo`; dropped the now-unused "Defensive" group;
+  regrouped Heading → Physical.
+- **NPC award world** recomposed to the 3 offensive groups (11 Mid / 4 Wing / 3 Fwd per squad — forwards kept
+  scarce so the player's Golden Boot race is preserved); GOAL/ASSIST weights dropped FB/CB.
+- **Work Rate stays KEY for the striker** (drives pressing + manager trust, not just a floor) — Forward OVR
+  model unchanged. **SAVE_VERSION 25 → 26** (clean slate; old saves discarded, per the design call).
+- **Balance-neutral:** season-lab End OVR **`51.83/61.48/61.07/58.03`** (±0.01 rounding from the moment
+  remaps — held); match-lab output IDENTICAL (2.54/3.15/2.56 goals, 6.46/7.33/6.43 ratings). Build green,
+  smoke exit 0.
+- **Deferred (the "more positions" release, NOT this step):** Crossing + Winger/AM moment banks + a position
+  picker + lab parity for the new roles (ATTRIBUTE_MODEL_PLAN.md §8 step 4).

@@ -137,7 +137,7 @@ export function createForwardExpansionPool(input) {
     moment("counterpress-edge", "press", "Possession is lost near the edge of their box", "The opponent wants one clean pass to escape. Your reaction can keep the attack alive.", ["team_pressure", "chasing_goal", "late_siege"], ["level", "trailing"], [20, 89], "counterpress", "press_turnover", [
       choice("counterpress-ball", "Counterpress ball", ["Work Rate", "Acceleration"], "Medium", "Immediate turnover", "Likes", "trust"),
       choice("screen-counterpass", "Screen escape pass", ["Positioning", "Off Ball"], "Low", "Lock them in", "Likes", "trust"),
-      choice("tackle-through-edge", "Tackle through", ["Tackling", "Strength"], "High", "Loose chance", "Risky", "assist"),
+      choice("tackle-through-edge", "Win it back", ["Work Rate", "Strength"], "High", "Loose chance", "Risky", "assist"),
     ], opponent),
     moment("front-zone-corner", "aerial_duel", "The corner is whipped toward the front zone", "You have half a step on the marker, but the delivery is fast and crowded.", ["team_pressure", "chasing_goal", "late_siege"], ["level", "trailing"], [15, 90], "attacking-corner", "aerial_second_ball", [
       choice("flick-front-zone", "Flick front zone", ["Heading", "Off Ball"], "Medium", "Redirect goalward", "Neutral", "goal"),

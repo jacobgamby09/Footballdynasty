@@ -483,7 +483,7 @@ const highlightConfig = {
   },
   defensive_set_piece: {
     baseWeight: 0.45,
-    primaryAttributes: ["Marking", "Positioning", "Heading"],
+    primaryAttributes: ["Positioning", "Heading", "Strength"],
     opponentCounters: ["aerialDefense", "attack"],
     scoreStateTags: ["pressure", "late"],
     categoryBonus: 0,

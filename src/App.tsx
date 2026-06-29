@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type AttributeKey } from "./positionRoles";
 import type { ClubView, Contract, ContractOffer, CountryId, DynastyUpgradeId, GameState, HomeView, Intensity, MatchChoice, MatchSpeed, NavKey, NewCareerSetup, ScreenKey, SupportUpgradeId } from "./types";
 import { clearSavedGame, hasSavedGame, loadSavedGame, saveGameState } from "./state/save";
@@ -42,6 +42,14 @@ function App() {
   const [clubProfileReturnScreen, setClubProfileReturnScreen] = useState<ScreenKey>("club");
   const [clubView, setClubView] = useState<ClubView>("overview");
   const [homeView, setHomeView] = useState<HomeView>("base");
+  // The screens share one scroll container, so without this a scroll offset carried over from a tall screen
+  // leaves a short screen (e.g. Home) stuck scrolled-down with no way back up. Reset to top on any nav.
+  const screenScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (screenScrollRef.current) {
+      screenScrollRef.current.scrollTop = 0;
+    }
+  }, [activeScreen, homeView, clubView]);
 
   const activeNav =
     activeScreen === "dynasty-create" ||
@@ -775,7 +783,7 @@ function App() {
   return (
     <main className="app-shell">
       <section className="app-frame" aria-label="Football Dynasty">
-        <div className="screen-scroll">
+        <div className="screen-scroll" ref={screenScrollRef}>
           {activeScreen === "dynasty-create" && <CreateDynastyScreen countries={COUNTRIES} onCreate={createDynasty} />}
           {activeScreen === "country-select" && <CountrySelectScreen countries={COUNTRIES} onPick={startCareerInCountry} />}
           {activeScreen === "player" && <PlayerScreen game={game} onOpenClub={openClubProfile} onOpenDynasty={() => { setActiveScreen("home"); setHomeView("dynasty"); }} />}

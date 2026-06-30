@@ -241,3 +241,30 @@ Steps 1–3 are the "clean up the model" deliverable. Step 4 is the follow-on bu
 4. **Save: bump version (clean slate) — OK?**
 5. **Are Winger/AM in scope for the player to *pick* soon, or are we just cleaning the model now and keeping
    striker-only play for a while?** (Decides whether step 4 is near-term.)
+
+---
+
+## 10. Known debt — the award model is NOT role-neutral (hard gate before playable Winger/AM)
+
+POTY is decided by `awardScore = avg×9 + goals×4 + assists×2.2 + apps×0.25` (`worldPlayers.ts awardScoreOf`),
+and the rating that feeds it weights goals (involvement ×0.6) over assists (×0.35). Sim (600 league-seasons,
+post-cleanup): the Golden Boot **and** POTY are both ~70% forward; an assist-heavy playmaker midfielder wins
+POTY only ~5%. **In practice POTY V1 is "best goalscorer with a good rating", not "best player"** — so Golden
+Boot and POTY overlap heavily and the award set reads flatter than it should.
+
+> **Current POTY formula is acceptable while the player is striker-only, but it is not role-neutral. Before
+> Winger/AM become playable, POTY must be redesigned or position-normalized so creators can realistically
+> win.**
+
+This is **acceptable now** (the player is a Forward, so a goal-friendly POTY even helps them) and is **NOT
+changed in this cleanup** — it is pre-existing, not introduced here (the old composition gave Mid POTY 3%; the
+new one 5%). But it is a **hard gate on the "more positions" build (§8 step 4)**: an Attacking Midfielder who
+can never win POTY undermines the whole role.
+
+When AM/Winger become playable, redesign POTY so it can reward **chance creation · assists · high rating ·
+consistency · (maybe) team success** — and is **not just "Golden Boot 2"**. Crucially this is not only a POTY
+problem: the same goal-bias flows downstream into **prestige gain → the dynasty cabinet → legacy-point payout
+→ feed/honours balance**, all currently tuned for a striker. So step 4 must audit the whole **award →
+prestige → dynasty/legacy** chain for role-neutrality, not just the POTY line — otherwise we ship AM and only
+then discover the progression economy still assumes a goalscorer. Do it **measured** (the award-race sim) so
+the player-forward's award frequency doesn't silently move. Mirrored in `HONOURS_LEGACY_PLAN.md`.

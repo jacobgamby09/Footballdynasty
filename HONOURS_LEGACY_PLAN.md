@@ -155,6 +155,23 @@ normalise). The live `LeaguePlayerSeasonStats` lives on the world/season slice, 
   prestige.
 - All randomness seeded off `worldSeed` / `careerSeed`; frozen Club Legacy records are immutable.
 
+## ⚠ Award model is forward-friendly — role-neutrality debt (hard gate before Winger/AM)
+POTY V1 = `awardScore` (avg×9 + goals×4 + assists×2.2 + apps×0.25); the rating that feeds it also favours
+goals (involvement ×0.6) over assists (×0.35). Sim (600 league-seasons): Golden Boot **and** POTY are both
+~70% forward; a playmaker midfielder wins POTY only ~5%. So **POTY is effectively "best goalscorer with a good
+rating", and overlaps Golden Boot.** Fine while the player is striker-only (it even helps the player), but
+**not role-neutral.**
+
+> Current POTY formula is acceptable while the player is striker-only, but it is not role-neutral. Before
+> Winger/AM become playable, POTY must be redesigned or position-normalized so creators can realistically win
+> — rewarding chance creation, assists, high rating, consistency and maybe team success, without becoming
+> Golden Boot 2.
+
+This is a **hard gate** on making Winger/AM playable. And because awards feed **prestige → dynasty cabinet →
+legacy-point payout → feed**, the same goal-bias must be audited across that whole chain for role-neutrality,
+not just the POTY line. See `ATTRIBUTE_MODEL_PLAN.md` §10. (Do NOT change `awardScore` while the player is
+striker-only — it would move award frequency, prestige gain, cabinet, legacy payout and feed balance.)
+
 ## V2 (next, well-defined)
 Extend the real race to more leagues; add rivalry + Feed hooks (the player tracked against the league's
 top scorer, news beats when a record falls).

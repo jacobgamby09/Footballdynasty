@@ -40,6 +40,11 @@ experiment was built then fully reverted (history scrubbed).
 - **"More positions" release (the deferred follow-on):** make Winger + Attacking Midfielder playable — add
   Crossing + per-role moment banks, a position picker at career start, lab parity + award-world tuning for
   the new roles, and per-role OVR weights per `ATTRIBUTE_MODEL_PLAN.md` §3. A real feature, not a cleanup.
+  - **Hard gate before this ships:** POTY V1 is forward-friendly (`awardScore` ≈ "Golden Boot 2"), so a
+    creator AM could never win it. Redesign/position-normalize POTY **and** audit the whole award → prestige
+    → dynasty/legacy chain for role-neutrality (it's all tuned for a striker today). Measured, not now —
+    changing `awardScore` while striker-only moves prestige/cabinet/legacy/feed. See `ATTRIBUTE_MODEL_PLAN.md`
+    §10 + `HONOURS_LEGACY_PLAN.md`.
 
 The older direction below predates the above and is kept for reference.
 

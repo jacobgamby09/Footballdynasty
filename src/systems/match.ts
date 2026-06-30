@@ -1473,12 +1473,8 @@ export function createMatchResult(state: GameState, moment: MatchMoment, choice:
   }
 
   return {
-    title: supportAdjustedResult.outcomeTier === "Great" ? "Manager will remember that" : supportAdjustedResult.success ? "Useful shift" : "Useful but imperfect",
-    detail: supportAdjustedResult.outcomeTier === "Great"
-      ? `${moment.minute}': ${choice.label} is not flashy, but it is exactly the kind of ${positionLabel} work that earns minutes.`
-      : supportAdjustedResult.success
-        ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
-        : `${moment.minute}': ${choice.label} helps the team shape, though the action lacks sharpness.`,
+    title: screamerCopy?.title ?? outcomeCopy.title,
+    detail: screamerCopy?.detail ?? outcomeCopy.detail,
     ...finalCore,
     ...choiceMeta,
     performanceReasons,
@@ -1712,35 +1708,56 @@ function getMatchOutcomeCopy(
 ) {
   if (choice.outcome === "goal") {
     if (result.decisiveOutcome) {
-      return {
-        title: "Goal",
-        detail: `${moment.minute}': ${choice.label} works perfectly. The move ends in the net.`,
-      };
+      return pickOutcomeCopy([
+        ["Goal", `${moment.minute}': ${choice.label} works perfectly — the move ends in the net.`],
+        ["Goal", `${moment.minute}': ${choice.label} comes off, and you bury it.`],
+        ["Goal", `${moment.minute}': ${choice.label} splits them open and you finish.`],
+        ["Goal", `${moment.minute}': ${choice.label} pays off — the keeper has no chance.`],
+        ["Goal", `${moment.minute}': ${choice.label} works, and you slot it home.`],
+        ["Goal", `${moment.minute}': ${choice.label} unlocks it, and you make no mistake.`],
+        ["Goal", `${moment.minute}': ${choice.label} sets the chance, and you smash it in.`],
+        ["Goal", `${moment.minute}': ${choice.label} comes off — back of the net.`],
+      ], `${resultSeed}-goal-scored`);
     }
     const goodMisses = [
       ["Saved", `${moment.minute}': ${choice.label} finds the target, but the keeper gets behind it.`],
       ["Blocked", `${moment.minute}': ${choice.label} beats the first pressure, but a defender blocks the finish.`],
-      ["Off the frame", `${moment.minute}': ${choice.label} has the keeper beaten, but the ball clips the frame of the goal.`],
+      ["Off the frame", `${moment.minute}': ${choice.label} has the keeper beaten, but the ball clips the frame.`],
+      ["Great save", `${moment.minute}': ${choice.label} draws a flying save out of the keeper.`],
+      ["Off the line", `${moment.minute}': ${choice.label} beats the keeper, but it's hacked off the line.`],
+      ["Inches wide", `${moment.minute}': ${choice.label} flashes just past the far post.`],
     ];
     const poorMisses = [
       ["Chance missed", `${moment.minute}': ${choice.label} sends the chance wide under pressure.`],
       ["Heavy contact", `${moment.minute}': ${choice.label} is rushed and the finish flies over.`],
-      ["Angle closed", `${moment.minute}': ${choice.label} cannot beat the recovering defender and the chance disappears.`],
+      ["Angle closed", `${moment.minute}': ${choice.label} cannot beat the recovering defender.`],
+      ["Dragged wide", `${moment.minute}': ${choice.label} is dragged wide of the near post.`],
+      ["Over the bar", `${moment.minute}': ${choice.label} is leaned back on and skied over.`],
+      ["Snatched at", `${moment.minute}': ${choice.label} is snatched at, and the chance is gone.`],
     ];
     return pickOutcomeCopy(result.success ? goodMisses : poorMisses, `${resultSeed}-goal-copy`);
   }
   if (choice.outcome === "assist") {
     if (result.assists > 0) {
-      return {
-        title: "Assist",
-        detail: `${moment.minute}': ${choice.label} opens the defense and the teammate finishes the chance.`,
-      };
+      return pickOutcomeCopy([
+        ["Assist", `${moment.minute}': ${choice.label} opens the defense and the teammate finishes.`],
+        ["Assist", `${moment.minute}': ${choice.label} sets it on a plate — your teammate buries it.`],
+        ["Assist", `${moment.minute}': ${choice.label} picks out the runner, who finishes well.`],
+        ["Assist", `${moment.minute}': ${choice.label} carves them open and the teammate scores.`],
+        ["Assist", `${moment.minute}': ${choice.label} releases a teammate, who makes no mistake.`],
+        ["Assist", `${moment.minute}': ${choice.label} threads it through, and it's tucked away.`],
+        ["Assist", `${moment.minute}': ${choice.label} creates it, and a teammate slots home.`],
+        ["Assist", `${moment.minute}': ${choice.label} finds the runner — and it's a goal.`],
+      ], `${resultSeed}-assist-scored`);
     }
     if (result.chancesCreated > 0) {
       const chanceEnds = [
         ["Chance created", `${moment.minute}': ${choice.label} creates the opening, but the teammate fires wide.`],
         ["Keeper denies it", `${moment.minute}': ${choice.label} releases the runner, but the keeper saves the finish.`],
         ["Last-ditch block", `${moment.minute}': ${choice.label} creates the chance before a defender makes the final block.`],
+        ["Teammate skies it", `${moment.minute}': ${choice.label} sets it up, but the finish sails over.`],
+        ["Flag goes up", `${moment.minute}': ${choice.label} springs the runner, but the offside flag is up.`],
+        ["Dragged wide", `${moment.minute}': ${choice.label} carves it open, but the teammate drags it wide.`],
       ];
       return pickOutcomeCopy(chanceEnds, `${resultSeed}-assist-copy`);
     }
@@ -1751,14 +1768,28 @@ function getMatchOutcomeCopy(
         : `${moment.minute}': ${choice.label} nearly unlocks them, but the connection is not clean enough.`,
     };
   }
-  return {
-    title: result.outcomeTier === "Great" ? "Manager will remember that" : result.success ? "Useful shift" : "Useful but imperfect",
-    detail: result.outcomeTier === "Great"
-      ? `${moment.minute}': ${choice.label} is exactly the kind of ${positionLabel} work that earns minutes.`
-      : result.success
-        ? `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`
-        : `${moment.minute}': ${choice.label} helps the shape, though the action lacks sharpness.`,
-  };
+  if (result.outcomeTier === "Great") {
+    return pickOutcomeCopy([
+      ["Manager will remember that", `${moment.minute}': ${choice.label} is exactly the kind of ${positionLabel} work that earns minutes.`],
+      ["Manager will remember that", `${moment.minute}': ${choice.label} is the unglamorous work managers love.`],
+      ["A real team-first shift", `${moment.minute}': ${choice.label} won't make the highlights, but it mattered.`],
+      ["Quietly important", `${moment.minute}': ${choice.label} is a smart, selfless piece of ${positionLabel} play.`],
+    ], `${resultSeed}-trust-great`);
+  }
+  if (result.success) {
+    return pickOutcomeCopy([
+      ["Useful shift", `${moment.minute}': ${choice.label} helps the team shape and keeps you in the manager's thoughts.`],
+      ["Useful shift", `${moment.minute}': ${choice.label} keeps the move alive and the shape intact.`],
+      ["Tidy work", `${moment.minute}': ${choice.label} does a quiet job for the team.`],
+      ["Keeping it ticking", `${moment.minute}': ${choice.label} keeps things ticking without fuss.`],
+    ], `${resultSeed}-trust-ok`);
+  }
+  return pickOutcomeCopy([
+    ["Useful but imperfect", `${moment.minute}': ${choice.label} helps the shape, though the action lacks sharpness.`],
+    ["Willing but loose", `${moment.minute}': ${choice.label} shows effort, but the execution is loose.`],
+    ["Not quite there", `${moment.minute}': ${choice.label} is the right idea, slightly off in the delivery.`],
+    ["Half-done", `${moment.minute}': ${choice.label} is willing, but it doesn't quite come off.`],
+  ], `${resultSeed}-trust-miss`);
 }
 
 function pickOutcomeCopy(options: string[][], seed: string) {

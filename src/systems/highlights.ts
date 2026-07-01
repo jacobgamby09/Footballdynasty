@@ -313,6 +313,412 @@ const CHANCE_GENERIC = [
   "It's the kind of moment you live for.",
 ];
 
+type NarrativeRoute =
+  | "centralCutback"
+  | "nearPost"
+  | "runBehind"
+  | "aerial"
+  | "holdUp"
+  | "press"
+  | "counter"
+  | "edgeShot"
+  | "rebound"
+  | "channel"
+  | "setPiece"
+  | "wide"
+  | "link"
+  | "generic";
+
+const ROUTE_ACTIONS: Partial<Record<NarrativeRoute, Partial<Record<string, string[]>>>> = {
+  centralCutback: {
+    goal: [
+      "You set yourself for the cutback.",
+      "You open your body and attack the cutback.",
+      "You adjust your feet as the ball arrives behind you.",
+      "You shape for a first-time finish.",
+    ],
+    assist: [
+      "You resist the shot and let it run into the runner's path.",
+      "You cushion it across the box for the teammate arriving behind you.",
+      "You take the pace off it and tee up the runner.",
+      "You sell the finish, then guide it into a better shooting lane.",
+    ],
+    trust: [
+      "You take the sting out of it and keep the attack alive.",
+      "You protect the ball instead of forcing the finish.",
+      "You reset from a crowded penalty spot.",
+    ],
+  },
+  nearPost: {
+    goal: [
+      "You dart across the defender at the near post.",
+      "You attack the front-post space before the marker reacts.",
+      "You gamble across the six-yard line.",
+    ],
+    assist: [
+      "You occupy the near-post defender and let the ball run across goal.",
+      "You block the marker's path and open the space behind you.",
+      "You drag the defender with you and the chance opens behind.",
+    ],
+  },
+  runBehind: {
+    goal: [
+      "You bend your run and stay just onside.",
+      "You attack the space behind the centre back.",
+      "You open your stride as the pass drops over the line.",
+    ],
+    assist: [
+      "You draw the keeper out and look square.",
+      "You carry it into the box and wait for support.",
+      "You pull the defender across before releasing the pass.",
+    ],
+    trust: [
+      "You get there first and keep the attack alive.",
+      "You protect it in the channel and wait for support.",
+      "You turn the chase into territory.",
+    ],
+  },
+  aerial: {
+    goal: [
+      "You attack the flight of the cross.",
+      "You lean into the marker and climb.",
+      "You time the jump and meet it early.",
+    ],
+    assist: [
+      "You rise and cushion the header back into danger.",
+      "You pull away and nod it into the runner's path.",
+      "You keep the second ball alive with the header.",
+    ],
+    trust: [
+      "You challenge hard enough to keep the ball in the area.",
+      "You make sure the defender cannot clear cleanly.",
+      "You compete and keep the pressure on.",
+    ],
+  },
+  holdUp: {
+    assist: [
+      "You pin the defender and slide the runner in.",
+      "You hold it just long enough for midfield to arrive.",
+      "You cushion the layoff around the corner.",
+    ],
+    trust: [
+      "You get your body across and make it stick.",
+      "You shield it until support arrives.",
+      "You absorb the contact and keep possession.",
+    ],
+  },
+  press: {
+    trust: [
+      "You close the angle and force the rushed touch.",
+      "You sprint across to cut off the easy pass.",
+      "You stay disciplined and trap the defender near the line.",
+    ],
+    assist: [
+      "You win it high and immediately look for the free runner.",
+      "You turn the loose touch into a quick attacking pass.",
+      "You force the error and release it before they reset.",
+    ],
+  },
+  counter: {
+    goal: [
+      "You drive straight at the retreating defender.",
+      "You carry it into the space before the cover arrives.",
+      "You shift it out of your feet and attack the backpedalling line.",
+    ],
+    assist: [
+      "You wait for the runner before sliding it through.",
+      "You draw the last defender and release the pass.",
+      "You carry it far enough to open the passing lane.",
+    ],
+    trust: [
+      "You slow the break just enough to keep control.",
+      "You protect it and let the team join the attack.",
+      "You turn a loose transition into sustained pressure.",
+    ],
+  },
+  edgeShot: {
+    goal: [
+      "You take the touch out of your feet and strike from range.",
+      "You set it quickly before the block arrives.",
+      "You trust the strike from the edge.",
+    ],
+    assist: [
+      "You shape to shoot, then slip the runner instead.",
+      "You pull the defender out and slide it wide.",
+      "You use the shot threat to open the pass.",
+    ],
+    trust: [
+      "You ignore the shot and recycle into pressure.",
+      "You keep the attack moving instead of forcing it.",
+      "You reset with the defence stepping out.",
+    ],
+  },
+  rebound: {
+    goal: [
+      "You react first to the loose ball.",
+      "You pounce before the keeper can gather.",
+      "You gamble on the spill and arrive first.",
+    ],
+    assist: [
+      "You get there first and stab it into the runner's path.",
+      "You keep the rebound alive with a controlled touch.",
+      "You tee it up before the defence can clear.",
+    ],
+  },
+  channel: {
+    goal: [
+      "You burst into the channel and cut inside.",
+      "You get there first and drive toward the box.",
+      "You turn the channel run into a shooting angle.",
+    ],
+    assist: [
+      "You reach the channel and whip it early across the box.",
+      "You beat the first step and send it into the runner's path.",
+      "You get your head up before the cover arrives.",
+    ],
+    trust: [
+      "You win the race and keep the ball on your side.",
+      "You carry it into safe territory and wait for support.",
+      "You turn a hopeful pass into an attack.",
+    ],
+  },
+  setPiece: {
+    trust: [
+      "You stay with the runner and attack the danger zone.",
+      "You hold your position and clear the first contact.",
+      "You track the movement and keep the header contested.",
+    ],
+    assist: [
+      "You clear into space and the counter is suddenly on.",
+      "You turn the clearance into the first pass of the break.",
+      "You spot the outlet as the set piece breaks down.",
+    ],
+  },
+  wide: {
+    goal: [
+      "You cut inside from the angle and shape to finish.",
+      "You shift the ball inside before the fullback can set.",
+      "You attack the inside lane from wide.",
+    ],
+    assist: [
+      "You beat the fullback and drill it across the face.",
+      "You open the crossing lane and pick out the runner.",
+      "You delay wide until the run arrives in the middle.",
+    ],
+    trust: [
+      "You bounce it off support and keep the wide attack alive.",
+      "You recycle wide rather than forcing the cross.",
+      "You keep the fullback pinned and retain possession.",
+    ],
+  },
+  link: {
+    goal: [
+      "You roll away from pressure and open the shot.",
+      "You combine quickly, then attack the return.",
+      "You turn the link-up into a shooting lane.",
+    ],
+    assist: [
+      "You feel the runner and play it around the corner.",
+      "You connect the one-two and release the runner.",
+      "You play the first-time layoff into the space.",
+    ],
+    trust: [
+      "You keep the triangle moving under pressure.",
+      "You bounce it cleanly and move again.",
+      "You link the play without letting the defence settle.",
+    ],
+  },
+};
+
+const ROUTE_CHANCES: Partial<Record<NarrativeRoute, Partial<Record<string, string[]>>>> = {
+  centralCutback: {
+    goal: [
+      "The cutback sits near the spot with the keeper set.",
+      "The ball arrives slightly behind you, but the goal is open enough.",
+      "The penalty spot opens for one clean contact.",
+    ],
+    assist: [
+      "The runner arrives onto it near the penalty spot.",
+      "Your teammate steps onto the layoff with the goal in front of him.",
+      "The pass rolls into the path of the arriving runner.",
+    ],
+    trust: [
+      "The crowded box settles for a second.",
+      "The defence is packed around the spot.",
+      "The safer pass keeps the move alive.",
+    ],
+  },
+  nearPost: {
+    goal: [
+      "The low cross flashes into the front-post corridor.",
+      "The ball skids across the six-yard line.",
+      "The delivery arrives where one touch can decide it.",
+    ],
+    assist: [
+      "The ball runs behind you toward the free teammate.",
+      "The space opens behind your screen.",
+      "Your movement leaves the far-side runner with the chance.",
+    ],
+  },
+  runBehind: {
+    goal: [
+      "The keeper rushes out as the pass drops in behind.",
+      "The through ball gives you one look at goal.",
+      "The last defender is beaten and the finish is on.",
+    ],
+    assist: [
+      "The square pass is on with the keeper committed.",
+      "Support catches up inside the box.",
+      "A teammate arrives for the simple ball across.",
+    ],
+  },
+  aerial: {
+    goal: [
+      "The cross hangs long enough for a clean header.",
+      "The delivery drops into your jumping lane.",
+      "The header is there if you can beat the marker.",
+    ],
+    assist: [
+      "The knockdown can land in front of the runner.",
+      "The second ball drops in a dangerous pocket.",
+      "A teammate waits under the header back across goal.",
+    ],
+  },
+  holdUp: {
+    assist: [
+      "The runner breaks beyond you as the defender leans in.",
+      "Midfield arrives in the pocket you have created.",
+      "The layoff lane opens just outside the box.",
+    ],
+    trust: [
+      "The pressure eases as support arrives.",
+      "The ball sticks and the team can breathe.",
+      "The move has time to build around you.",
+    ],
+  },
+  press: {
+    trust: [
+      "The defender has nowhere comfortable to play.",
+      "The loose touch gives you a chance to win territory.",
+      "The pass lane closes and the pressure tells.",
+    ],
+    assist: [
+      "The turnover leaves the defence unbalanced.",
+      "A teammate is free before they can reset.",
+      "The loose ball breaks into an attacking lane.",
+    ],
+  },
+  counter: {
+    goal: [
+      "The retreating line leaves a shooting lane.",
+      "The box opens as the defenders backpedal.",
+      "The break gives you one clean attacking angle.",
+    ],
+    assist: [
+      "The runner is free on the far side of the break.",
+      "The last defender has to choose between you and the pass.",
+      "The through lane opens between the recovering defenders.",
+    ],
+    trust: [
+      "Support arrives and the counter becomes controlled pressure.",
+      "The team catches up around you.",
+      "The break slows, but the ball stays yours.",
+    ],
+  },
+  edgeShot: {
+    goal: [
+      "The ball sits up outside the box with the keeper unsighted.",
+      "A shooting lane opens through the bodies.",
+      "The edge of the box gives you a clean look.",
+    ],
+    assist: [
+      "The defender bites on the shot and the runner is free.",
+      "The wide runner has a lane into the box.",
+      "The pass is on once the block steps toward you.",
+    ],
+    trust: [
+      "The defence steps out, but the recycle pass is there.",
+      "The safer lane keeps the pressure around the box.",
+      "The shot is crowded, so the reset is on.",
+    ],
+  },
+  rebound: {
+    goal: [
+      "The rebound skips loose before anyone can set.",
+      "The keeper spills it into the six-yard crowd.",
+      "The ball drops where a poacher has to react.",
+    ],
+    assist: [
+      "The loose ball can be squared before the block arrives.",
+      "A teammate is arriving as the rebound breaks.",
+      "The defence scrambles and the layoff is on.",
+    ],
+  },
+  channel: {
+    goal: [
+      "The channel run gives you a tight angle at goal.",
+      "The box opens if you can get inside the cover.",
+      "The defender is recovering, but the shooting lane appears.",
+    ],
+    assist: [
+      "The early ball across the box is there.",
+      "A runner attacks the space your channel run has opened.",
+      "The cross can beat the recovering line.",
+    ],
+    trust: [
+      "The channel gives you territory and time.",
+      "Support arrives as you hold the wide lane.",
+      "The move stays alive down the side.",
+    ],
+  },
+  setPiece: {
+    trust: [
+      "The delivery drops into a crowded danger zone.",
+      "The runner tries to break free at the back post.",
+      "The second ball threatens to fall inside the box.",
+    ],
+    assist: [
+      "The clearance can spring a counter immediately.",
+      "The outlet runner is already moving upfield.",
+      "The set piece breaks and space opens beyond them.",
+    ],
+  },
+  wide: {
+    goal: [
+      "The tight angle gives you a narrow sight of goal.",
+      "The far corner opens as you cut inside.",
+      "The fullback is beaten and the shot is on.",
+    ],
+    assist: [
+      "The cutback lane opens toward the penalty spot.",
+      "The cross can find the runner between defenders.",
+      "The far-post runner is waiting for the delivery.",
+    ],
+    trust: [
+      "The wide lane stays alive with support close.",
+      "The fullback cannot step out without leaving space.",
+      "The overlap holds the defence in place.",
+    ],
+  },
+  link: {
+    goal: [
+      "The return pass gives you a shooting lane.",
+      "The one-two pulls the centre back out of shape.",
+      "The quick exchange opens the box.",
+    ],
+    assist: [
+      "The runner bursts beyond the line as you release it.",
+      "The give-and-go opens a clean passing lane.",
+      "The wall pass sends your teammate into space.",
+    ],
+    trust: [
+      "The triangle keeps the attack moving.",
+      "The ball moves quickly enough to beat the pressure.",
+      "The defence shifts, but the move survives.",
+    ],
+  },
+};
+
 const SETUP_FALLBACK = [
   "The move builds and the ball finds you.",
   "You drop into the pocket and call for it.",
@@ -325,6 +731,35 @@ const SETUP_FALLBACK = [
   "The ball comes loose near you.",
   "You drift into the action.",
 ];
+
+function narrativeRoute(moment?: MatchMoment): NarrativeRoute {
+  if (!moment) return "generic";
+  const id = moment.id.toLowerCase();
+  const situation = moment.situation.toLowerCase();
+
+  if (id.includes("cutback") || situation.includes("cutback") || situation.includes("penalty spot")) return "centralCutback";
+  if (id.includes("near-post") || situation.includes("near post")) return "nearPost";
+  if (id.includes("through") || id.includes("offside") || moment.category === "run_behind") return "runBehind";
+  if (id.includes("aerial") || situation.includes("cross toward") || moment.category === "aerial_duel") return "aerial";
+  if (id.includes("hold-up") || moment.category === "hold_up") return "holdUp";
+  if (id.includes("press") || id.includes("track-back") || moment.category === "press") return "press";
+  if (id.includes("counter") || id.includes("shoulder") || moment.category === "counter") return "counter";
+  if (id.includes("edge") || situation.includes("outside the box")) return "edgeShot";
+  if (id.includes("rebound") || id.includes("spill") || situation.includes("spills")) return "rebound";
+  if (id.includes("channel") || situation.includes("channel")) return "channel";
+  if (id.includes("corner") || id.includes("set-piece") || moment.category === "defensive_set_piece") return "setPiece";
+  if (id.includes("wide") || id.includes("fullback") || situation.includes("fullback") || situation.includes("overlap")) return "wide";
+  if (id.includes("third-man") || moment.category === "link_up") return "link";
+  return "generic";
+}
+
+function bankForRoute(
+  banks: Partial<Record<NarrativeRoute, Partial<Record<string, string[]>>>>,
+  route: NarrativeRoute,
+  outcome: string,
+): string[] | undefined {
+  return banks[route]?.[outcome] ?? banks[route]?.trust;
+}
 
 // --- Outcome tone --------------------------------------------------------------------------------
 // Mirrors getPayoffStamp's gradient but kept local so this module stays engine-independent.
@@ -361,6 +796,7 @@ export function buildHighlightChain(input: {
 }): HighlightBeat[] {
   const { result, moment, choice, seed } = input;
   const drama = dramaOf(result);
+  const route = narrativeRoute(moment);
   const beats: HighlightBeat[] = [];
 
   // 1. Setup — lean on the authored, position-specific situation copy.
@@ -379,7 +815,8 @@ export function buildHighlightChain(input: {
   const baseOutcome = choice?.outcome ?? "trust";
   const defensiveMoment = moment?.category === "press" || moment?.category === "defensive_set_piece";
   const actionKey = defensiveMoment && baseOutcome === "trust" ? "defense" : baseOutcome;
-  const actionBank = ACTION_BY_OUTCOME[actionKey] ?? ACTION_BY_OUTCOME.trust;
+  const routeActionKey = actionKey === "defense" ? "trust" : actionKey;
+  const actionBank = bankForRoute(ROUTE_ACTIONS, route, routeActionKey) ?? ACTION_BY_OUTCOME[actionKey] ?? ACTION_BY_OUTCOME.trust;
   beats.push({
     kind: "action",
     text: pick(actionBank, `${seed}-action`),
@@ -396,9 +833,10 @@ export function buildHighlightChain(input: {
     emphasis: "normal",
   };
   const chanceBank =
-    choice?.outcome === "assist"
+    bankForRoute(ROUTE_CHANCES, route, choice?.outcome ?? "trust")
+    ?? (choice?.outcome === "assist"
       ? CHANCE_ASSIST
-      : (moment && CHANCE_BY_CATEGORY[moment.category]) || CHANCE_GENERIC;
+      : (moment && CHANCE_BY_CATEGORY[moment.category]) || CHANCE_GENERIC);
   const chanceBeat: HighlightBeat = {
     kind: "chance",
     text: pick(chanceBank, `${seed}-chance`),

@@ -1,5 +1,14 @@
 # Progress Log
 
+## 2026-07-01
+
+### Chain Highlight Narrative Routing
+
+- Added route-specific action and chance beat banks for player chain highlights so setup/action/chance text stays inside the same football situation family.
+- Cutbacks, near-post runs, runs in behind, aerial duels, hold-up play, pressing, counters, edge shots, rebounds, channels, set pieces, wide play and link-up moves now use compatible beat text before falling back to the generic pools.
+- This fixes mismatches such as central cutback moments pulling wide-overlap copy, keeping the cinematic chain system varied without making highlights feel stitched together from unrelated plays.
+- Verified with `npm run build`, `npm run smoke:play-session` and `npm run balance:season`; change is presentation-only and does not alter match resolution.
+
 ## 2026-06-23
 
 ### Create Dynasty V1
